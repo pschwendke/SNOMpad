@@ -2,9 +2,7 @@
 import numpy as np
 from tqdm import tqdm
 import nidaqmx as ni
-from nidaqmx.constants import VoltageUnits
-from nidaqmx.constants import AcquisitionType
-from nidaqmx.stream_readers import AnalogMultiChannelReader, AnalogSingleChannelReader
+from nidaqmx.constants import VoltageUnits, AcquisitionType, READ_ALL_AVAILABLE
 import logging
 from time import time, sleep
 logging.basicConfig(level=logging.DEBUG)
@@ -14,8 +12,6 @@ def task_done_cb(task, status, data):
     logging.info(f"status: {type(status)}, {status}")
     logging.info(f"data: {type(data)}, {data}")
     return 0
-
-
 
 n_samp = 100000
 # let's acquire 3 channels, 200 khz, 100 000 times
@@ -53,13 +49,17 @@ with ni.Task("signals") as task:
         task.start()
         t0 = time()
         task.wait_until_done()
-        
-        v = task.read() #number_of_samples_per_channel=10)
+        t1 = time()
+        v = task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE) #number_of_samples_per_channel=10)
         task.stop()
-        dt = time()-t0
-    logging.info(f"took: {dt} s")
-    logging.info(f"Value len: {len(v)}")
-    logging.info(f"Typeof: {type(v)}")
+        t2 = time()
+    logging.info(f"wait took: {t1-t0:.04f}")
+    logging.info(f"total took: {t2-t0:.04f}")
+    logging.info(f"type(v): {type(v)}")
+    logging.info(f"len(v): {len(v)}") # len is 3
+    #logging.info(f"v: {v}") 
+    logging.info(f"type(v[0]): {type(v[0])}")
+    logging.info(f"len(v[0]): {len(v[0])}")
     logging.info(f"Done? {task.is_task_done()}")
     logging.info("Finishing task...")
 
