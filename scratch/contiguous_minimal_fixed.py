@@ -40,3 +40,5 @@ with ni.Task("signals") as task:
     ##### STOP AND CHECK RESULTS
     task.stop()
     assert np.all(read_buffer > -1000)
+print("Complete")
+print(read_buffer[:,:10].T)
