@@ -91,7 +91,12 @@ with ni.Task("signals") as task:
         samps_per_chan=n_tot,
     )
     reader = TAMR(task.in_stream)
-    read_buffer = np.ones((n_tot, n_channels))*-1000 # impossible output
+    read_buffer = np.memmap(
+        "test.tmp",
+        dtype=np.float,
+        mode="w+",
+        shape=(n_tot, n_channels))
+    read_buffer[:] = -1000 # impossible output
     i = 0
     ##### START
     task.start()
@@ -107,6 +112,7 @@ with ni.Task("signals") as task:
         )
     ##### STOP AND CHECK RESULTS
     task.stop()
+    read_buffer.flush()
     assert np.all(read_buffer > -1000)
 print("Complete")
 print(read_buffer[:10,:])
@@ -117,3 +123,4 @@ x = np.arange(n_tot)
 plt.plot(x, read_buffer[:,0])
 plt.plot(x, read_buffer[:,1])
 plt.show()
+# this shows delayed sine waves, as expected.
