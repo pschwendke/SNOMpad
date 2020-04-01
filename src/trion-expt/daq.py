@@ -15,6 +15,17 @@ This is a simplified interface to the DAQ specific to our needs.
 # - triggering channels
 # - PLL eventually...
 
+# we also need:
+# - a subclass of reader object for our needs, including one that reads
+#   both analog and digital tasks in lock-step. This essentially converts the
+#   data into the output of nidaqmx to our standard data specification. It also
+#   handles whether acquisiton is streamed or uses an intermediary buffer.
+# - a buffer object that manages to push the acquired data into the destination,
+#   handles array expansion, truncation, file flushing, yada. It should
+#   also track it's current index in order to be read live without intervention
+#   by the reader. It must handle two cases: directly put data in there, or 
+#   provide a (direct) view into buffer.
+
 import logging
 import typing
 import numpy as np
@@ -181,6 +192,9 @@ class DaqController(object):
             t.close()
         # TODO: handle buffer...
     
+    def self_calibrate(self):
+        raise NotImplementedError()
+
     def __del__(self):
         try:
             self.close()
