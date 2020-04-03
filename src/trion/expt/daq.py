@@ -2,7 +2,25 @@
 """
 Controller for the data acquisition card. 
 
-This is a simplified interface to the DAQ specific to our needs.
+This is a simplified interface to the DAQ specific to our needs. This defines
+the following classes:
+
+DaqController: Handles the nidaqmx machinery specific to our needs.
+    This is mostly a Facade.
+Readers: Adapter between DaqController and Buffers. 
+    Generally handles the constraints of both APIs.
+    Maintains synchronization when both analog and digital tasks are needed.
+    Selects the read method (callback vs manual).
+    Converts the data format between nidaqmx and our destination.
+    May factorize this into subclassses...
+Buffers: Manage the output buffer.
+    Handle opening, sync (flushing), closing, expansion, truncation. Must track
+    its current index to enable reading by other classes without involving the
+    reader. Must handle two read modes: manually put data and 
+    provide view into buffer.
+    The destination buffer may also be the entrance into an analysis pipeline...
+
+Ideally, the DaqController should not know the Buffer in any way...
 """
 # try to keep this vanilla as much as possible.
 
@@ -10,8 +28,6 @@ This is a simplified interface to the DAQ specific to our needs.
 # - acquisition channels
 #   do the controller care which channel is which? Probably we should just let
 #   the user describe the mapping using names: map ai0 to optical+...
-# - destination for data. We can think of: in-memory array, memmap, hdf5, 
-#   analysis pipeline of some sort...
 # - triggering channels
 # - PLL eventually...
 
@@ -67,7 +83,6 @@ class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
                 .format(data.shape, array_shape),
                 DAQmxErrors.UNKNOWN.value, task_name=self._task.name)
 
-
     def read_many_sample(self, data, 
             number_of_samples_per_channel=READ_ALL_AVAILABLE, timeout=10.0):
         number_of_samples_per_channel = (
@@ -119,8 +134,6 @@ class DaqController(object):
         Wrapped tasks
     reader: Reader object (or list thereof?)
         Wrapped reader. Cannot be set on init
-    buffer: 
-        Data acquisition buffer. Cannot be set on init.
     """
     dev: str = attr.ib()
     channel_map: typing.Mapping[str, str] = attr.ib()
@@ -130,7 +143,6 @@ class DaqController(object):
     phase_range: float = attr.ib(default=10, kw_only=True)
     tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
     reader = attr.ib(init=False, default=None)
-    buffer = attr.ib(init=False, default=None)
 
     # - how to handle read mode? we can directly stream to destination, or use a 
     #   buffer.. strategy...
