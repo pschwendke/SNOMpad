@@ -12,8 +12,10 @@ mode.
 
 ## Acquisition variables
 In order to structure the data, the acquisition variables must strictly follow
-a convention. The experimental setup determines the set of variables. The
-possible variables are:
+a convention. The experimental setup determines the set of variables. This is a 
+bijective mapping: the experimental setup can be determined from the set of
+acquisition variables present in a dataset.
+The possible variables are:
 
 ### Optical signals (all V)
 * `sig_A` : Optical signal A. Used for single channel detection,
@@ -39,6 +41,7 @@ possible variables are:
 The acquired variables will be processed in order to yield the signal. The 
 processed variables are to be determined.
 
+(Maybe we change these to phi_tap and phi_ref?)
 * `tap_phi` : Tapping phase (radians),
 * `ref_phi` : psHet reference mirror phase (radians),
 
