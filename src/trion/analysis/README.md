@@ -42,4 +42,3 @@ processed variables are to be determined.
 * `tap_phi` : Tapping phase (radians),
 * `ref_phi` : psHet reference mirror phase (radians),
 
-## Physical mapping.
