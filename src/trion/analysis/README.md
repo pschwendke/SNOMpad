@@ -9,3 +9,9 @@ status. The slow-scan variables are varied imperatively by the acquisition
 controller. They do not vary shot-to-shot. The slow-scan variables are
 the AFM positions, pump-probe delay and interferometer position in spectroscopy
 mode.
+
+# Roadmap
+
+Current development plans
+
+1. Finish setup (finish project setup...)
