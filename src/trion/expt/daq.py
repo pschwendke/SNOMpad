@@ -6,41 +6,20 @@ This is a simplified interface to the DAQ specific to our needs. This defines
 the following classes:
 
 DaqController: Handles the nidaqmx machinery specific to our needs.
-    This is mostly a Facade.
+    This is mostly a Facade. Needs to know the signals, the trigger channel,
+    eventually the PLL channel.
 Readers: Adapter between DaqController and Buffers. 
     Generally handles the constraints of both APIs.
-    Maintains synchronization when both analog and digital tasks are needed.
-    Selects the read method (callback vs manual).
+    Acquires analog and digital tasks in lock-step if necessary.
     Converts the data format between nidaqmx and our destination.
-    May factorize this into subclassses...
-Buffers: Manage the output buffer.
-    Handle opening, sync (flushing), closing, expansion, truncation. Must track
-    its current index to enable reading by other classes without involving the
-    reader. Must handle two read modes: manually put data and 
-    provide view into buffer.
-    The destination buffer may also be the entrance into an analysis pipeline...
+    Selects the read mode (streaming vs by copy).
+    Maybe selects callback vs manual.. let's try callback first
+    May break this up into multiple classes...
 
-Ideally, the DaqController should not know the Buffer in any way...
+Ideally, the DaqController should not know the Buffer in any way, and just pass
+it to the reader.
 """
-# try to keep this vanilla as much as possible.
 
-# what does the controller need to know?
-# - acquisition channels
-#   do the controller care which channel is which? Probably we should just let
-#   the user describe the mapping using names: map ai0 to optical+...
-# - triggering channels
-# - PLL eventually...
-
-# we also need:
-# - a subclass of reader object for our needs, including one that reads
-#   both analog and digital tasks in lock-step. This essentially converts the
-#   data into the output of nidaqmx to our standard data specification. It also
-#   handles whether acquisiton is streamed or uses an intermediary buffer.
-# - a buffer object that manages to push the acquired data into the destination,
-#   handles array expansion, truncation, file flushing, yada. It should
-#   also track it's current index in order to be read live without intervention
-#   by the reader. It must handle two cases: directly put data in there, or 
-#   provide a (direct) view into buffer.
 
 import logging
 import typing
@@ -54,6 +33,19 @@ from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 from ..analysis.utils import is_optical_signal
 logger = logging.getLogger(__name__)
+
+# please don't change this...
+default_channel_map = {
+    "sig_A": "ai0",
+    "sig_B": "ai1",
+    "sig_d": "ai0",
+    "sig_s": "ai1",
+    "tap_x": "ai2",
+    "tap_y": "ai3",
+    "ref_x": "ai4",
+    "ref_y": "ai5",
+    # chop is to be determined
+}
 
 class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
     """
@@ -107,17 +99,6 @@ class DaqController(object):
     ----------
     dev : str
         Device name (ex: Dev0)
-    channel_map : dict (str: str)
-        Mapping between signal type and physical channel.
-        Which way? (ai0: sig_diff?)
-        What to use for the trion channels? (default mapping...)
-            - ai0: sig_diff
-            - ai1: sig_sum (optional)
-            - ai2: tap_x
-            - ai3: tap_y
-            - ai4: ref_x (optional)
-            - ai5: ref_y (optional)
-            - chopper? ...
     clock_channel : str
         Physical channel to use as a clock. Triggers occur on rising edges.
     sample_rate : float
@@ -126,6 +107,8 @@ class DaqController(object):
         Range of optical signal channels, in V. (I think this must be symmetric)
     phase_range : float, default=10
         Range of modulation channels, in V. (I think this must be symmetric...)
+    channel_map : dict[str, str], default : default_channel_map
+        Mapping from signal type to 
 
     Attributes
     ----------
@@ -135,11 +118,13 @@ class DaqController(object):
         Wrapped reader. Cannot be set on init
     """
     dev: str = attr.ib()
-    channel_map: typing.Mapping[str, str] = attr.ib()
     clock_channel: str = attr.ib(kw_only=True)
     sample_rate: float = attr.ib(kw_only=True)
     sig_range: float = attr.ib(default=2, kw_only=True)
     phase_range: float = attr.ib(default=10, kw_only=True)
+    channel_map: typing.Mapping[str, str] = attr.ib(
+        default=default_channel_map, kw_only=True
+    )
     tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
     reader = attr.ib(init=False, default=None)
 
@@ -150,61 +135,69 @@ class DaqController(object):
     #   I'm tempted to say callbacks will be better. Careful with GUI threads
     #   though... Let's try, fix it later if there is stutter...
     #
-    # - How should we handle mapping between physical channel and detector?
-    #   - We can use the channel names provided by ni, or build our own.
-    #   - Should we use the order of the physical channels, or a consistent
-    #     order of detectors? We should probably use the physical order for the
-    #     acquistion, and make the mapping available as metadata. Then, the
-    #     processing code can keep a consistent order.
-    #   
-
-    def setup(self, n_samp = int(1E5)):
+    
+    def setup(self, variables: typing.Iterable[str]) -> 'DaqController':
         """
         Prepare for acquisition.
 
         Generate tasks, setup timing, reader objects and acquisition buffer.
+
+        Parameters
+        ----------
+        variables : List of str
+            Experimental variables to acquire. The mapping from signal name to
+            physical channel is determined by the `channel_map` attribute, which
+            you probably shouldn't change...
         """
         # TODO: will need to be redone when adding chopping
+
         # generate tasks
         analog = ni.Task("analog")
-        
-        for c, role in sorted(self.channel_map.keys()):
-            v_range = self.sig_range if is_optical_signal(role) else self.phase_range
+        for var in sorted(variables, key=self.channel_map.get):
+            c = self.channel_map[var]
+            lim = self.sig_range if is_optical_signal(var) else self.phase_range
             analog.ai_channels.add_ai_voltage_chan(
-                f"{self.dev}/{c}", min_val=-v_range, max_val=v_range)
+                f"{self.dev}/{c}", min_val=-lim, max_val=lim)
         self.tasks.append(analog)
         # configure timing
         for t in self.tasks:
             t.timing.cfg_samp_clk_timing(
                 rate=self.sample_rate,
                 sample_mode=AcquisitionType.CONTINUOUS,
-                samps_per_chan=int(self.sample_rate/10) # 100 ms worth of buffer?
+                samps_per_chan=int(self.sample_rate/10), # 100 ms worth of buffer?
             )
-        # create reader and acquisition buffer
+        # create reader and acquisition buffer. 
+        # TODO: Will need to be redone when 
         self.reader = TAMR(analog.in_stream)
-        # setup buffer
+        # what to do with the buffer?
+        return self
 
-    def start(self):
+    def start(self) -> 'DaqController':
         raise NotImplementedError()
+        return self
 
-    def is_done(self):
+    def is_done(self) -> bool:
         return all(t.is_task_done() for t in self.tasks) # hmm...
 
     def read(self, dest):
         # or delegate this to the reader object?
         raise NotImplementedError()
 
-    def stop(self):
+    def stop(self) -> 'DaqController':
         for t in self.tasks:
             t.stop()
+        # handle the reader?
+        return self
 
     def close(self):
         for t in self.tasks:
             t.close()
-        # TODO: handle buffer...
-    
-    def self_calibrate(self):
+        # signal end of read to reader (he can then delegate to buffer
+        # if necessary)""
+
+    def self_calibrate(self) -> 'DaqController':
         raise NotImplementedError()
+        return self
 
     def __del__(self):
         try:
