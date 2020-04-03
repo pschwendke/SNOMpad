@@ -52,6 +52,7 @@ from nidaqmx.error_codes import DAQmxErrors
 from nidaqmx.stream_readers import AnalogMultiChannelReader
 from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
+from ..analysis.utils import is_optical_signal
 logger = logging.getLogger(__name__)
 
 class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
@@ -96,8 +97,6 @@ class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
             fill_mode=FillMode.GROUP_BY_SCAN_NUMBER)
 
 
-def is_signal(role: str) -> bool:
-    return role.startswith("sig")
 
 @attr.s(order=False) # this thing auto-generates __init__ for us
 class DaqController(object):
@@ -170,7 +169,7 @@ class DaqController(object):
         analog = ni.Task("analog")
         
         for c, role in sorted(self.channel_map.keys()):
-            v_range = self.sig_range if is_signal(role) else self.phase_range
+            v_range = self.sig_range if is_optical_signal(role) else self.phase_range
             analog.ai_channels.add_ai_voltage_chan(
                 f"{self.dev}/{c}", min_val=-v_range, max_val=v_range)
         self.tasks.append(analog)
