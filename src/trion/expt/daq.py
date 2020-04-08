@@ -89,9 +89,58 @@ class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
             fill_mode=FillMode.GROUP_BY_SCAN_NUMBER)
 
 
+@attr.s(order=False)
+class TrionsAnalogReader(): # for not pump-probe
+    _analog_stream = attr.ib(default=None, init=False)
+    buffer = attr.ib(default=None)
+    channel_map: typing.Mapping[str, str] = attr.ib(
+        default=default_channel_map, kw_only=True
+    )
+    _ni_reader = attr.ib(init=False, default=None)
+
+    @property
+    def analog_stream(self):
+        return self._analog_stream
+
+    @property
+    def vars(self):
+        return self.buffer.vars
+
+    @analog_stream.setter
+    def analog_stream(self, in_stream):
+        logger.debug("Setting analog stream")
+        self._analog_stream = in_stream
+        self._ni_reader = TAMR(self.analog_stream)
+
+    # def register_callbacks(self): ?
+    #     # enables: thing.register_callbacks().start()
+
+    #     raise NotImplementedError()
+    #     return self
+    
+    @property
+    def avail_samp(self):
+        return self.analog_stream.avail_samp_per_chan
+
+    def read(self, n=np.infty):
+        # return number of samples read?
+        n = min(n, self.avail_samp)
+        if n == 0:
+            return 0
+        tmp = np.full((n, self.analog_stream.channels_to_read),
+                       np.nan)
+        r = self._ni_reader.read_many_sample(
+                tmp,
+                number_of_samples_per_channel=n
+        )
+        self.buffer.put(tmp)
+        return r
+    
+
+    
 
 @attr.s(order=False) # this thing auto-generates __init__ for us
-class DaqController(object):
+class DaqController():
     """
     Controller for DAQ.
 
@@ -119,12 +168,9 @@ class DaqController(object):
     """
     dev: str = attr.ib()
     clock_channel: str = attr.ib(kw_only=True)
-    sample_rate: float = attr.ib(kw_only=True)
+    sample_rate: float = attr.ib(kw_only=True, default=200_000)
     sig_range: float = attr.ib(default=2, kw_only=True)
     phase_range: float = attr.ib(default=10, kw_only=True)
-    channel_map: typing.Mapping[str, str] = attr.ib(
-        default=default_channel_map, kw_only=True
-    )
     tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
     reader = attr.ib(init=False, default=None)
 
@@ -136,57 +182,73 @@ class DaqController(object):
     #   though... Let's try, fix it later if there is stutter...
     #
     
-    def setup(self, variables: typing.Iterable[str]) -> 'DaqController':
+    def setup(self,
+              buffer,
+              ) -> 'DaqController':
         """
         Prepare for acquisition.
 
         Generate tasks, setup timing, reader objects and acquisition buffer.
+        This is a clear method where the Controller object acts as a facade, so
+        it handles a lot..
 
         Parameters
         ----------
-        variables : List of str
-            Experimental variables to acquire. The mapping from signal name to
-            physical channel is determined by the `channel_map` attribute, which
-            you probably shouldn't change...
+        buffer : trion.expt.AbstractBuffer
+            Buffer for acquisition.
+
+        Notes
+        -----
+        The mapping from signal name to physical channel is determined by the 
+        `channel_map` attribute, which you probably shouldn't change...
         """
         # TODO: will need to be redone when adding chopping
 
         # generate tasks
         analog = ni.Task("analog")
-        for var in sorted(variables, key=self.channel_map.get):
-            c = self.channel_map[var]
+        # Get variable names from buffer if they are not supplied.
+        
+        self.reader = TrionsAnalogReader(buffer=buffer)
+        # add the analog channels
+        for var in sorted(self.reader.vars, key=self.reader.channel_map.get):
+            c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range
+            logging.debug(f"Adding variable: {var}, channel {c}, lim: {lim}")
             analog.ai_channels.add_ai_voltage_chan(
                 f"{self.dev}/{c}", min_val=-lim, max_val=lim)
         self.tasks.append(analog)
-        # configure timing
+        self.reader.analog_stream = analog.in_stream
+        
+        self.setup_timing()
+        return self
+
+    def setup_timing(self):
         for t in self.tasks:
             t.timing.cfg_samp_clk_timing(
                 rate=self.sample_rate,
+                source=self.clock_channel,
                 sample_mode=AcquisitionType.CONTINUOUS,
                 samps_per_chan=int(self.sample_rate/10), # 100 ms worth of buffer?
             )
-        # create reader and acquisition buffer. 
-        # TODO: Will need to be redone when 
-        self.reader = TAMR(analog.in_stream)
-        # what to do with the buffer?
         return self
 
     def start(self) -> 'DaqController':
+        # Finalise setting up the reader and buffer, ie: connect the callbacks?
+        # start the actual acquisiition
         raise NotImplementedError()
         return self
 
     def is_done(self) -> bool:
         return all(t.is_task_done() for t in self.tasks) # hmm...
 
-    def read(self, dest):
-        # or delegate this to the reader object?
-        raise NotImplementedError()
+    # def read(self, dest):
+    #     # or delegate this to the reader object? Delegate
+    #     raise NotImplementedError()
 
     def stop(self) -> 'DaqController':
         for t in self.tasks:
             t.stop()
-        # handle the reader?
+        # undo the actions of `self.start`
         return self
 
     def close(self):
