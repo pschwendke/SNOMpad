@@ -138,6 +138,9 @@ class TrionsAnalogReader(): # for not pump-probe
         self.buffer.put(tmp)
         return r
     
+    def stop(self):
+        self.buffer.finish()
+        return self
 
 @attr.s(order=False) # this thing auto-generates __init__ for us
 class DaqController():
@@ -214,6 +217,7 @@ class DaqController():
         
         self.reader = TrionsAnalogReader(buffer=buffer)
         # add the analog channels
+        logger.info(f"Acquiring signals: {', '.join(self.reader.vars)}")
         for var in self.reader.vars:
             c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range
@@ -238,7 +242,7 @@ class DaqController():
 
     def start(self) -> 'DaqController':
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
-        # start the actual acquisiition
+        # start the actual acquisition
         for t in self.tasks:
             t.start()
         # fire a START TRIGGER event
@@ -254,6 +258,7 @@ class DaqController():
     def stop(self) -> 'DaqController':
         for t in self.tasks:
             t.stop()
+        self.reader.stop()
         # undo the actions of `self.start`
         # signal end of read to reader (he can then delegate to buffer
         # if necessary)""
@@ -261,7 +266,7 @@ class DaqController():
 
     def close(self):
         with warnings.catch_warnings():
-            # silence a warning from nidaqmx when trying to close the same task multiple times
+            #silence a warning from nidaqmx when trying to close the same task multiple times
             warnings.filterwarnings(
                 "ignore",
                 message=r"Attempted to close NI-DAQmx task of name .* but task was already closed"
@@ -274,9 +279,10 @@ class DaqController():
         return self
 
     def __del__(self):
-        #logger.debug("DaqController.__del__")
+        logger.debug("DaqController.__del__")
         try:
             self.close()
         except Exception:
             pass
+        logger.debug("DaqController.__del__ end")
         
