@@ -94,7 +94,7 @@ class CircularArrayBuffer(AbstractBuffer):
     """
     def __init__(self, *, max_size, **kw):
         super().__init__(**kw)
-        self.buf = np.ones((max_size, len(self.vars)))*np.nan
+        self.buf = np.full((max_size, len(self.vars)), np.nan)
 
     @property
     def size(self):
@@ -114,7 +114,7 @@ class CircularArrayBuffer(AbstractBuffer):
         else: # rotate
             # lengths of first and second segments (`pre` and `post`)
             pre_len = self.size - self.i
-            post_len = j - pre_len
+            post_len = j - self.size
             self.buf[self.i:, :] = data[:pre_len, :]
             self.buf[:post_len, :] = data[pre_len:, :]
 

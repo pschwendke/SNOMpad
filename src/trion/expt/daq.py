@@ -32,6 +32,8 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader
 from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 from ..analysis.utils import is_optical_signal
+import warnings
+import re
 logger = logging.getLogger(__name__)
 
 # please don't change this...
@@ -127,7 +129,7 @@ class TrionsAnalogReader(): # for not pump-probe
         n = min(n, self.avail_samp)
         if n == 0:
             return 0
-        tmp = np.full((n, self.analog_stream.channels_to_read),
+        tmp = np.full((n, len(self.analog_stream.channels_to_read.channel_names)),
                        np.nan)
         r = self._ni_reader.read_many_sample(
                 tmp,
@@ -135,8 +137,6 @@ class TrionsAnalogReader(): # for not pump-probe
         )
         self.buffer.put(tmp)
         return r
-    
-
     
 
 @attr.s(order=False) # this thing auto-generates __init__ for us
@@ -174,6 +174,10 @@ class DaqController():
     tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
     reader = attr.ib(init=False, default=None)
 
+    def __attrs_post_init__(self): # well... sorry for this..
+        # Just log some information.
+        logger.info(f"Daq Controller using {self.dev}.")
+
     # - how to handle read mode? we can directly stream to destination, or use a 
     #   buffer.. strategy...
     # - Should we maintain the acquistion loop ourselves or use callbacks?
@@ -210,10 +214,10 @@ class DaqController():
         
         self.reader = TrionsAnalogReader(buffer=buffer)
         # add the analog channels
-        for var in sorted(self.reader.vars, key=self.reader.channel_map.get):
+        for var in self.reader.vars:
             c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range
-            logging.debug(f"Adding variable: {var}, channel {c}, lim: {lim}")
+            logger.debug(f"Adding variable: {var}, channel {c}, lim: {lim}")
             analog.ai_channels.add_ai_voltage_chan(
                 f"{self.dev}/{c}", min_val=-lim, max_val=lim)
         self.tasks.append(analog)
@@ -235,7 +239,9 @@ class DaqController():
     def start(self) -> 'DaqController':
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
         # start the actual acquisiition
-        raise NotImplementedError()
+        for t in self.tasks:
+            t.start()
+        # fire a START TRIGGER event
         return self
 
     def is_done(self) -> bool:
@@ -249,19 +255,26 @@ class DaqController():
         for t in self.tasks:
             t.stop()
         # undo the actions of `self.start`
+        # signal end of read to reader (he can then delegate to buffer
+        # if necessary)""
         return self
 
     def close(self):
-        for t in self.tasks:
-            t.close()
-        # signal end of read to reader (he can then delegate to buffer
-        # if necessary)""
+        with warnings.catch_warnings():
+            # silence a warning from nidaqmx when trying to close the same task multiple times
+            warnings.filterwarnings(
+                "ignore",
+                message=r"Attempted to close NI-DAQmx task of name .* but task was already closed"
+            )
+            for t in self.tasks:
+                t.close()
 
     def self_calibrate(self) -> 'DaqController':
         raise NotImplementedError()
         return self
 
     def __del__(self):
+        #logger.debug("DaqController.__del__")
         try:
             self.close()
         except Exception:
