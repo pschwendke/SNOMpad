@@ -1,25 +1,36 @@
 #!python3
-# acq2file.py: acquire data to file.
-# 
-
+# single_point.py: acquire data to file.
+#
 import argparse
 import logging
 from time import sleep
 
 import numpy as np
-from tqdm import tqdm
+import tqdm
 
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level)
 
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            tqdm.tqdm.write(msg)
+            self.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
+
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 parser = argparse.ArgumentParser(
     description="Acquire raw TRIONs data to file.",
 )
 parser.add_argument("-d", "--dev", default="DevT", help="NI device.")
-
 parser.add_argument(
     "--signals", nargs="+", action="extend",
     help="Signals to acquire. Default to 'sig_A tap_x tap_y'"
@@ -32,7 +43,7 @@ parser.add_argument(
 )
 parser.add_argument("-p", "--pbar", action="store_true", help="Use a progress bar. Doesn't mix well with 'v'.")
 parser.add_argument("-v", "--verbose", action="store_true", help="Logging uses debug mode.")
-parser.add_argument("--filename", nargs=1, help="output file name")
+parser.add_argument("--filename", help="output file name", default="trions.npy")
 args = parser.parse_args()
 
 log_fmt = "%(levelname)-5s - %(name)s - %(message)s" if args.verbose else "%(levelname)-5s - %(message)s"
@@ -40,51 +51,46 @@ log_cfg = {
     "level": logging.DEBUG if args.verbose else logging.INFO,
     "format": log_fmt,
 }
-logging.basicConfig(**log_cfg)
-logger = logging.getLogger()
+logging.basicConfig(handlers=[TqdmLoggingHandler()], **log_cfg)
 
 if not args.signals:
     args.signals=["sig_A", "tap_x", "tap_y"]
+if args.n_samples < 0:
+    # infinite acquisition
+    acq_lim = np.inf
+    pbar_lim = np.inf
+else:
+    acq_lim = args.n_samples
+    pbar_lim = args.n_samples
 
+print("Initializing single-point TRIONs acquisition.")
+pbar = tqdm.tqdm(
+    desc="Acquisition in progress...",
+    total=pbar_lim,
+    unit=" samples",
+    disable=not args.pbar,
+)
 ctrl = DaqController("DevT", clock_channel="")
-
-buffer = ExtendingArrayBuffer(vars=args.signals)#, max_size=args.n_samples)
-
-#t0 = time()
+buffer = ExtendingArrayBuffer(vars=args.signals, max_size=acq_lim)
 n_read = 0
-#setup the progressbar
-
-ctrl.setup(buffer=buffer)
+ctrl.setup(buffer=buffer).start()
 try:
-    pbar = tqdm(
-        desc="Acquisition in progress",
-        total=args.n_samples,
-        unit=" samples",
-        disable=not args.pbar,
-    )
-    ctrl.start()
     while True:
         try:
-            if  ctrl.is_done() or n_read >= args.n_samples:
-                logging.info("Acquisition complete")
+            if ctrl.is_done() or n_read >= acq_lim:
                 break
             sleep(0.01)
             n = ctrl.reader.read()
             pbar.update(n)
             n_read += n
         except KeyboardInterrupt:
-            logging.warning("User interrupting acquisition.")
+            logging.warning("Acquisition interrupted by user.")
             break
-    #logging.info(f"{n_read}")
 finally:
-    pbar.close()
-    logging.info("Acquisition finished")
     ctrl.stop()
-    
+    pbar.close()
     ctrl.close()
+    logging.info("Acquisition finished.")
 
-
-
-#assert not np.any(np.isnan(buffer.buf))
-
-#print(args)
+logging.info(f"Saving data to: {args.filename}")
+np.save(args.filename, buffer.buf, allow_pickle=False)

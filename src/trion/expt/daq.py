@@ -114,36 +114,34 @@ class TrionsAnalogReader(): # for not pump-probe
         self._analog_stream = in_stream
         self._ni_reader = TAMR(self.analog_stream)
 
-    # def register_callbacks(self): ?
-    #     # enables: thing.register_callbacks().start()
-
-    #     raise NotImplementedError()
-    #     return self
-    
     @property
     def avail_samp(self):
         return self.analog_stream.avail_samp_per_chan
 
     def read(self, n=np.infty):
-        # return number of samples read?
+        """Explict read, when acquisition is handled by the main script."""
         n = min(n, self.avail_samp)
         if n == 0:
             return 0
-        tmp = np.full((n, len(self.analog_stream.channels_to_read.channel_names)),
+        tmp = np.full((n, len(self.vars)),
                        np.nan)
-        r = self._ni_reader.read_many_sample(
+        self._ni_reader.read_many_sample(
                 tmp,
                 number_of_samples_per_channel=n
         )
-        self.buffer.put(tmp)
-        return r
+        try:
+            r = self.buffer.put(tmp)
+        except ValueError:
+            r = self.buffer.fill(tmp)
+        return r # arg
     
     def stop(self):
         self.buffer.finish()
         return self
 
+
 @attr.s(order=False) # this thing auto-generates __init__ for us
-class DaqController():
+class DaqController:
     """
     Controller for DAQ.
 
@@ -251,10 +249,6 @@ class DaqController():
     def is_done(self) -> bool:
         return all(t.is_task_done() for t in self.tasks) # hmm...
 
-    # def read(self, dest):
-    #     # or delegate this to the reader object? Delegate
-    #     raise NotImplementedError()
-
     def stop(self) -> 'DaqController':
         for t in self.tasks:
             t.stop()
@@ -277,6 +271,9 @@ class DaqController():
     def self_calibrate(self) -> 'DaqController':
         raise NotImplementedError()
         return self
+
+    def monitor_cb(self, task, event, n_samples, cb_data):
+        pass
 
     def __del__(self):
         logger.debug("DaqController.__del__")

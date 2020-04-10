@@ -131,3 +131,6 @@ dmypy.json
 # VSCode
 .vscode/settings.json
 scratch/test.tmp
+/scripts/trions.npy
+/scripts/out.npy
+/scripts/my_data.npy

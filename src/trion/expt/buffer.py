@@ -89,7 +89,6 @@ class ArrayBuffer(AbstractBuffer):
         return self.buf.shape[0]
 
 
-
 class CircularArrayBuffer(ArrayBuffer):
     """
     A simple circular buffer using a numpy array.
@@ -137,12 +136,19 @@ class ExtendingArrayBuffer(ArrayBuffer):
         n = np.asarray(data).shape[0]
         j = self.i+n
         if j > self.size:
-            self.expand()
-            self.put(data)
+            self.expand().put(data)
         else:
             self.buf[self.i:j,:] = data[:,:]
             self.i = j
-        return self
+        return n
+
+    def fill(self, data):
+        """Fill with as much as possible"""
+        logger.debug("Filling array.")
+        avail = self.size-self.i
+        self.buf[self.i:self.size,:] = data[:avail,:]
+        self.i += avail
+        return avail
 
     def get(self, len):
         # returns by view
