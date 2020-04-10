@@ -35,14 +35,16 @@ while not ctrl.is_done() and n_read < n_tot:
 ctrl.stop()
 pbar.close()
 ctrl.close()
-print(f"Number of samples read: {n_read}")
-print(f"Final array position: {buffer.i}")
+logging.info(f"Number of samples read: {n_read}")
+logging.info(f"Final array position: {buffer.i}")
 assert not np.any(np.isnan(buffer.buf))
 
 import matplotlib.pyplot as plt
-x = np.arange(buffer.buf.shape[0])
-for i, curve in enumerate(buffer.buf.T):
+data = buffer.get(len=n_tot)
+x = np.arange(n_tot)
+for i, curve in enumerate(data.T):
     plt.plot(curve, label=variables[i])
+
 plt.legend()
 
 plt.show()

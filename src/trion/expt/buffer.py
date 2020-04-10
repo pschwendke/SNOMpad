@@ -37,21 +37,21 @@ class AbstractBuffer(ABC):
     # def sync(self):
     #     pass
 
-    @abstractmethod
-    def expand(self, val: int):
-        """
-        Expand dataset.
+    # @abstractmethod
+    # def expand(self, val: int):
+    #     """
+    #     Expand dataset.
         
-        Not sure about the value: should we expand 'to' or expand 'by', or...
-        """
-        pass
+    #     Not sure about the value: should we expand 'to' or expand 'by', or...
+    #     """
+    #     pass
 
-    @abstractmethod
-    def truncate(self):
-        """
-        Remove unused space.
-        """
-        pass
+    # @abstractmethod
+    # def truncate(self):
+    #     """
+    #     Remove unused space.
+    #     """
+    #     pass
 
     # may not be an abstract method: potentially useless for h5py...
     # @abstractmethod 
@@ -76,9 +76,9 @@ class AbstractBuffer(ABC):
         pass
 
     @abstractmethod
-    def get(self, len, vars=None, offset=0): # maybe we should overload __getitem__?
+    def get(self, len, offset=0): # maybe we should overload __getitem__?
         """
-        Get last values from buffer. Optionally select a subset of columns.
+        Get last values from buffer.
         """
         pass
 
@@ -120,15 +120,10 @@ class CircularArrayBuffer(AbstractBuffer):
 
         self.i = (self.i + n) % self.size
 
-    def get(self, len, vars=None, offset=0):
+    def get(self, len, offset=0):
         r0 = self.i+offset
-        rows = slice(r0, r0+len)
-        if vars is None:
-            cols = slice(None) # everything, equivalent to `:`
-        else:
-            cols = [self.vars.index(v) for v in vars]
-        return self.buf[rows, cols]
-
+        return np.roll(self.buf, -r0, axis=0)[len::-1,:]
+        
     def writing_view(self, len):
         raise NotImplementedError
 
