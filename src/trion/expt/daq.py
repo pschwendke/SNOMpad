@@ -238,10 +238,20 @@ class DaqController:
             )
         return self
 
+    def teardown(self):
+        # Undo the work of "setup"
+        self.reader = None  # is this really needed?
+        for t in self.tasks:
+            logger.debug(f"Closing task {t.name}")
+            t.close()
+            self.tasks.remove(t)
+        return self
+
     def start(self) -> 'DaqController':
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
         # start the actual acquisition
         for t in self.tasks:
+            logger.debug(f"Starting task: {t.name}")
             t.start()
         # fire a START TRIGGER event
         return self
@@ -251,22 +261,26 @@ class DaqController:
 
     def stop(self) -> 'DaqController':
         for t in self.tasks:
+            logger.debug(f"Stopping task: {t.name}")
             t.stop()
-        self.reader.stop()
+            # self.tasks.remove(t)
+        logger.debug(f"Task list is now: {self.tasks}")
+        self.reader.stop() # or before?
         # undo the actions of `self.start`
         # signal end of read to reader (he can then delegate to buffer
         # if necessary)""
         return self
 
     def close(self):
-        with warnings.catch_warnings():
-            #silence a warning from nidaqmx when trying to close the same task multiple times
-            warnings.filterwarnings(
-                "ignore",
-                message=r"Attempted to close NI-DAQmx task of name .* but task was already closed"
-            )
-            for t in self.tasks:
-                t.close()
+        # with warnings.catch_warnings():
+        #     #silence a warning from nidaqmx when trying to close the same task multiple times
+        #     warnings.filterwarnings(
+        #         "ignore",
+        #         message=r"Attempted to close NI-DAQmx task of name .* but task was already closed"
+        #     )
+        self.stop()
+        self.teardown()
+
 
     def self_calibrate(self) -> 'DaqController':
         raise NotImplementedError()

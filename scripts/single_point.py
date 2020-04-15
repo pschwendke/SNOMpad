@@ -87,9 +87,9 @@ try:
             logging.warning("Acquisition interrupted by user.")
             break
 finally:
-    ctrl.stop()
-    pbar.close()
+    ctrl.stop()#.close()
     ctrl.close()
+    pbar.close()
     logging.info("Acquisition finished.")
 
 logging.info(f"Saving data to: {args.filename}")
