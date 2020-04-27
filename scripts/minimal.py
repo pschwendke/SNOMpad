@@ -24,3 +24,4 @@ finally:
     ctrl.stop().close()
 
 np.save("output.npy", buffer.buf, allow_pickle=False)
+
