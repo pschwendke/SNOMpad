@@ -41,9 +41,9 @@ parser.add_argument(
     default=1_000_000, 
     help="Maximum number of shots. Defaults to 1M. If negative, acquire continuously."
 )
-parser.add_argument("-p", "--pbar", action="store_true", help="Use a progress bar. Doesn't mix well with 'v'.")
+parser.add_argument("-p", "--pbar", action="store_true", help="Use a progress bar.")
 parser.add_argument("-v", "--verbose", action="store_true", help="Logging uses debug mode.")
-parser.add_argument("--filename", help="output file name", default="trions.npy")
+parser.add_argument("--filename", help="output file name. Defaults to `trions.npy`", default="trions.npy")
 args = parser.parse_args()
 
 log_fmt = "%(levelname)-5s - %(name)s - %(message)s" if args.verbose else "%(levelname)-5s - %(message)s"
