@@ -6,5 +6,9 @@ dependencies:
   - python
   - numpy
   - matplotlib
+  - nidaqmx
+  - tqdm
+  - attrs
+  - PySide2
+  - pyqtgraph
 prefix: C:\Users\samue\Anaconda3\envs\trion_dev
-

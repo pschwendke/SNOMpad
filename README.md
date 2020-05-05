@@ -7,3 +7,9 @@ descriptions. It should not depend on `trion.expt` module.
 
 The experimental code, including controllers and gui, is located in `trion.expt`
 module. This can depend on the `trion.data` module for specific IO.
+
+# Status
+
+Single-point acquisition possible via command line interface using 
+`scripts/single_point.py`. Refer to command line help and source code for
+details.
