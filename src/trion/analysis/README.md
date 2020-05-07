@@ -1,36 +1,35 @@
 # trion-data
 This package contains tools designed to work with the TRION data.
 
-The acquired variables can be divided in two categories: fast-scan and 
-slow-scan. Fast scan data varies at every laser shot. The fast-scan variables 
-must be acquired simultaneously at every laser shot, yielding a dense table. 
-The fast-scan are the optical signals, the modulation signals and the chopper
-status. The slow-scan variables are varied imperatively by the acquisition
-controller. They do not vary shot-to-shot. The slow-scan variables are
+The experimental variables can be divided in two categories: signals and 
+parameters. Signals vary at every laser shot. The signals must be acquired 
+simultaneously at every laser shot, yielding a dense table. The signals are the
+optical signals, the modulation signals and the chopper
+status. The parameters are varied imperatively by the acquisition controller. 
+They do not vary shot-to-shot. The slow-scan variables are
 the AFM positions, pump-probe delay and interferometer position in spectroscopy
 mode.
 
-## Acquisition variables
-In order to structure the data, the acquisition variables must strictly follow
-a convention. The experimental setup determines the set of variables. This is a 
-bijective mapping: the experimental setup can be determined from the set of
-acquisition variables present in a dataset.
+## Variables
+The data follows the following conventions. The experimental setup determines 
+the set of variables. This is a bijective mapping: the experimental setup can 
+be determined from the set of acquisition variables present in a dataset.
 The possible variables are:
 
-### Optical signals (all V)
+### Optical signals (units: Volts)
 * `sig_A` : Optical signal A. Used for single channel detection,
 * `sig_B` : Optical signal B. Used for dual channel detection,
 * `sig_d` : Optical difference signal, for balanced detection,
 * `sig_s` : Optical sum signal, for balanced detection,
 
-### Modulations (V unless noted)
+### Modulations signals (units: Volts unless noted)
 * `tap_x` : Cantilever deflection signal "X", always used,
 * `tap_y` : Cantilever deflection quadrature "Y", always used,
 * `ref_x` : Reference mirror modulation signal "X", in psHet mode,
 * `ref_y` : Reference mirror modulation signal "Y", in psHet mode,
 * `chop` : Chopper status, bool, for pump-probe.
 
-### Positions (slow scan variables)
+### Positions (parameters)
 * `afm_x` : AFM position x (nm),
 * `afm_y` : AFM position y (nm),
 * `afm_z` : AFM position z (nm),
@@ -38,10 +37,14 @@ The possible variables are:
 * `pos_pp` : Position of pump-probe stage (units?), for pump-probe,
 
 ## Processed variables
-The acquired variables will be processed in order to yield the signal. The 
+The variables will be processed in order to yield the signal. The 
 processed variables are to be determined.
 
-(Maybe we change these to phi_tap and phi_ref?)
 * `tap_phi` : Tapping phase (radians),
 * `ref_phi` : psHet reference mirror phase (radians),
 
+## Miscellaneous data
+
+The experiment can also be characterized by miscellaneous data, such as number
+of shots, calibration matrices for modulations, scaling factors for the signals,
+etc. We'll see.

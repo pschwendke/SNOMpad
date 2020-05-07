@@ -11,4 +11,6 @@ dependencies:
   - attrs
   - PySide2
   - pyqtgraph
+  - attrs
+  - bidict
 prefix: C:\Users\samue\Anaconda3\envs\trion_dev
