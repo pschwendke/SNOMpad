@@ -70,7 +70,7 @@ pbar = tqdm.tqdm(
     unit=" samples",
     disable=not args.pbar,
 )
-ctrl = DaqController("DevT", clock_channel="")
+ctrl = DaqController(args.dev, clock_channel="")
 buffer = ExtendingArrayBuffer(vars=args.signals, max_size=acq_lim)
 n_read = 0
 ctrl.setup(buffer=buffer).start()
