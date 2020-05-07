@@ -3,11 +3,31 @@
 
 import logging
 from PySide2 import QtWidgets
+from PySide2.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QGridLayout)
 from PySide2.QtCore import Qt
 import pyqtgraph as pg
 from .daq import  DaqPanel
 
 logger = logging.getLogger(__name__)
+
+
+class ViewPanel(QtWidgets.QDockWidget):
+    """
+    Panel for control of the Data window
+    """
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+
+        back_panel = QWidget(parent=self)
+        self.setWidget(back_panel)
+        main_layout = QVBoxLayout()
+        back_panel.setLayout(main_layout)
+
+        # self.view_type = QComboBox(parent=self) # will need this
+
+        grid_layout = QGridLayout()
+        back_panel.setLayout(grid_layout)
+
 
 
 class DataWindow(pg.GraphicsLayoutWidget):

@@ -140,6 +140,7 @@ class TrionsAnalogReader(): # for not pump-probe
         return self
 
 
+
 @attr.s(order=False) # this thing auto-generates __init__ for us
 class DaqController:
     """
@@ -253,7 +254,7 @@ class DaqController:
         for t in self.tasks:
             logger.debug(f"Starting task: {t.name}")
             t.start()
-        # fire a START TRIGGER event
+        # TODO: fire a START TRIGGER event
         return self
 
     def is_done(self) -> bool:
@@ -281,13 +282,12 @@ class DaqController:
         self.stop()
         self.teardown()
 
-
     def self_calibrate(self) -> 'DaqController':
         raise NotImplementedError()
         return self
 
     def monitor_cb(self, task, event, n_samples, cb_data):
-        pass
+        raise NotImplementedError()
 
     def __del__(self):
         logger.debug("DaqController.__del__")

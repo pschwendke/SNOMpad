@@ -94,7 +94,7 @@ class CircularArrayBuffer(ArrayBuffer):
     A simple circular buffer using a numpy array.
     """
     def __init__(self, *, max_size, **kw):
-        super().__init__(**{"init_size":max_size, **kw})
+        super().__init__(**{"init_size" : max_size, **kw})
 
     def put(self, data):
         n = np.asarray(data).shape[0]
