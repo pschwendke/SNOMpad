@@ -141,7 +141,6 @@ class TrionsAnalogReader(): # for not pump-probe
         return self
 
 
-
 @attr.s(order=False) # this thing auto-generates __init__ for us
 class DaqController:
     """
@@ -169,15 +168,15 @@ class DaqController:
     reader: Reader object (or list thereof?)
         Wrapped reader. Cannot be set on init
     """
-    dev: str = attr.ib()
-    clock_channel: str = attr.ib(kw_only=True)
+    dev: str = attr.ib(default="")
+    clock_channel: str = attr.ib(kw_only=True, default="")
     sample_rate: float = attr.ib(kw_only=True, default=200_000)
     sig_range: float = attr.ib(default=2, kw_only=True)
-    phase_range: float = attr.ib(default=10, kw_only=True)
+    phase_range: float = attr.ib(default=1, kw_only=True)
     tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
     reader = attr.ib(init=False, default=None)
 
-    def __attrs_post_init__(self): # well... sorry for this..
+    def __attrs_post_init__(self):  # well... sorry for this..
         # Just log some information.
         logger.info(f"Daq Controller using {self.dev}.")
 

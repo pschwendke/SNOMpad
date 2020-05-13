@@ -7,7 +7,10 @@ from PySide2.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QGridLayout,
                                QDockWidget)
 from PySide2.QtCore import Qt
 import pyqtgraph as pg
-from .daq import DaqPanel, ExpConfig, ExpPanel
+from nidaqmx.system import System
+
+from .qdaq import DaqPanel, ExpConfig, ExpPanel, AcquisitionController
+from ..daq import DaqController
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +50,12 @@ class DataWindow(pg.GraphicsLayoutWidget):
 
 
 class TRIONMainWindow(QtWidgets.QMainWindow):
-    def __init__(self, *a, daq=None, **kw):
+    def __init__(self, *a, daq=None,  **kw):
         super().__init__(*a, **kw)
 
         # store references to Trion objects
+        self.daq = daq or DaqController(dev=System().devices.device_names[0])
+        self.acq_cntrl = AcquisitionController(daq=self.daq)
 
         # setup threads
 
@@ -64,7 +69,9 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.expt_panel)
 
         # DAQ control panel
-        self.daq_panel = DaqPanel("Acquisition", daq=daq, parent=self)
+        self.daq_panel = DaqPanel("Acquisition", daq=self.daq,
+                                  acq_ctrl=self.acq_cntrl,
+                                  parent=self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.daq_panel)
         # create actions
         # create statusbar

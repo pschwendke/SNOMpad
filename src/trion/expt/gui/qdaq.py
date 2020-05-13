@@ -7,7 +7,7 @@ from PySide2.QtWidgets import (
     QVBoxLayout, QGroupBox, QHBoxLayout, QComboBox
 )
 from PySide2.QtGui import (
-    QDoubleValidator
+    QDoubleValidator, QIntValidator
 )
 from PySide2.QtCore import Qt, QStateMachine, QState, QObject, QTimer
 
@@ -20,21 +20,34 @@ logger = logging.getLogger(__name__)
 
 
 class AcquisitionController(QObject):
-    def __init__(self, daq: DaqController, *a, update_dt=0.01, **kw):
+    def __init__(self, daq: DaqController, *a, display_dt=0.02, read_dt=0.01, **kw):
         """
         This object handle the control of the acquisition.
 
-        It tracks the acquisition process and wraps the DaqController and
+        Parameters
+        ----------
+        daq : DaqController
+            The Daq controller
+        display_dt : float
+            update time in s. Defaults to 0.01. Note that QTimer internally
+            uses ms.
+
+        Tracks the acquisition process and wraps the DaqController and
         aquisition buffer.
 
         Currently supports only continuous acquisition in memory.
-
-
         """
+        # This can also support our acquisition state machine...
         super().__init__(*a, **kw)
         self.daq = daq
         self.buffer = None
+        self.display_timer = QTimer()
+        self.display_timer.setInterval(display_dt * 1000)
         self.read_timer = QTimer()
+        self.read_timer.setInterval(read_dt * 1000)
+
+        # TODO connect the display timer somewhere...
+        self.read_timer.timeout.connect(self.read_next)
 
     def close(self):
         self.daq.close()
@@ -51,7 +64,7 @@ class AcquisitionController(QObject):
         buf_size : int
             Size of the internal buffer.
 
-        Other keyword arguments set the properties of the Daqcontroller.
+        Other keyword arguments set the properties of the DaqController.
         """
         self.buffer = CircularArrayBuffer(vars=signals, max_size=buf_size)
         for k, v in kw.items():
@@ -60,9 +73,31 @@ class AcquisitionController(QObject):
 
     def start(self):
         self.daq.start()
+        self.display_timer.start()
+        self.read_timer.start()
 
     def stop(self):
         self.daq.stop()
+        self.display_timer.stop()
+        self.display_timer.timeout.emit()  # fire once more, to be sure.
+
+    def read_next(self):
+        n = self.daq.reader.read()
+
+    def set_device(self, name):
+        self.daq.dev = name
+
+    def set_clock_channel(self, chan):
+        self.daq.clock_channel = chan
+
+    def set_sample_rate(self, rate):
+        self.daq.sample_rate = int(rate)
+
+    def set_sig_range(self, value):
+        self.daq.sig_range = float(value)
+
+    def set_phase_range(self, value):
+        self.daq.phase_range = float(value)
 
 
 class ExpConfig(QWidget):
@@ -100,13 +135,15 @@ class ExpPanel(QDockWidget):
 
 
 class DaqPanel(QDockWidget):
-    def __init__(self, *args, daq=None, **kwargs):
+    def __init__(self, *args,
+                 daq: DaqController = None,
+                 acq_ctrl=None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
 
         # TODO: state machine, somewhere...
-
-
         self.daq = daq
+        self.acq_ctrl = acq_ctrl
         back_panel = QWidget()
         self.setWidget(back_panel)
         back_panel.setLayout(QVBoxLayout())
@@ -121,9 +158,9 @@ class DaqPanel(QDockWidget):
             "Device", self.dev_name
         ])
         # clock channel
-        self.clock_chan = QLabel("", parent=self) # TODO: use a dropdown
+        self.sample_clock = QLineEdit("", parent=self) # TODO: use a dropdown
         grid.append([
-            "Sample clock", self.clock_chan
+            "Sample clock", self.sample_clock
         ])
         # TODO: check if we can get the limits of the validators by inspection
         # sample rate
@@ -145,6 +182,12 @@ class DaqPanel(QDockWidget):
         grid.append([
             "Modulation range", self.phase_range, "V"
         ])
+        self.buffer_size = QLineEdit("200000", parent=self)
+        self.buffer_size.setValidator(QIntValidator())
+        self.buffer_size.validator().setBottom(0)
+        grid.append([
+            "Buffer size", self.buffer_size
+        ])
 
         add_grid(grid, grid_layout)
 
@@ -160,17 +203,39 @@ class DaqPanel(QDockWidget):
         btn_layout = QHBoxLayout()
         back_panel.layout().addLayout(btn_layout)
         self.go_btn = ToggleButton("Start", alt_text="Stop")
+        self.refresh_btn = QPushButton("Refresh")
         btn_layout.addStretch()
+        btn_layout.addWidget(self.refresh_btn)
         btn_layout.addWidget(self.go_btn)
 
+        self.refresh()
         # Connect stuff
+        self.dev_name.activated.connect(
+            lambda: self.acq_ctrl.set_device(self.dev_name.currentText())
+        )
+        # THIS IS A LOT OF BOILERPLATE...
+        # I should probably make typed QEdits...
+        # The "right thing" is a metaclass.... or a class factory?
+        self.sample_clock.editingFinished.connect(
+            lambda: self.acq_ctrl.set_clock_channel(self.sample_clock.text())
+        )
+        self.sample_rate.editingFinished.connect(
+            lambda: self.acq_ctrl.set_sample_rate(float(self.sample_rate.text()))
+        )
+        self.sig_range.editingFinished.connect(
+            lambda: self.acq_ctrl.set_sig_range(float(self.sig_range.text()))
+        )
+        self.phase_range.editingFinished.connect(
+            lambda: self.acq_ctrl.set_phase_range(float(self.phase_range.text()))
+        )
 
-
-    def setup_daq(self, daq):
-        """
-        Setup values from the configuration of the controller
-        """
-        raise NotImplementedError()
+    def refresh(self):
+        """Update displayed values from underlying objects"""
+        self.dev_name.setCurrentIndex(self.dev_name.findText(self.daq.dev))
+        self.sample_clock.setText(self.daq.clock_channel)
+        self.sample_rate.setText(str(self.daq.sample_rate))
+        self.sig_range.setText(str(self.daq.sig_range))
+        self.phase_range.setText(str(self.daq.phase_range))
 
     def on_go_btn(self):
         """
