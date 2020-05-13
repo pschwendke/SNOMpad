@@ -4,7 +4,7 @@
 import logging
 from PySide2.QtWidgets import (
     QDockWidget, QGridLayout, QLabel, QPushButton, QLineEdit, QWidget,
-    QVBoxLayout, QGroupBox, QHBoxLayout
+    QVBoxLayout, QGroupBox, QHBoxLayout, QComboBox
 )
 from PySide2.QtGui import (
     QDoubleValidator
@@ -12,8 +12,9 @@ from PySide2.QtGui import (
 from PySide2.QtCore import Qt, QStateMachine, QState, QObject, QTimer
 
 from ..buffer import CircularArrayBuffer
-from ..daq import DaqController
-from .utils import ToggleButton
+from ..daq import DaqController, System
+from ...analysis.signals import Scan, Acquisition, Detector
+from .utils import ToggleButton, add_grid, enum_to_combo
 
 logger = logging.getLogger(__name__)
 
@@ -57,26 +58,52 @@ class AcquisitionController(QObject):
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
 
-
     def start(self):
         self.daq.start()
 
     def stop(self):
         self.daq.stop()
 
-class DaqPanel(QDockWidget):
 
+class ExpConfig(QWidget):
+    """
+    Widget for holding the experimental configuration.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.scan_type = enum_to_combo(Scan)
+        self.acquisition_type = enum_to_combo(Acquisition)
+        self.detector_type = enum_to_combo(Detector)
+
+        self.setLayout(QGridLayout())
+        grid = [
+            ["Scan type:", self.scan_type],
+            ["Acquisition:", self.acquisition_type],
+            ["Detector:", self.detector_type]
+
+        ]
+
+        add_grid(grid, self.layout())
+        self.layout().setRowStretch(self.layout().rowCount(), 1)
+
+
+class ExpPanel(QDockWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.setWidget(ExpConfig())
+        self.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.setFeatures(
+            QDockWidget.DockWidgetMovable |
+            QDockWidget.DockWidgetFloatable
+        )
+
+
+class DaqPanel(QDockWidget):
     def __init__(self, *args, daq=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.state_machine = QStateMachine()
-        # TODO: offline state
-        self.idle = QState()
-        #self.busy = QState()
-        self.acquiring = QState()
-        self.state_machine.addState(self.idle)
-        #self.state_machine.addState(self.busy)
-        self.state_machine.addState(self.acquiring)
+        # TODO: state machine, somewhere...
 
 
         self.daq = daq
@@ -88,10 +115,10 @@ class DaqPanel(QDockWidget):
 
         grid = []
         # show device name,
-        self.dev_name = QLabel("", parent=self)
-        self.change_dev = QPushButton("Change", parent=self)
+        self.dev_name = QComboBox()
+        self.dev_name.addItems(System().devices.device_names)
         grid.append([
-            "Device", self.dev_name, self.change_dev
+            "Device", self.dev_name
         ])
         # clock channel
         self.clock_chan = QLabel("", parent=self) # TODO: use a dropdown
@@ -100,39 +127,29 @@ class DaqPanel(QDockWidget):
         ])
         # TODO: check if we can get the limits of the validators by inspection
         # sample rate
-        self.sample_rate = QLineEdit("", parent=self)
+        self.sample_rate = QLineEdit("200 000", parent=self)
         vld = QDoubleValidator(0, 1E6, 100)
         self.sample_rate.setValidator(vld)
         grid.append([
             "Sample rate", self.sample_rate, "Hz"
         ])
         # signal range
-        self.sig_range = QLineEdit("", parent=self)
+        self.sig_range = QLineEdit("1", parent=self)
         self.sig_range.setValidator(QDoubleValidator(-10, 10, 100))
         grid.append([
             "Signal range", self.sig_range, "V"
         ])
         # phase range
-        self.phase_range = QLineEdit("", parent=self)
+        self.phase_range = QLineEdit("1", parent=self)
         self.phase_range.setValidator(QDoubleValidator(-10, 10, 0))
         grid.append([
             "Modulation range", self.phase_range, "V"
         ])
-        # buttons: channel map
-        # self.channel_map = QPushButton("Channel map...", parent=self)
-        # self.channel_map.setDisabled(True)
 
-        for i, line in enumerate(grid):
-            for j, elem in enumerate(line):
-                if elem is None:  continue
-                if isinstance(elem, str):
-                    elem = QLabel(elem)
-                grid_layout.addWidget(elem, i, j)
+        add_grid(grid, grid_layout)
 
         grid_layout.setRowStretch(grid_layout.rowCount(), 1)
         grid_layout.setColumnStretch(1, 1)
-        # main_layout.addWidget(self.channel_map,
-        #     main_layout.rowCount(), main_layout.columnCount()-2, 2, 1)
 
         self.setAllowedAreas(Qt.LeftDockWidgetArea)
         self.setFeatures(
@@ -148,7 +165,6 @@ class DaqPanel(QDockWidget):
 
         # Connect stuff
 
-        self.state_machine.start()
 
     def setup_daq(self, daq):
         """
@@ -160,6 +176,7 @@ class DaqPanel(QDockWidget):
         """
         Start acquisition
         """
+        raise NotImplementedError()
 
 
 

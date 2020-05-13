@@ -26,6 +26,7 @@ import typing
 import numpy as np
 import attr
 import nidaqmx as ni
+from nidaqmx.system import System
 from nidaqmx import DaqError
 from nidaqmx.error_codes import DAQmxErrors
 from nidaqmx.stream_readers import AnalogMultiChannelReader
@@ -296,4 +297,3 @@ class DaqController:
         except Exception:
             pass
         logger.debug("DaqController.__del__ end")
-        

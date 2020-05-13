@@ -3,10 +3,11 @@
 
 import logging
 from PySide2 import QtWidgets
-from PySide2.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QGridLayout)
+from PySide2.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QGridLayout,
+                               QDockWidget)
 from PySide2.QtCore import Qt
 import pyqtgraph as pg
-from .daq import  DaqPanel
+from .daq import DaqPanel, ExpConfig, ExpPanel
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,10 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.data_view)
 
         # setup control panels
+        # Experimental control panel
+        self.expt_panel = ExpPanel("Experiment", parent=self)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.expt_panel)
+
         # DAQ control panel
         self.daq_panel = DaqPanel("Acquisition", daq=daq, parent=self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.daq_panel)

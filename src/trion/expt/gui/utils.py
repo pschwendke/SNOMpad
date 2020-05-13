@@ -1,7 +1,7 @@
 # gui utils
 
 import logging
-from PySide2.QtWidgets import QPushButton
+from PySide2.QtWidgets import QPushButton, QLabel, QComboBox
 
 
 class ToggleButton(QPushButton):
@@ -28,3 +28,19 @@ class ToggleButton(QPushButton):
         else:
             self.setText(self.org_text)
 
+
+def add_grid(grid, layout):
+    """Add list of lists to gridlayout"""
+    for i, row in enumerate(grid):
+        for j, elem in enumerate(row):
+            if elem is None: continue
+            if isinstance(elem, str):
+                elem = QLabel(elem)
+            layout.addWidget(elem, i, j)
+
+
+def enum_to_combo(enum):
+    combo = QComboBox()
+    for member in enum:
+        combo.addItem(member.name, member)
+    return combo
