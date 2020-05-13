@@ -3,9 +3,11 @@ from trion.analysis.signals import (
 )
 import pytest
 
+
 def test_sortable():
     assert len(list(Signals)) == len(Signals.__members__) # make sure these are actually the members
     assert sorted(Signals) == list(Signals)
+
 
 exp_configs = {
     "shd single": (
@@ -16,9 +18,9 @@ exp_configs = {
         Experiment(Scan.point, Acquisition.shd, Detector.dual),
         {Signals.sig_A, Signals.sig_B, Signals.tap_x, Signals.tap_y}
     )
-
-
 }
+
+
 @pytest.mark.parametrize(
     "exp, signals",
     exp_configs.values(),
