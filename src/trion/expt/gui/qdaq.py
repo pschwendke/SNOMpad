@@ -14,7 +14,7 @@ from PySide2.QtCore import Qt, QStateMachine, QState, QObject, QTimer
 from ..buffer import CircularArrayBuffer
 from ..daq import DaqController, System
 from ...analysis.signals import Scan, Acquisition, Detector
-from .utils import ToggleButton, add_grid, enum_to_combo
+from .utils import ToggleButton, add_grid, enum_to_combo, FloatEdit, IntEdit
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,8 @@ class AcquisitionController(QObject):
         self.daq.clock_channel = chan
 
     def set_sample_rate(self, rate):
-        self.daq.sample_rate = int(rate)
+        logger.debug("setting sample_rate to: %s", rate)
+        self.daq.sample_rate = rate
 
     def set_sig_range(self, value):
         self.daq.sig_range = float(value)
@@ -164,27 +165,21 @@ class DaqPanel(QDockWidget):
         ])
         # TODO: check if we can get the limits of the validators by inspection
         # sample rate
-        self.sample_rate = QLineEdit("200 000", parent=self)
-        vld = QDoubleValidator(0, 1E6, 100)
-        self.sample_rate.setValidator(vld)
+        self.sample_rate = FloatEdit(200_000, bottom=0, top=1E6, parent=self)
         grid.append([
             "Sample rate", self.sample_rate, "Hz"
         ])
         # signal range
-        self.sig_range = QLineEdit("1", parent=self)
-        self.sig_range.setValidator(QDoubleValidator(-10, 10, 100))
+        self.sig_range = FloatEdit(1.0, bottom=-10, top=10, parent=self)
         grid.append([
             "Signal range", self.sig_range, "V"
         ])
         # phase range
-        self.phase_range = QLineEdit("1", parent=self)
-        self.phase_range.setValidator(QDoubleValidator(-10, 10, 0))
+        self.phase_range = FloatEdit(1, bottom=-10, top=10, parent=self)
         grid.append([
             "Modulation range", self.phase_range, "V"
         ])
-        self.buffer_size = QLineEdit("200000", parent=self)
-        self.buffer_size.setValidator(QIntValidator())
-        self.buffer_size.validator().setBottom(0)
+        self.buffer_size = IntEdit(200_000, bottom=0, parent=self)
         grid.append([
             "Buffer size", self.buffer_size
         ])
@@ -216,26 +211,22 @@ class DaqPanel(QDockWidget):
         # THIS IS A LOT OF BOILERPLATE...
         # I should probably make typed QEdits...
         # The "right thing" is a metaclass.... or a class factory?
+        # or traits...
         self.sample_clock.editingFinished.connect(
             lambda: self.acq_ctrl.set_clock_channel(self.sample_clock.text())
         )
-        self.sample_rate.editingFinished.connect(
-            lambda: self.acq_ctrl.set_sample_rate(float(self.sample_rate.text()))
-        )
-        self.sig_range.editingFinished.connect(
-            lambda: self.acq_ctrl.set_sig_range(float(self.sig_range.text()))
-        )
-        self.phase_range.editingFinished.connect(
-            lambda: self.acq_ctrl.set_phase_range(float(self.phase_range.text()))
-        )
+        self.sample_rate.valueEdited.connect(self.acq_ctrl.set_sample_rate)
+        self.sig_range.valueEdited.connect(self.acq_ctrl.set_sig_range)
+        self.phase_range.valueEdited.connect(self.acq_ctrl.set_phase_range)
 
     def refresh(self):
         """Update displayed values from underlying objects"""
+        # TODO: add to menu somewhere.
         self.dev_name.setCurrentIndex(self.dev_name.findText(self.daq.dev))
         self.sample_clock.setText(self.daq.clock_channel)
-        self.sample_rate.setText(str(self.daq.sample_rate))
-        self.sig_range.setText(str(self.daq.sig_range))
-        self.phase_range.setText(str(self.daq.phase_range))
+        self.sample_rate.setValue(self.daq.sample_rate)
+        self.sig_range.setValue(self.daq.sig_range)
+        self.phase_range.setValue(self.daq.phase_range)
 
     def on_go_btn(self):
         """
