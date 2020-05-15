@@ -141,7 +141,7 @@ class TrionsAnalogReader(): # for not pump-probe
         return self
 
 
-@attr.s(order=False) # this thing auto-generates __init__ for us
+@attr.s(order=False)  # this thing auto-generates __init__ for us
 class DaqController:
     """
     Controller for DAQ.

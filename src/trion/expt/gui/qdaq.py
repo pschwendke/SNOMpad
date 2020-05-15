@@ -13,7 +13,7 @@ from PySide2.QtCore import Qt, QStateMachine, QState, QObject, QTimer
 
 from ..buffer import CircularArrayBuffer
 from ..daq import DaqController, System
-from ...analysis.signals import Scan, Acquisition, Detector
+from ...analysis.signals import Scan, Acquisition, Detector, Experiment
 from .utils import ToggleButton, add_grid, enum_to_combo, FloatEdit, IntEdit
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class AcquisitionController(QObject):
     def close(self):
         self.daq.close()
 
-    def setup(self, signals, buf_size, **kw):
+    def setup(self, experiment, buf_size, **kw):
         """
         Prepare the acquisition. Sets up the buffer and prepares the controller.
 
@@ -66,6 +66,10 @@ class AcquisitionController(QObject):
 
         Other keyword arguments set the properties of the DaqController.
         """
+        # get experiment
+        # build signal
+        # get buffer size
+
         self.buffer = CircularArrayBuffer(vars=signals, max_size=buf_size)
         for k, v in kw.items():
             setattr(self.daq, k, v)
@@ -122,6 +126,15 @@ class ExpConfig(QWidget):
 
         add_grid(grid, self.layout())
         self.layout().setRowStretch(self.layout().rowCount(), 1)
+
+    def experiment(self):
+        exp = Experiment(
+            self.scan_type.currentData(),
+            self.acquisition_type.currentData(),
+            self.detector_type.currentData()
+        )
+        logger.debug("Experiment is: %s", exp)
+        return exp
 
 
 class ExpPanel(QDockWidget):
@@ -218,6 +231,7 @@ class DaqPanel(QDockWidget):
         self.sample_rate.valueEdited.connect(self.acq_ctrl.set_sample_rate)
         self.sig_range.valueEdited.connect(self.acq_ctrl.set_sig_range)
         self.phase_range.valueEdited.connect(self.acq_ctrl.set_phase_range)
+        self.refresh_btn.clicked.connect(self.refresh)
 
     def refresh(self):
         """Update displayed values from underlying objects"""
