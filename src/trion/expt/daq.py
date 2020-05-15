@@ -32,21 +32,22 @@ from nidaqmx.error_codes import DAQmxErrors
 from nidaqmx.stream_readers import AnalogMultiChannelReader
 from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
-from ..analysis.utils import is_optical_signal
+
+from ..analysis.signals import Signals, is_optical_signal
 import warnings
 import re
 logger = logging.getLogger(__name__)
 
 # please don't change this...
 default_channel_map = {
-    "sig_A": "ai0",
-    "sig_B": "ai1",
-    "sig_d": "ai0",
-    "sig_s": "ai1",
-    "tap_x": "ai2",
-    "tap_y": "ai3",
-    "ref_x": "ai4",
-    "ref_y": "ai5",
+    Signals.sig_A: "ai0",
+    Signals.sig_B: "ai1",
+    Signals.sig_d: "ai0",
+    Signals.sig_s: "ai1",
+    Signals.tap_x: "ai2",
+    Signals.tap_y: "ai3",
+    # Signals.ref_x: "ai4",
+    # Signals.ref_y: "ai5",
     # chop is to be determined
 }
 
@@ -96,7 +97,7 @@ class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
 class TrionsAnalogReader(): # for not pump-probe
     _analog_stream = attr.ib(default=None, init=False)
     buffer = attr.ib(default=None)
-    channel_map: typing.Mapping[str, str] = attr.ib(
+    channel_map: typing.Mapping[Signals, str] = attr.ib(
         default=default_channel_map, kw_only=True
     )
     _ni_reader = attr.ib(init=False, default=None)
@@ -209,6 +210,8 @@ class DaqController:
         `channel_map` attribute, which you probably shouldn't change...
         """
         # TODO: will need to be redone when adding chopping
+        # TODO: currently we're tearing down and setting up all the time.
+        # We need to find a way to verify if the current required task is ok.
 
         # generate tasks
         analog = ni.Task("analog")
@@ -216,7 +219,7 @@ class DaqController:
         
         self.reader = TrionsAnalogReader(buffer=buffer)
         # add the analog channels
-        logger.info(f"Acquiring signals: {', '.join(self.reader.vars)}")
+        logger.info(f"Acquiring signals: {', '.join([v.name for v in self.reader.vars])}")
         for var in self.reader.vars:
             c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range

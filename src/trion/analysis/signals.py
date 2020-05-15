@@ -109,7 +109,7 @@ class Experiment:
         """
         Lists the signals for the current Experimental configuration.
         """
-        return list(chain(
+        return sorted(chain(
             detection_signals[self.detector],
             acquisition_signals[self.acquisition]
         ))
@@ -135,3 +135,15 @@ class Experiment:
         acq = acquisition_signals.inverse[acq_sigs]
         det = detection_signals.inverse[det_sigs]
         return cls(scan, acq, det)
+
+
+def is_optical_signal(role: Signals) -> bool:
+    return role in all_detector_signals
+
+
+def is_tap_modulation(role: Signals) -> bool:
+    return role in [Signals.tap_x, Signals.tap_y]
+
+
+# def is_pshet_modulation(role: str) -> bool:
+#     return role.startswith("ref")

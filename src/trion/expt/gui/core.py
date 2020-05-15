@@ -53,13 +53,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
     def __init__(self, *a, daq=None,  **kw):
         super().__init__(*a, **kw)
 
-        # store references to Trion objects
-        self.daq = daq or DaqController(dev=System().devices.device_names[0])
-        self.acq_cntrl = AcquisitionController(daq=self.daq)
-
-        # setup threads
-
-        # data view window (central widget)
+        # Setup UI elements
         self.data_view = DataWindow(parent=self)
         self.setCentralWidget(self.data_view)
 
@@ -69,10 +63,20 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.expt_panel)
 
         # DAQ control panel
-        self.daq_panel = DaqPanel("Acquisition", daq=self.daq,
-                                  acq_ctrl=self.acq_cntrl,
-                                  parent=self)
+        self.daq_panel = DaqPanel("Acquisition", parent=self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.daq_panel)
+
+        # store references to Trion objects
+        self.daq = daq or DaqController(dev=System().devices.device_names[0])
+        self.acq_cntrl = AcquisitionController(
+            daq=self.daq,
+            expt_panel=self.expt_panel,
+            daq_panel=self.daq_panel,
+        )
+
+        # setup threads
+
+        # data view window (central widget)
         # create actions
         # create statusbar
         # create menubar

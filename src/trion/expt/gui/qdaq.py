@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class AcquisitionController(QObject):
-    def __init__(self, daq: DaqController, *a, display_dt=0.02, read_dt=0.01, **kw):
+    def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
+                 display_dt=0.02, read_dt=0.01, **kw):
         """
         This object handle the control of the acquisition.
 
@@ -39,6 +40,8 @@ class AcquisitionController(QObject):
         """
         # This can also support our acquisition state machine...
         super().__init__(*a, **kw)
+        self.expt_panel = expt_panel
+        self.daq_panel = daq_panel
         self.daq = daq
         self.buffer = None
         self.display_timer = QTimer()
@@ -49,10 +52,32 @@ class AcquisitionController(QObject):
         # TODO connect the display timer somewhere...
         self.read_timer.timeout.connect(self.read_next)
 
+        self.refresh()
+
+        self.daq_panel.dev_name.activated.connect(
+            lambda: self.set_device(self.daq_panel.dev_name.currentText())
+        )
+        self.daq_panel.sample_clock.editingFinished.connect(
+            lambda: self.acq_ctrl.set_clock_channel(self.daq_panel.sample_clock.text())
+        )
+        self.daq_panel.sample_rate.valueEdited.connect(self.set_sample_rate)
+        self.daq_panel.sig_range.valueEdited.connect(self.set_sig_range)
+        self.daq_panel.phase_range.valueEdited.connect(self.set_phase_range)
+        self.daq_panel.refresh_btn.clicked.connect(self.refresh)
+
+        self.daq_panel.go_btn.toggled.connect(self.on_go)
+
+    def on_go(self, go):
+        if go:
+            self.setup()
+            self.start()
+        else:
+            self.stop()
+
     def close(self):
         self.daq.close()
 
-    def setup(self, experiment, buf_size, **kw):
+    def setup(self, **kw):
         """
         Prepare the acquisition. Sets up the buffer and prepares the controller.
 
@@ -66,22 +91,27 @@ class AcquisitionController(QObject):
 
         Other keyword arguments set the properties of the DaqController.
         """
+        logger.debug("Setting up experiment")
         # get experiment
-        # build signal
+        exp = self.expt_panel.experiment()
+        signals = exp.signals()
         # get buffer size
-
+        buf_size = self.daq_panel.buffer_size.value()
         self.buffer = CircularArrayBuffer(vars=signals, max_size=buf_size)
         for k, v in kw.items():
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
 
     def start(self):
+        logger.debug("Starting update")
         self.daq.start()
         self.display_timer.start()
         self.read_timer.start()
 
     def stop(self):
+        logger.debug("Stopping update")
         self.daq.stop()
+        self.read_timer.stop()
         self.display_timer.stop()
         self.display_timer.timeout.emit()  # fire once more, to be sure.
 
@@ -103,6 +133,15 @@ class AcquisitionController(QObject):
 
     def set_phase_range(self, value):
         self.daq.phase_range = float(value)
+
+    def refresh(self):
+        self.daq_panel.dev_name.setCurrentIndex(
+            self.daq_panel.dev_name.findText(self.daq.dev)
+        )
+        self.daq_panel.sample_clock.setText(self.daq.clock_channel)
+        self.daq_panel.sample_rate.setValue(self.daq.sample_rate)
+        self.daq_panel.sig_range.setValue(self.daq.sig_range)
+        self.daq_panel.phase_range.setValue(self.daq.phase_range)
 
 
 class ExpConfig(QWidget):
@@ -146,6 +185,9 @@ class ExpPanel(QDockWidget):
             QDockWidget.DockWidgetMovable |
             QDockWidget.DockWidgetFloatable
         )
+
+    def experiment(self): # Not sure I like this...
+        return self.widget().experiment()
 
 
 class DaqPanel(QDockWidget):
@@ -216,31 +258,22 @@ class DaqPanel(QDockWidget):
         btn_layout.addWidget(self.refresh_btn)
         btn_layout.addWidget(self.go_btn)
 
-        self.refresh()
         # Connect stuff
-        self.dev_name.activated.connect(
-            lambda: self.acq_ctrl.set_device(self.dev_name.currentText())
-        )
         # THIS IS A LOT OF BOILERPLATE...
         # I should probably make typed QEdits...
         # The "right thing" is a metaclass.... or a class factory?
         # or traits...
-        self.sample_clock.editingFinished.connect(
-            lambda: self.acq_ctrl.set_clock_channel(self.sample_clock.text())
-        )
-        self.sample_rate.valueEdited.connect(self.acq_ctrl.set_sample_rate)
-        self.sig_range.valueEdited.connect(self.acq_ctrl.set_sig_range)
-        self.phase_range.valueEdited.connect(self.acq_ctrl.set_phase_range)
-        self.refresh_btn.clicked.connect(self.refresh)
-
-    def refresh(self):
-        """Update displayed values from underlying objects"""
-        # TODO: add to menu somewhere.
-        self.dev_name.setCurrentIndex(self.dev_name.findText(self.daq.dev))
-        self.sample_clock.setText(self.daq.clock_channel)
-        self.sample_rate.setValue(self.daq.sample_rate)
-        self.sig_range.setValue(self.daq.sig_range)
-        self.phase_range.setValue(self.daq.phase_range)
+        # TODO: move connections to controller.
+        # self.dev_name.activated.connect(
+        #     lambda: self.acq_ctrl.set_device(self.dev_name.currentText())
+        # )
+        # self.sample_clock.editingFinished.connect(
+        #     lambda: self.acq_ctrl.set_clock_channel(self.sample_clock.text())
+        # )
+        # self.sample_rate.valueEdited.connect(self.acq_ctrl.set_sample_rate)
+        # self.sig_range.valueEdited.connect(self.acq_ctrl.set_sig_range)
+        # self.phase_range.valueEdited.connect(self.acq_ctrl.set_phase_range)
+        # self.refresh_btn.clicked.connect(self.refresh)
 
     def on_go_btn(self):
         """
