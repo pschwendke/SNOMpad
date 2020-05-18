@@ -214,7 +214,16 @@ class DaqController:
         # We need to find a way to verify if the current required task is ok.
 
         # generate tasks
-        analog = ni.Task("analog")
+        logger.debug("DaqController.setup")
+        try:
+            analog = ni.Task("analog")
+        except DaqError as err:
+            logger.debug("Caugth error. error_code %r", err.error_code)
+            if err.error_code == DAQmxErrors.DUPLICATE_TASK.value: # TODO: signal this...
+                self.teardown() # this will bite me...
+                analog = ni.Task("analog")
+            else:
+                raise
         # Get variable names from buffer if they are not supplied.
         
         self.reader = TrionsAnalogReader(buffer=buffer)
@@ -244,11 +253,13 @@ class DaqController:
 
     def teardown(self):
         # Undo the work of "setup"
+        logger.debug("DaqController.teardown")
         self.reader = None  # is this really needed?
         for t in self.tasks:
             logger.debug(f"Closing task {t.name}")
             t.close()
             self.tasks.remove(t)
+        logger.debug("DaqController.teardown completed")
         return self
 
     def start(self) -> 'DaqController':
