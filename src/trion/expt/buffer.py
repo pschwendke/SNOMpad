@@ -112,7 +112,7 @@ class CircularArrayBuffer(ArrayBuffer):
         return self
 
     def get(self, len):
-        r0 = self.i-1
+        r0 = self.i
         # rotate to bring oldest value to the start of array.
         return np.roll(self.buf, -r0, axis=0)[-len:,:]
 
