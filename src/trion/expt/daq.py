@@ -174,7 +174,7 @@ class DaqController:
     sample_rate: float = attr.ib(kw_only=True, default=200_000)
     sig_range: float = attr.ib(default=2, kw_only=True)
     phase_range: float = attr.ib(default=1, kw_only=True)
-    tasks: typing.Sequence[ni.Task] = attr.ib(factory=list, kw_only=True)
+    tasks: typing.Mapping[str, ni.Task] = attr.ib(factory=dict, kw_only=True)
     reader = attr.ib(init=False, default=None)
 
     def __attrs_post_init__(self):  # well... sorry for this..
@@ -212,19 +212,16 @@ class DaqController:
         # TODO: will need to be redone when adding chopping
         # TODO: currently we're tearing down and setting up all the time.
         # We need to find a way to verify if the current required task is ok.
-
+        logger.debug("Now in: DaqController.setup")
         # generate tasks
-        logger.debug("DaqController.setup")
-        try:
-            analog = ni.Task("analog")
-        except DaqError as err:
-            logger.debug("Caugth error. error_code %r", err.error_code)
-            if err.error_code == DAQmxErrors.DUPLICATE_TASK.value: # TODO: signal this...
-                self.teardown() # this will bite me...
-                analog = ni.Task("analog")
-            else:
-                raise
-        # Get variable names from buffer if they are not supplied.
+        if "analog" not in self.tasks:
+            self.tasks["analog"] = ni.Task("analog")
+        else:
+            # taking care of the bookkeeping ourselves...
+            self.tasks["analog"].close()
+            del self.tasks["analog"]
+            self.tasks["analog"] = ni.Task("analog")
+        analog = self.tasks["analog"]
         
         self.reader = TrionsAnalogReader(buffer=buffer)
         # add the analog channels
@@ -235,14 +232,13 @@ class DaqController:
             logger.debug(f"Adding variable: {var}, channel {c}, lim: {lim}")
             analog.ai_channels.add_ai_voltage_chan(
                 f"{self.dev}/{c}", min_val=-lim, max_val=lim)
-        self.tasks.append(analog)
         self.reader.analog_stream = analog.in_stream
         
         self.setup_timing()
         return self
 
     def setup_timing(self):
-        for t in self.tasks:
+        for t in self.tasks.values():
             t.timing.cfg_samp_clk_timing(
                 rate=self.sample_rate,
                 source=self.clock_channel,
@@ -255,27 +251,27 @@ class DaqController:
         # Undo the work of "setup"
         logger.debug("DaqController.teardown")
         self.reader = None  # is this really needed?
-        for t in self.tasks:
+        for t in self.tasks.values():
             logger.debug(f"Closing task {t.name}")
             t.close()
-            self.tasks.remove(t)
+            #self.tasks.remove(t)
         logger.debug("DaqController.teardown completed")
         return self
 
     def start(self) -> 'DaqController':
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
         # start the actual acquisition
-        for t in self.tasks:
+        for t in self.tasks.values():
             logger.debug(f"Starting task: {t.name}")
             t.start()
         # TODO: fire a START TRIGGER event
         return self
 
     def is_done(self) -> bool:
-        return all(t.is_task_done() for t in self.tasks) # hmm...
+        return all(t.is_task_done() for t in self.tasks.values()) # hmm...
 
     def stop(self) -> 'DaqController':
-        for t in self.tasks:
+        for t in self.tasks.values():
             logger.debug(f"Stopping task: {t.name}")
             t.stop()
             # self.tasks.remove(t)
