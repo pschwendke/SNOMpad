@@ -293,7 +293,7 @@ class DaqController:
         self.teardown()
 
     def self_calibrate(self) -> 'DaqController':
-        raise NotImplementedError()
+        raise NotImplementedError() # TODO: this is actually important!
         return self
 
     def monitor_cb(self, task, event, n_samples, cb_data):

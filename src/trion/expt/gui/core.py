@@ -2,6 +2,7 @@
 # core elements for TRION GUI
 
 import logging
+import numpy as np
 from PySide2 import QtWidgets
 from PySide2.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QGridLayout,
                                QDockWidget)
@@ -15,23 +16,22 @@ from ..daq import DaqController
 logger = logging.getLogger(__name__)
 
 
-class ViewPanel(QtWidgets.QDockWidget):
-    """
-    Panel for control of the Data window
-    """
-    def __init__(self, *a, **kw):
-        super().__init__(*a, **kw)
-
-        back_panel = QWidget(parent=self)
-        self.setWidget(back_panel)
-        main_layout = QVBoxLayout()
-        back_panel.setLayout(main_layout)
-
-        # self.view_type = QComboBox(parent=self) # will need this
-
-        grid_layout = QGridLayout()
-        back_panel.setLayout(grid_layout)
-
+# class ViewPanel(QtWidgets.QDockWidget):
+#     """
+#     Panel for control of the Data window
+#     """
+#     def __init__(self, *a, **kw):
+#         super().__init__(*a, **kw)
+#
+#         back_panel = QWidget(parent=self)
+#         self.setWidget(back_panel)
+#         main_layout = QVBoxLayout()
+#         back_panel.setLayout(main_layout)
+#
+#         # self.view_type = QComboBox(parent=self) # will need this
+#
+#         grid_layout = QGridLayout()
+#         back_panel.setLayout(grid_layout)
 
 
 class DataWindow(pg.GraphicsLayoutWidget):
@@ -47,6 +47,27 @@ class DataWindow(pg.GraphicsLayoutWidget):
         super().__init__(*a, **kw)
         # start with a single window
         self.addPlot(row=0, col=0, name="main")
+        self.curves = {}
+        self.autoscale_next = True # that stinks...
+
+    def plot(self, data, names): # this is heavy WIP
+        #data[~np.isfinite(data)] = 0
+        for i, n in enumerate(names):
+            y = data[:,i]
+            self.curves[n].setData(y)
+        if self.autoscale_next:
+            self.autoscale_next = False
+            self.getItem(0,0).enableAutoRange('xy', False)
+
+    def prepare_plots(self, names):
+        """Prepares windows and pens for the different curves"""
+        item = self.getItem(0, 0)
+        item.clear()
+        for n in names:
+            item = self.getItem(0, 0)
+            pen = item.plot()
+            self.curves[n] = pen
+        self.autoscale_next = True
 
 
 class TRIONMainWindow(QtWidgets.QMainWindow):
@@ -54,7 +75,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         super().__init__(*a, **kw)
 
         # Setup UI elements
-        self.data_view = DataWindow(parent=self)
+        self.data_view = DataWindow(parent=self, size=(1200, 800))
         self.setCentralWidget(self.data_view)
 
         # setup control panels
@@ -72,6 +93,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
             daq=self.daq,
             expt_panel=self.expt_panel,
             daq_panel=self.daq_panel,
+            data_window=self.data_view,
         )
 
         # setup threads
@@ -85,5 +107,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # connect actions
 
         # finalize connections
-        self.setWindowTitle("TRION Experimental controller")
 
+        # finalize setup
+        self.setWindowTitle("TRION Experimental controller")
+        self.resize(800, 480)
