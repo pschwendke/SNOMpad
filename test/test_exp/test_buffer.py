@@ -1,15 +1,11 @@
 # using pytest
 import pytest
-from trion.analysis.signals import Experiment, Scan, Acquisition, Detector
 from trion.expt.buffer import CircularArrayBuffer
 import numpy as np
 from itertools import product, chain
 
+from common import exp_configs
 
-exp_configs = (
-    Experiment(Scan.point, Acquisition.shd, Detector.single),
-    Experiment(Scan.point, Acquisition.shd, Detector.dual),
-)
 
 buf_cfs = (
     [23, 3, 10],

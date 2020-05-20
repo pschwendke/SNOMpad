@@ -9,6 +9,7 @@ import numpy as np
 import tqdm
 
 from trion.analysis.signals import Signals
+from trion.expt.acquisition import single_point
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
@@ -48,6 +49,9 @@ parser.add_argument(
     default=1_000_000, 
     help="Maximum number of shots. Defaults to 1M. If negative, acquire continuously."
 )
+parser.add_argument(
+    "--truncate", action="store_true", help="Truncate output data to the exact number of requested points. Defaults to False."
+)
 parser.add_argument("--noprogress", action="store_false", dest="pbar", help="Use a progress bar.")
 parser.add_argument("-v", "--verbose", action="store_true", help="Logging uses debug mode.")
 parser.add_argument("--filename", help="output file name. Defaults to `trions.npy`", default="trions.npy")
@@ -64,10 +68,8 @@ if not args.signals:
     args.signals=[Signals.sig_A, Signals.tap_x, Signals.tap_y]
 if args.n_samples < 0:
     # infinite acquisition
-    acq_lim = np.inf
     pbar_lim = np.inf#
 else:
-    acq_lim = args.n_samples
     pbar_lim = args.n_samples
 
 print("Initializing single-point TRIONs acquisition.")
@@ -77,27 +79,10 @@ pbar = tqdm.tqdm(
     unit=" samples",
     disable=not args.pbar,
 )
-ctrl = DaqController(args.dev, clock_channel="")
-buffer = ExtendingArrayBuffer(vars=args.signals, max_size=acq_lim)
-n_read = 0
-ctrl.setup(buffer=buffer).start()
-try:
-    while True:
-        try:
-            if ctrl.is_done() or n_read >= acq_lim:
-                break
-            sleep(0.01)
-            n = ctrl.reader.read()
-            pbar.update(n)
-            n_read += n
-        except KeyboardInterrupt:
-            logging.warning("Acquisition interrupted by user.")
-            break
-finally:
-    ctrl.stop()#.close()
-    ctrl.close()
-    pbar.close()
-    logging.info("Acquisition finished.")
+with pbar:
+    data = single_point(args.dev, args.signals, args.n_samples, args.clock,
+                        args.truncate, pbar)
 
 logging.info(f"Saving data to: {args.filename}")
-np.save(args.filename, buffer.buf, allow_pickle=False)
+logging.debug(f"Data shape: {data.shape}")
+np.save(args.filename, data, allow_pickle=False)

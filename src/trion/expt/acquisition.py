@@ -9,8 +9,8 @@ from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
 
-def single_point(device: str, signals: Iterable[Signals], clock_channel: str,
-                 n_samples: int, truncate: bool=False, pbar=None, ):
+def single_point(device: str, signals: Iterable[Signals], n_samples: int,
+                 clock_channel: str="", truncate: bool=False, pbar=None, ):
     """
     Perform single point acquisition.
 
