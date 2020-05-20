@@ -7,14 +7,14 @@ from PySide2.QtGui import QIntValidator, QDoubleValidator
 from PySide2.QtWidgets import QPushButton, QLabel, QComboBox, QLineEdit
 logger = logging.getLogger(__name__)
 
-def add_grid(grid, layout):
+def add_grid(grid, layout, row_offset = 0, column_offset=0):
     """Add list of lists to gridlayout"""
     for i, row in enumerate(grid):
         for j, elem in enumerate(row):
             if elem is None: continue
             if isinstance(elem, str):
                 elem = QLabel(elem)
-            layout.addWidget(elem, i, j)
+            layout.addWidget(elem, i+row_offset, j+column_offset)
 
 
 def enum_to_combo(enum):
@@ -22,6 +22,7 @@ def enum_to_combo(enum):
     for member in enum:
         combo.addItem(member.name, member)
     return combo
+
 
 class ToggleButton(QPushButton):
     """
