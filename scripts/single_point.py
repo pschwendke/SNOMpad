@@ -8,6 +8,7 @@ from time import sleep
 import numpy as np
 import tqdm
 
+from trion.analysis.signals import Signals
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
@@ -33,7 +34,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-d", "--dev", default="DevT", help="NI device.")
 parser.add_argument(
     "--signals", nargs="+", action="extend",
+    type=Signals,
+    choices=[s for s in Signals],
+    metavar="sig",
     help="Signals to acquire. Default to 'sig_A tap_x tap_y'"
+)
+parser.add_argument(
+    "-c", "--clock", default="", help="Sample clock channel. Defaults to software triggering ('')"
 )
 parser.add_argument(
     "-n", "--n_samples", 
@@ -41,7 +48,7 @@ parser.add_argument(
     default=1_000_000, 
     help="Maximum number of shots. Defaults to 1M. If negative, acquire continuously."
 )
-parser.add_argument("-p", "--pbar", action="store_true", help="Use a progress bar.")
+parser.add_argument("--noprogress", action="store_false", dest="pbar", help="Use a progress bar.")
 parser.add_argument("-v", "--verbose", action="store_true", help="Logging uses debug mode.")
 parser.add_argument("--filename", help="output file name. Defaults to `trions.npy`", default="trions.npy")
 args = parser.parse_args()
@@ -54,11 +61,11 @@ log_cfg = {
 logging.basicConfig(handlers=[TqdmLoggingHandler()], **log_cfg)
 
 if not args.signals:
-    args.signals=["sig_A", "tap_x", "tap_y"]
+    args.signals=[Signals.sig_A, Signals.tap_x, Signals.tap_y]
 if args.n_samples < 0:
     # infinite acquisition
     acq_lim = np.inf
-    pbar_lim = np.inf
+    pbar_lim = np.inf#
 else:
     acq_lim = args.n_samples
     pbar_lim = args.n_samples
