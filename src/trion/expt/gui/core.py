@@ -6,8 +6,9 @@ from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
 from nidaqmx.system import System
 
-from .data_window import DataWindow, ViewPanel
-from .qdaq import DaqPanel, ExpPanel, AcquisitionController
+from .data_window import DataWindow, ViewPanel, DisplayController
+from .qdaq import DaqPanel, ExpPanel
+from .acq_ctrl import AcquisitionController
 from ..daq import DaqController
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,10 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
             expt_panel=self.expt_panel,
             daq_panel=self.daq_panel,
             data_window=self.data_view,
+        )
+        self.display_cntrl = DisplayController(
+            data_window=self.data_view,
+            display_panel=self.view_panel,
         )
 
         # setup threads
