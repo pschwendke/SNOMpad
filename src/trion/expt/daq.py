@@ -33,6 +33,7 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader
 from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 
+from .cfuncs import self_cal
 from ..analysis.signals import Signals, is_optical_signal
 import warnings
 import re
@@ -50,6 +51,7 @@ default_channel_map = {
     # Signals.ref_y: "ai5",
     # chop is to be determined
 }
+
 
 class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
     """
@@ -293,8 +295,8 @@ class DaqController:
         self.teardown()
 
     def self_calibrate(self) -> 'DaqController':
-        raise NotImplementedError() # TODO: this is actually important!
-        return self
+        # TODO: handle the other related information...
+        self_cal(self._name)
 
     def monitor_cb(self, task, event, n_samples, cb_data):
         raise NotImplementedError()
