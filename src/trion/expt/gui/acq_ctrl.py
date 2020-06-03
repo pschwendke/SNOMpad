@@ -46,7 +46,7 @@ class AcquisitionController(QObject):
             lambda: self.set_device(self.daq_panel.dev_name.currentText())
         )
         self.daq_panel.sample_clock.editingFinished.connect(
-            lambda: self.acq_ctrl.set_clock_channel(self.daq_panel.sample_clock.text())
+            lambda: self.set_clock_channel(self.daq_panel.sample_clock.text())
         )
         self.daq_panel.sample_rate.valueEdited.connect(self.set_sample_rate)
         self.daq_panel.sig_range.valueEdited.connect(self.set_sig_range)

@@ -240,6 +240,7 @@ class DaqController:
         return self
 
     def setup_timing(self):
+        logger.debug(f"Setup timing. Channel: {self.clock_channel}")
         for t in self.tasks.values():
             t.timing.cfg_samp_clk_timing(
                 rate=self.sample_rate,
