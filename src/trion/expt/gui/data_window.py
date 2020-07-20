@@ -5,8 +5,12 @@ import pyqtgraph as pg
 from enum import IntEnum, auto
 from PySide2.QtCore import QSize, QObject
 from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, QVBoxLayout, \
-    QGridLayout
+    QGridLayout, QTabWidget
+from pyqtgraph import mkPen, mkBrush
+
 from .utils import enum_to_combo, IntEdit, add_grid
+from ...analysis import signals
+from ...analysis.signals import signal_colormap, Signals
 
 
 class DisplayMode(IntEnum):
@@ -28,6 +32,7 @@ class RawCntrl(QWidget):
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
+        # TODO: populate this using a QStacked Widget.
         panel = QWidget()
         lyt = QGridLayout()
         panel.setLayout(lyt)
@@ -47,8 +52,13 @@ class ViewPanel(QDockWidget):
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
 
+        self.setFeatures(
+            QDockWidget.DockWidgetMovable |
+            QDockWidget.DockWidgetFloatable
+        )
 
-class DataWindow(pg.GraphicsLayoutWidget):
+
+class RawView(pg.GraphicsLayoutWidget):
     """
     Window for data visualization.
 
@@ -61,23 +71,13 @@ class DataWindow(pg.GraphicsLayoutWidget):
         super().__init__(*a, **kw)
         # start with a single window
         self.addPlot(row=0, col=0, name="main")
-        self.color_cycle = [
-            [31, 119, 180, 255],
-            [255, 127, 14, 255],
-            [44, 160, 44, 255],
-            [214, 39, 40, 255],
-            [148, 103, 189, 255],
-            [140, 86, 75, 255],
-            [227, 119, 194, 255],
-            [127, 127, 127, 255],
-            [188, 189, 34, 255],
-            [23, 190, 207, 255],
-        ]
+
+        self.cmap = signal_colormap()
 
         self.curves = {}
         for plot in self.ci.items:
             plot.setDownsampling(mode="subsample", auto=True)
-            plot.setClipToView(True)
+            plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
             plot.setYRange(-2, 2)
             plot.setXRange(0, 200_000)
@@ -99,18 +99,74 @@ class DataWindow(pg.GraphicsLayoutWidget):
             item.clear()
             item.addLegend()
 
-        cyc = cycle(self.color_cycle)
         for n in names:
             item = self.getItem(0, 0)
-            pen = item.plot(pen=next(cyc), name=n.value)
+            pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[n] = pen
 
     def minimumSizeHint(self):
         return QSize(400, 400)
 
 
+class PhaseView(pg.GraphicsLayoutWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        # start with a single window
+        self.addPlot(row=0, col=0, name="tap phase")
+
+        self.cmap = signal_colormap()
+
+        # index of columns for data processing
+        self.x_idx = None
+        self.y_idx = None
+        self.columns = {}
+        self.curves = {} # merge with above?
+
+        for plot in self.ci.items:
+            plot.setDownsampling(mode="subsample", auto=False, ds=20)
+            plot.setClipToView(False)
+            plot.enableAutoRange("xy", False)
+            plot.setYRange(-2, 2)
+            plot.setXRange(-np.pi, np.pi)
+            plot.showAxis("top")
+            plot.showAxis("right")
+
+    def prepare_plots(self, names):
+        """Prepares windows and pens for the different curves"""
+        for item in self.ci.items:
+            item.clear()
+            item.addLegend()
+
+        self.x_idx = names.index(Signals.tap_x)
+        self.y_idx = names.index(Signals.tap_y)
+        self.columns = {
+            n: names.index(n) for n in names if n in signals.all_detector_signals
+        }
+        for n in self.columns:
+            item = self.getItem(0, 0)
+            pen = mkPen(color=self.cmap[n])
+            brush = mkBrush(None)
+            crv = item.plot(
+                pen=None,
+                symbolPen=pen,
+                symbolBrush=brush,
+                name=n.value,
+                symbolSize=3,
+                pxMode=True,
+            )
+            self.curves[n] = crv
+
+    def plot(self, data, names):
+        #data[~np.isfinite(data)] = 0
+        x = np.arctan2(data[:,self.y_idx], data[:,self.x_idx])
+        for n, i in self.columns.items():
+            y = data[:,i]
+            m = np.isfinite(y)
+            self.curves[n].setData(x[m], y[m])
+
+
 class DisplayController(QObject):
-    def __init__(self, *a, data_window: DataWindow=None,
+    def __init__(self, *a, data_window: RawView=None,
                  display_panel: ViewPanel = None,
                  **kw):
         super().__init__(*a, **kw)
@@ -121,4 +177,26 @@ class DisplayController(QObject):
 
         #self.display_panel.panels[DisplayMode.raw].downsampling.valueEdited.connect(self.on_downsampling_edited)
 
+
+class DataWindow(QTabWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+
+        # Create pages
+        self.raw_view = RawView()
+        self.phase_view = PhaseView()
+
+        self.addTab(self.raw_view, "Raw")
+        self.addTab(self.phase_view, "Phase")
+
+        self.setTabPosition(QTabWidget.South)
+
+    def prepare_plots(self, buf):
+        # TODO: this shouldn'T be done like this.
+        self.raw_view.prepare_plots(buf)
+        self.phase_view.prepare_plots(buf)
+
+    def plot(self, *a, **kw): # todo: change
+        self.raw_view.plot(*a, **kw)
+        self.phase_view.plot(*a, **kw)
 

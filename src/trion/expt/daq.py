@@ -296,7 +296,7 @@ class DaqController:
         self.teardown()
 
     def self_calibrate(self) -> 'DaqController':
-        # TODO: handle the other related information...
+        # TODO: handle the other related information, such as last calibration temperature
         self_cal(self._name)
 
     def monitor_cb(self, task, event, n_samples, cb_data):

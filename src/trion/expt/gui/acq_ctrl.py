@@ -139,4 +139,5 @@ class AcquisitionController(QObject):
         self.data_view.plot(y, names)
 
     def prepare_display(self):
+        # probably forward to the display controller.
         self.data_view.prepare_plots(self.buffer.vars)

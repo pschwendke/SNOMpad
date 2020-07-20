@@ -6,7 +6,7 @@ from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
 from nidaqmx.system import System
 
-from .data_window import DataWindow, ViewPanel, DisplayController
+from .data_window import RawView, ViewPanel, DisplayController, DataWindow
 from .qdaq import DaqPanel, ExpPanel
 from .acq_ctrl import AcquisitionController
 from ..daq import DaqController
@@ -19,7 +19,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         super().__init__(*a, **kw)
 
         # Setup UI elements
-        self.data_view = DataWindow(parent=self, size=(1200, 800))
+        self.data_view = DataWindow(parent=self)#, size=(1200, 800))
 
         # setup control panels
         # Experimental control panel
@@ -57,7 +57,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         # build layout
         self.setCentralWidget(self.data_view)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.view_panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.view_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.expt_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.daq_panel)
 

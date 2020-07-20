@@ -7,7 +7,7 @@ from trion.analysis.signals import Signals
 from pprint import pprint
 import toml
 
-tab20 = np.array(np.array(get_cmap("tab20").colors)*256, dtype=int).tolist()
+tab20 = np.array(np.array(get_cmap("tab20").colors)*255, dtype=int).tolist()
 
 map = {
     Signals.sig_A: tab20[0],
