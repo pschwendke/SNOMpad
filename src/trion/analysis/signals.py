@@ -1,11 +1,12 @@
 from itertools import chain
-
-
+import os.path as pth
 from enum import Enum, auto
 from typing import Iterable
 import attr
 from bidict import bidict
 from functools import total_ordering
+import toml
+
 
 """
 This module defines the possible experimental configurations. 
@@ -20,9 +21,6 @@ also defines the following enumeration types:
 - `Signals`: the possible experimental signal types.
 """
 # How to handle pump probe? We will add a boolean value to the experiment..
-
-# TODO: use an implementation where auto() copies the name instead of a number
-
 
 class NamedEnum(Enum):
     def _generate_next_value_(name, start, count, last_values):
@@ -53,7 +51,14 @@ class Signals(SortableEnum, NamedEnum):
     #ref_x = auto()
     #ref_y = auto()
     #chop = auto()
+    tap_p = auto()
 
+
+def signal_colormap(filename=None):
+    filename = filename or pth.join(pth.dirname(pth.abspath(__file__)), "signal_colors.toml")
+    with open(filename, "r") as f:
+        cmap = toml.load(f)
+    return {Signals[k]: v for k, v in cmap.items()}
 
 class Scan(NamedEnum):
     point = auto()
