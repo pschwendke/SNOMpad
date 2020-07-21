@@ -1,20 +1,24 @@
 from itertools import repeat, cycle
 
+import logging
 import numpy as np
 import pyqtgraph as pg
 from enum import IntEnum, auto
-from PySide2.QtCore import QSize, QObject
+from PySide2.QtCore import QSize, QObject, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, QVBoxLayout, \
     QGridLayout, QTabWidget
+from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
 
 from .utils import enum_to_combo, IntEdit, add_grid
 from ...analysis import signals
 from ...analysis.signals import signal_colormap, Signals
 
+logger = logging.getLogger(__name__)
 
 class DisplayMode(IntEnum):
     raw = 0 # values indidcate the order in the stackwidget
+    phase = 1
 
 
 class RawCntrl(QWidget):
@@ -165,22 +169,6 @@ class PhaseView(pg.GraphicsLayoutWidget):
             self.curves[n].setData(x[m], y[m])
 
 
-class DisplayController(QObject):
-    # This guy is going to be responsible for routing data and connection
-    # between the correct data windows and the rest of the app.
-    # Covers parameter changes (ie: subsampling) and data.
-    def __init__(self, *a, data_window: RawView=None,
-                 display_panel: ViewPanel = None,
-                 **kw):
-        super().__init__(*a, **kw)
-        self.data_view = data_window
-        self.display_panel = display_panel
-
-        # TODO will need to handle the different display modes. (state machine?)
-
-        #self.display_panel.panels[DisplayMode.raw].downsampling.valueEdited.connect(self.on_downsampling_edited)
-
-
 class DataWindow(QTabWidget):
     """Container for main TabWidget."""
     def __init__(self, *a, **kw):
@@ -190,17 +178,47 @@ class DataWindow(QTabWidget):
         self.raw_view = RawView()
         self.phase_view = PhaseView()
 
-        self.addTab(self.raw_view, "Raw")
-        self.addTab(self.phase_view, "Phase")
+        self.tab_map = bidict({
+            DisplayMode.raw: self.addTab(self.raw_view, "Raw"),
+            DisplayMode.phase: self.addTab(self.phase_view, "Phase")
+        })
 
         self.setTabPosition(QTabWidget.South)
 
-    def prepare_plots(self, buf):
-        # TODO: this shouldn'T be done like this.
-        self.raw_view.prepare_plots(buf)
-        self.phase_view.prepare_plots(buf)
 
-    def plot(self, *a, **kw): # todo: change
-        self.raw_view.plot(*a, **kw)
-        self.phase_view.plot(*a, **kw)
+
+class DisplayController(QObject):
+    """
+    Handles connection between the display windows and the other elements.
+    """
+    view_changed = Signal()
+    def __init__(self, *a, data_window: DataWindow=None,
+                 display_control: ViewPanel = None,
+                 **kw):
+        super().__init__(*a, **kw)
+        self.data_view = data_window
+        self.display_control = display_control
+        self.mode_map = self.data_view.tab_map
+        self.current = self.data_view.tab_map.inverse[self.data_view.currentIndex()]
+        self.plot_cache = ((),{})
+        self.view_changed.connect(self.onViewChanged)
+        self.data_view.currentChanged.connect(self.onTabIndexChanged)
+
+    def onTabIndexChanged(self, idx):
+        logger.info("Tab changed to "+str(idx))
+        self.view_changed.emit()
+
+    def onViewChanged(self):
+        self.data_view.currentWidget().plot(*self.plot_cache[0],
+                                            **self.plot_cache[1])
+        pass
+
+    def prepare_plots(self, buf):
+        for i in range(self.data_view.count()):
+            self.data_view.widget(i).prepare_plots(buf)
+
+    def plot(self, *a, **kw):
+        self.plot_cache = (a, kw)
+        self.data_view.currentWidget().plot(*a, **kw)
+
 

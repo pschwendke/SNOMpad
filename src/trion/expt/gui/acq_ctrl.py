@@ -6,7 +6,7 @@ from trion.expt.gui.qdaq import logger
 
 class AcquisitionController(QObject):
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
-                 data_window=None,
+                 display_controller=None,
                  display_dt=0.02, read_dt=0.01,
                  **kw):
         """
@@ -29,7 +29,7 @@ class AcquisitionController(QObject):
         super().__init__(*a, **kw)
         self.expt_panel = expt_panel
         self.daq_panel = daq_panel
-        self.data_view = data_window
+        self.display_cntrl = display_controller
         self.daq = daq
         self.buffer = None
         self.display_timer = QTimer()
@@ -133,13 +133,10 @@ class AcquisitionController(QObject):
         self.daq_panel.phase_range.setValue(self.daq.phase_range)
 
     def refresh_display(self):
-        "pass the data from the buffer to the view."
-        # TODO: make this instead intreact with the DisplayController.
-        # The Data window should mostly be a container.
+        "pass the data from the buffer to the display controller."
         names = self.buffer.vars
         y = self.buffer.get(self.buffer.size)
-        self.data_view.plot(y, names)
+        self.display_cntrl.plot(y, names)
 
     def prepare_display(self):
-        # probably forward to the display controller.
-        self.data_view.prepare_plots(self.buffer.vars)
+        self.display_cntrl.prepare_plots(self.buffer.vars)

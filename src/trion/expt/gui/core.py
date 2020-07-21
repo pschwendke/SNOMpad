@@ -35,15 +35,15 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         # store references to Trion objects
         self.daq = daq or DaqController(dev=System().devices.device_names[0])
+        self.display_cntrl = DisplayController(
+            data_window=self.data_view,
+            display_control=self.view_panel,
+        )
         self.acq_cntrl = AcquisitionController(
             daq=self.daq,
             expt_panel=self.expt_panel,
             daq_panel=self.daq_panel,
-            data_window=self.data_view,
-        )
-        self.display_cntrl = DisplayController(
-            data_window=self.data_view,
-            display_panel=self.view_panel,
+            display_controller=self.display_cntrl
         )
 
         # setup threads
