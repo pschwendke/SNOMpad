@@ -10,7 +10,7 @@ from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, QVBoxLayout,
 from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
 
-from .utils import enum_to_combo, IntEdit, add_grid
+from .utils import enum_to_combo, IntEdit, add_grid, FloatEdit
 from ...analysis import signals
 from ...analysis.signals import signal_colormap, Signals
 
@@ -26,12 +26,16 @@ class RawCntrl(QWidget):
         super().__init__(*a, **kw)
         lyt = QGridLayout()
         self.setLayout(lyt)
+
+        self.downsampling = IntEdit(1, None)
         grid = []
 
+        grid.append(
+            ["Downsampling", self.downsampling]
+        )
         add_grid(grid, lyt)
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
-
 
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
@@ -41,10 +45,6 @@ class ViewPanel(QDockWidget):
         lyt = QGridLayout()
         panel.setLayout(lyt)
         self.setWidget(panel)
-
-        self.display_combo = enum_to_combo(DisplayMode)
-        self.display_combo.setDisabled(True)
-        lyt.addWidget(self.display_combo, 0, 0)
 
         self.panels = {}
         self.panels[DisplayMode.raw] = RawCntrl()
@@ -64,52 +64,119 @@ class ViewPanel(QDockWidget):
 
 class RawView(pg.GraphicsLayoutWidget):
     """
-    Window for data visualization.
+    Plotting of the raw data stream.
 
-    The displayed data can be in multiple modes:
-    1. raw (a time series of data points)
-    2. XY plot
-    3. ...
+    The displayed data has multiple Axes:
+    - optical signals
+    - tapping modulation
+    - TODO: reference modulation
+    - TODO: chopping
     """
+    plot_indices = {
+        Signals.sig_A: 0,
+        Signals.sig_B: 0,
+        Signals.sig_s: 0,
+        Signals.sig_d: 0,
+        Signals.tap_x: 1,
+        Signals.tap_y: 1,
+    }
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         # start with a single window
-        self.addPlot(row=0, col=0, name="main")
+        p0 = self.addPlot(row=0, col=0, name="Optical")
+        self.addPlot(row=1, col=0, name="Tapping")
 
         self.cmap = signal_colormap()
 
         self.curves = {}
         for plot in self.ci.items:
-            plot.setDownsampling(mode="subsample", auto=True)
+            #plot.setDownsampling(mode="subsample", auto=True)
             plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
-            plot.setYRange(-2, 2)
+            plot.setYRange(-1, 1)
             plot.setXRange(0, 200_000)
             plot.showAxis("top")
             plot.showAxis("right")
+            if plot is not p0:
+                plot.setXLink(p0)
 
-    def plot(self, data, names): # this is heavy WIP
+        self.set_downsampling(200)
+        logger.debug(self.get_downsampling())
 
-        #data[~np.isfinite(data)] = 0
+    def prepare_plots(self, names):
+        """Prepares windows and pens for the different curves"""
+        logger.debug("Raw plot names:" + repr(names))
+        for item in self.ci.items:
+            item.clear()
+            item.addLegend()
+
+        for n in names:
+            idx = self.plot_indices[n]
+            item = self.getItem(idx, 0)
+            pen = item.plot(pen=self.cmap[n], name=n.value)
+            self.curves[n] = pen
+        #logger.debug("Optical Y lim:" + repr(self.optical_ylim))
+
+    def plot(self, data, names):
+        """Plot data. Names are the associated columns."""
         x = np.arange(data.shape[0])
         for i, n in enumerate(names):
             y = data[:,i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m], connect="finite")
 
-    def prepare_plots(self, names):
-        """Prepares windows and pens for the different curves"""
-        for item in self.ci.items:
-            item.clear()
-            item.addLegend()
-
-        for n in names:
-            item = self.getItem(0, 0)
-            pen = item.plot(pen=self.cmap[n], name=n.value)
-            self.curves[n] = pen
-
     def minimumSizeHint(self):
         return QSize(400, 400)
+
+    def set_downsampling(self, value):
+        """Set identical downsampling for all plots"""
+        for plot in self.ci.items:
+            plot.setDownsampling(ds=value, mode="subsample", auto=False)
+
+    def get_downsampling(self):
+        """
+        Get downsampling factor for all plots.
+
+        If mode is "auto" or downsampling factor is not the same for all plots,
+        return False.
+        """
+        ds_config = [it.downsampleMode() for it in self.ci.items]
+        automode = any(cfg[1] for cfg in ds_config)
+        if automode:
+            return False
+        ds = [cfg[0] for cfg in ds_config]
+        if any(v != ds[0] for v in ds):
+            return False
+        assert type(ds[0]) is int
+        return ds[0]
+        # automode = any(it.opts["autoDownsample"] for it in self.ci.items)
+        # if automode:
+        #     return False
+        # ds = [it.opts["downsample"] for it in self.ci.items]
+        # if any(v != ds[0] for v in ds):
+        #     return False
+        # assert type(ds[0]) is int
+        # return ds[0]
+
+
+    # @property
+    # def optical_ylim(self):
+    #     plot = self.getItem(0, 0)
+    #     return plot.viewRange()[1]
+    #
+    # def set_optical_ylim(self, vmin, vmax):
+    #     plot = self.getItem(0,0)
+    #     plot.setYRange(vmin, vmax, padding=0)
+    #
+    # @property
+    # def modulation_ylim(self):
+    #     plot = self.getItem(1,0)
+    #     return plot.viewRange()[1]
+    #
+    # def set_modulation_ylim(self, vmin, vmax):
+    #     plot = self.getItem(1,0)
+    #     plot.setYRange(vmin, vmax, padding=0)
+
 
 
 class PhaseView(pg.GraphicsLayoutWidget):
@@ -186,23 +253,25 @@ class DataWindow(QTabWidget):
         self.setTabPosition(QTabWidget.South)
 
 
-
 class DisplayController(QObject):
     """
     Handles connection between the display windows and the other elements.
     """
     view_changed = Signal()
     def __init__(self, *a, data_window: DataWindow=None,
-                 display_control: ViewPanel = None,
+                 view_panel: ViewPanel = None,
+                 acquisition_controller = None,
                  **kw):
         super().__init__(*a, **kw)
         self.data_view = data_window
-        self.display_control = display_control
+        self.view_panel = view_panel
         self.mode_map = self.data_view.tab_map
         self.current = self.data_view.tab_map.inverse[self.data_view.currentIndex()]
+        self.acquisition_controller = acquisition_controller
         self.plot_cache = ((),{})
         self.view_changed.connect(self.onViewChanged)
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
+
 
     def onTabIndexChanged(self, idx):
         logger.debug("Tab changed to "+str(idx))
@@ -229,4 +298,9 @@ class DisplayController(QObject):
         self.plot_cache = (a, kw)
         self.currentView.plot(*a, **kw)
 
-
+    def update_ui(self):
+        """Update UI elements to sync their values"""
+        panel = self.view_panel.panels[DisplayMode.raw]
+        panel.downsampling.setValue(
+            self.data_view.raw_view.set
+        )
