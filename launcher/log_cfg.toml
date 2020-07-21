@@ -1,0 +1,34 @@
+
+version = 1
+disable_existing_loggers = false
+[root]
+level = "DEBUG"
+handlers = ["console", "logfile"]
+
+[loggers.matplotlib]
+level = "INFO"
+
+[formatters]
+    [formatters.detailed]
+    format = "[%(asctime)s] %(levelname)-5s: %(name)-15s - %(message)s"
+    datefmt = "%Y/%m/%d %H:%M:%S"
+
+    [formatters.console]
+    format = "[%(asctime)s] %(levelname)-5s: %(name)s - %(message)s"
+    datefmt = "%H:%M:%S"
+
+[handlers]
+    [handlers.console]
+    class = "logging.StreamHandler"
+    level = "DEBUG"
+    formatter = "console"
+    stream = "ext://sys.stdout"
+
+    [handlers.logfile]
+    class = "logging.handlers.TimedRotatingFileHandler"
+    level = "DEBUG"
+    formatter = "detailed"
+    filename = "log/trions.log"
+    when = "midnight"
+    encoding = "ascii"
+
