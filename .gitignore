@@ -137,3 +137,6 @@ scratch/test.tmp
 /scripts/out.npy
 /scripts/my_data.npy
 /scripts/check_output.ipynb
+/scripts/data2.npy
+/scripts/data1.npy
+/scripts/compare.ipynb

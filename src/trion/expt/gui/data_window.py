@@ -166,6 +166,9 @@ class PhaseView(pg.GraphicsLayoutWidget):
 
 
 class DisplayController(QObject):
+    # This guy is going to be responsible for routing data and connection
+    # between the correct data windows and the rest of the app.
+    # Covers parameter changes (ie: subsampling) and data.
     def __init__(self, *a, data_window: RawView=None,
                  display_panel: ViewPanel = None,
                  **kw):
@@ -179,6 +182,7 @@ class DisplayController(QObject):
 
 
 class DataWindow(QTabWidget):
+    """Container for main TabWidget."""
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
 

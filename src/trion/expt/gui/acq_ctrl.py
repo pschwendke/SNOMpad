@@ -134,6 +134,8 @@ class AcquisitionController(QObject):
 
     def refresh_display(self):
         "pass the data from the buffer to the view."
+        # TODO: make this instead intreact with the DisplayController.
+        # The Data window should mostly be a container.
         names = self.buffer.vars
         y = self.buffer.get(self.buffer.size)
         self.data_view.plot(y, names)
