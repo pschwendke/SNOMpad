@@ -3,7 +3,7 @@ version = 1
 disable_existing_loggers = false
 [root]
 level = "DEBUG"
-handlers = ["console", "logfile"]
+handlers = ["console", "logfile", "statusbar"]
 
 [loggers.matplotlib]
 level = "INFO"
@@ -16,6 +16,10 @@ level = "INFO"
     [formatters.console]
     format = "[%(asctime)s] %(levelname)-5s: %(name)s - %(message)s"
     datefmt = "%H:%M:%S"
+
+    [formatters.brief]
+    "()" = "trion.expt.gui.log.BriefFormatter"
+    format = "%(message)s"
 
 [handlers]
     [handlers.console]
@@ -31,4 +35,9 @@ level = "INFO"
     filename = "log/trions.log"
     when = "midnight"
     encoding = "ascii"
+
+    [handlers.statusbar]
+    class = "trion.expt.gui.log.StatusBarLogger"
+    level = "DEBUG"
+    formatter = "brief"
 

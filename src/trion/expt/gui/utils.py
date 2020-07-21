@@ -5,6 +5,7 @@ import logging
 from PySide2.QtCore import Signal
 from PySide2.QtGui import QIntValidator, QDoubleValidator
 from PySide2.QtWidgets import QPushButton, QLabel, QComboBox, QLineEdit
+
 logger = logging.getLogger(__name__)
 
 def add_grid(grid, layout, row_offset = 0, column_offset=0):
@@ -114,3 +115,5 @@ class FloatEdit(TypedLineEdit):
 
     def value(self):
         return float(self.text())
+
+

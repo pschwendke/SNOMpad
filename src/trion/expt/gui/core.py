@@ -4,6 +4,7 @@
 import logging
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QStatusBar
 from nidaqmx.system import System
 
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
@@ -48,6 +49,8 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         # create actions
         # create statusbar
+        #self.statusBar()
+        self.setStatusBar(TrionsStatusBar())
         # create menubar
         # create toolbar
 
@@ -63,3 +66,11 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("TRION Experimental controller")
         self.resize(800, 480)
+
+
+class TrionsStatusBar(QStatusBar):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+
+    def showLog(self, msg):
+        self.showMessage(msg, 2E3)
