@@ -205,20 +205,28 @@ class DisplayController(QObject):
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
 
     def onTabIndexChanged(self, idx):
-        logger.info("Tab changed to "+str(idx))
+        logger.debug("Tab changed to "+str(idx))
         self.view_changed.emit()
 
     def onViewChanged(self):
-        self.data_view.currentWidget().plot(*self.plot_cache[0],
-                                            **self.plot_cache[1])
-        pass
+        if self.plot_cache is not None:
+            self.currentView.plot(*self.plot_cache[0],
+                                  **self.plot_cache[1])
+
+    @property
+    def currentView(self):
+        return self.data_view.currentWidget()
+
+    @property
+    def views(self):
+        return [self.data_view.widget(i) for i in range(self.data_view.count())]
 
     def prepare_plots(self, buf):
-        for i in range(self.data_view.count()):
-            self.data_view.widget(i).prepare_plots(buf)
+        for view in self.views:
+            view.prepare_plots(buf)
 
     def plot(self, *a, **kw):
         self.plot_cache = (a, kw)
-        self.data_view.currentWidget().plot(*a, **kw)
+        self.currentView.plot(*a, **kw)
 
 
