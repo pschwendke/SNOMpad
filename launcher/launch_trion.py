@@ -18,7 +18,6 @@ with open("log_cfg.toml", "r") as f:
     logging.config.dictConfig(toml.load(f))
 logger = logging.getLogger("root")
 
-
 def log_except(*exc_info):
     """Catches all exceptions, and logs."""
     logger.error("Unexpected Error!", exc_info=exc_info)
@@ -34,6 +33,8 @@ if __name__ == '__main__':
     for h in handlers:
         logger.info("Setting up logger")
         h.setup(win)
+
+    app.aboutToQuit.connect(win.shutdown)
     win.show()
     retcode = app.exec_()
 

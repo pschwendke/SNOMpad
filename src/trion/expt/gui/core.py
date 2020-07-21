@@ -4,7 +4,7 @@
 import logging
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QStatusBar
+from PySide2.QtWidgets import QStatusBar, QMessageBox
 from nidaqmx.system import System
 
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
@@ -69,6 +69,25 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("TRION Experimental controller")
         self.resize(800, 480)
+
+    def shutdown(self):
+        # stop acquisition
+        # stop threads
+        # wait threads
+        # close objects
+        logger.debug("Main window shutdown complete.")
+
+    def closeEvent(self, event):
+        dlg = QMessageBox.warning(
+            self,
+            "Confirm Exit",
+            "Are you sure you wish to quit the TRION experimental controller?",
+            QMessageBox.Ok | QMessageBox.Cancel
+        )
+        if dlg == QMessageBox.Ok:
+            event.accept()
+        else:
+            event.ignore()
 
 
 class TrionsStatusBar(QStatusBar):
