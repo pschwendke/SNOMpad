@@ -59,7 +59,7 @@ class QtLogHandler(logging.Handler): # mixin may not work, or yield name collisi
 
 class _QtLogSignals(QObject):
     logMessage = Signal(str)
-    logRecord = Signal( (str, logging.LogRecord) )
+    logRecord = Signal(str, logging.LogRecord)
 
 
 QtLogSignals = _QtLogSignals()
@@ -88,33 +88,34 @@ class PopupLogger(QtLogHandler):
              'WARNING': QMessageBox.Warning,
              'ERROR': QMessageBox.Warning,
              'CRITICAL': QMessageBox.Critical}
-    logMessage = Signal(str, logging.LogRecord)
-    def setup(self, mw):
-        self.widget = True  # change to popup_log_dlg if needed
-        self.logMessage.connect(mw.on_popup_log)
+    logRecord = QtLogSignals.logRecord
 
-    @staticmethod
-    def prepare(dlg, msg, record):
-        """Prepares dialog's text and icon."""
-        lvl = capwords(record.levelname)
-        icon = PopupLogger.icons[lvl.upper()]
-        dlg.setIcon(icon)
-        dlg.setText(lvl)
-        dlg.setInformativeText(msg)
-        if record.exc_info:
-            dlg.setDetailedText(''.join(traceback.format_exception(*record.exc_info)))
-        else:
-            dlg.setDetailedText('')
+    def setup(self, mw):
+        self.widget = mw.log_popup
+        self.logRecord.connect(self.widget.showLog)
 
     def display(self, msg, record):
-        self.logMessage.emit(msg, record)
+        self.logRecord.emit(msg, record)
 
 
 class QPopupLogDlg(QMessageBox):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        lyout = self.popup_log_dlg.layout()
+        lyout = self.layout()
         spacer = QtGui.QSpacerItem(400, 0,
                                    hPolicy=QtGui.QSizePolicy.Minimum,
                                    vPolicy=QtGui.QSizePolicy.MinimumExpanding)
         lyout.addItem(spacer, lyout.rowCount(), 0, 1, lyout.columnCount())
+
+    def showLog(self, msg, record):
+        """Show the popup window."""
+        lvl = capwords(record.levelname)
+        icon = PopupLogger.icons[lvl.upper()]
+        self.setIcon(icon)
+        self.setText(lvl)
+        self.setInformativeText(msg)
+        if record.exc_info:
+            self.setDetailedText(''.join(traceback.format_exception(*record.exc_info)))
+        else:
+            self.setDetailedText('')
+        self.show()

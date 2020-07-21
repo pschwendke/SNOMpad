@@ -3,7 +3,7 @@ version = 1
 disable_existing_loggers = false
 [root]
 level = "DEBUG"
-handlers = ["console", "logfile", "statusbar"]
+handlers = ["console", "logfile", "statusbar", "popup"]
 
 [loggers.matplotlib]
 level = "INFO"
@@ -38,6 +38,10 @@ level = "INFO"
 
     [handlers.statusbar]
     class = "trion.expt.gui.log.StatusBarLogger"
-    level = "DEBUG"
+    level = "INFO"
     formatter = "brief"
 
+    [handlers.popup]
+    class = "trion.expt.gui.log.PopupLogger"
+    level = "WARNING"
+    formatter = "brief"

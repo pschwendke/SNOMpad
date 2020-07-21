@@ -8,6 +8,7 @@ from PySide2.QtWidgets import QStatusBar
 from nidaqmx.system import System
 
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
+from .log import QPopupLogDlg
 from .qdaq import DaqPanel, ExpPanel
 from .acq_ctrl import AcquisitionController
 from ..daq import DaqController
@@ -49,10 +50,12 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         # create actions
         # create statusbar
-        #self.statusBar()
         self.setStatusBar(TrionsStatusBar())
         # create menubar
         # create toolbar
+
+        # create log popup dialog
+        self.log_popup = QPopupLogDlg(self)
 
         # connect actions
 
