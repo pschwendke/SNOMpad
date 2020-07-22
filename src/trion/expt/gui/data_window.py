@@ -1,3 +1,4 @@
+from abc import ABC
 from itertools import repeat, cycle
 
 import logging
@@ -16,14 +17,14 @@ from ...analysis.signals import signal_colormap, Signals
 
 logger = logging.getLogger(__name__)
 
-class DisplayMode(IntEnum):
+class DisplayMode(IntEnum): # TODO: remove
     raw = 0 # values indidcate the order in the stackwidget
     phase = 1
-
 
 class RawCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
+        self.title = "Raw data view"
         lyt = QGridLayout()
         self.setLayout(lyt)
 
@@ -37,6 +38,24 @@ class RawCntrl(QWidget):
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
 
+class PhaseCntrl(QWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.title = "Phase view"
+        lyt = QGridLayout()
+        self.setLayout(lyt)
+
+        self.downsampling = IntEdit(1, None)
+        grid = []
+
+        grid.append(
+            ["Downsampling", self.downsampling]
+        )
+        add_grid(grid, lyt)
+        lyt.setColumnStretch(1, 1)
+        lyt.setRowStretch(lyt.rowCount(), 1)
+
+
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -47,11 +66,16 @@ class ViewPanel(QDockWidget):
         self.setWidget(panel)
 
         self.panels = {}
-        self.panels[DisplayMode.raw] = RawCntrl()
+        self.raw_cntrl =  RawCntrl()
+        self.phase_cntrl = PhaseCntrl()
+        self.panels[DisplayMode.raw] = self.raw_cntrl
+        self.panels[DisplayMode.phase] = self.phase_cntrl
+
 
         self.stack = QStackedWidget()
         lyt.addWidget(self.stack, 1, 0, 1, 2)
-        self.stack.addWidget(self.panels[DisplayMode.raw])
+        for idx, panel in self.panels.items():
+            self.stack.addWidget(panel)
 
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
@@ -60,9 +84,53 @@ class ViewPanel(QDockWidget):
             QDockWidget.DockWidgetMovable |
             QDockWidget.DockWidgetFloatable
         )
+        self.setWindowTitle(self.current_widget.title)
+
+    @property
+    def current_widget(self):
+        return self.stack.currentWidget()
+
+    def onTabIndexChanged(self, idx):
+        self.stack.setCurrentIndex(idx)
+        self.setWindowTitle(self.current_widget.title)
 
 
-class RawView(pg.GraphicsLayoutWidget):
+class BaseView(pg.GraphicsLayoutWidget):
+    downsampling_cntrl_updated = Signal()
+
+    def connect_signals(self):
+        for plot in self.ci.items:
+            plot.ctrl.downsampleSpin.valueChanged.connect(
+                self.downsampling_cntrl_updated
+            )
+    def set_downsampling(self, value):
+        """Set identical downsampling for all plots"""
+        logger.debug("Setting downsampling to: "+repr(value))
+        for plot in self.ci.items:
+            plot.setDownsampling(ds=value, mode="subsample", auto=False)
+
+    def get_downsampling(self):
+        """
+        Get downsampling factor for all plots.
+
+        If mode is "auto" or downsampling factor is not the same for all plots,
+        return False.
+        """
+        ds_config = [it.downsampleMode() for it in self.ci.items]
+        automode = any(cfg[1] for cfg in ds_config)
+        if automode:
+            return False
+        ds = [cfg[0] for cfg in ds_config]
+        if any(v != ds[0] for v in ds):
+            return False
+        assert type(ds[0]) is int
+        return ds[0]
+
+    def minimumSizeHint(self):
+        return QSize(400, 400)
+
+
+class RawView(BaseView):
     """
     Plotting of the raw data stream.
 
@@ -101,7 +169,7 @@ class RawView(pg.GraphicsLayoutWidget):
                 plot.setXLink(p0)
 
         self.set_downsampling(200)
-        logger.debug(self.get_downsampling())
+        self.connect_signals()
 
     def prepare_plots(self, names):
         """Prepares windows and pens for the different curves"""
@@ -116,6 +184,7 @@ class RawView(pg.GraphicsLayoutWidget):
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[n] = pen
         #logger.debug("Optical Y lim:" + repr(self.optical_ylim))
+        self.connect_signals()
 
     def plot(self, data, names):
         """Plot data. Names are the associated columns."""
@@ -125,38 +194,6 @@ class RawView(pg.GraphicsLayoutWidget):
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m], connect="finite")
 
-    def minimumSizeHint(self):
-        return QSize(400, 400)
-
-    def set_downsampling(self, value):
-        """Set identical downsampling for all plots"""
-        for plot in self.ci.items:
-            plot.setDownsampling(ds=value, mode="subsample", auto=False)
-
-    def get_downsampling(self):
-        """
-        Get downsampling factor for all plots.
-
-        If mode is "auto" or downsampling factor is not the same for all plots,
-        return False.
-        """
-        ds_config = [it.downsampleMode() for it in self.ci.items]
-        automode = any(cfg[1] for cfg in ds_config)
-        if automode:
-            return False
-        ds = [cfg[0] for cfg in ds_config]
-        if any(v != ds[0] for v in ds):
-            return False
-        assert type(ds[0]) is int
-        return ds[0]
-        # automode = any(it.opts["autoDownsample"] for it in self.ci.items)
-        # if automode:
-        #     return False
-        # ds = [it.opts["downsample"] for it in self.ci.items]
-        # if any(v != ds[0] for v in ds):
-        #     return False
-        # assert type(ds[0]) is int
-        # return ds[0]
 
 
     # @property
@@ -179,12 +216,11 @@ class RawView(pg.GraphicsLayoutWidget):
 
 
 
-class PhaseView(pg.GraphicsLayoutWidget):
+class PhaseView(BaseView):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         # start with a single window
         self.addPlot(row=0, col=0, name="tap phase")
-
         self.cmap = signal_colormap()
 
         # index of columns for data processing
@@ -268,10 +304,22 @@ class DisplayController(QObject):
         self.mode_map = self.data_view.tab_map
         self.current = self.data_view.tab_map.inverse[self.data_view.currentIndex()]
         self.acquisition_controller = acquisition_controller
-        self.plot_cache = ((),{})
+        self.plot_cache = None #((),{})
         self.view_changed.connect(self.onViewChanged)
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
+        self.data_view.currentChanged.connect(self.view_panel.onTabIndexChanged)
 
+        for cntrl, view in [
+            (self.view_panel.raw_cntrl, self.data_view.raw_view),
+            (self.view_panel.phase_cntrl, self.data_view.phase_view),
+            ]:
+            cntrl.downsampling.valueEdited.connect(
+                view.set_downsampling
+            )
+            view.downsampling_cntrl_updated.connect(
+                self.update_ui
+            )
+        self.update_ui()
 
     def onTabIndexChanged(self, idx):
         logger.debug("Tab changed to "+str(idx))
@@ -300,7 +348,12 @@ class DisplayController(QObject):
 
     def update_ui(self):
         """Update UI elements to sync their values"""
-        panel = self.view_panel.panels[DisplayMode.raw]
-        panel.downsampling.setValue(
-            self.data_view.raw_view.set
-        )
+        # signal to sync this is missing. I should probably change the
+        # behavior of the right-click menu.
+        for cntrl, view in [
+            (self.view_panel.raw_cntrl, self.data_view.raw_view),
+            (self.view_panel.phase_cntrl, self.data_view.phase_view),
+            ]:
+            cntrl.downsampling.setValue(
+                view.get_downsampling()
+            )
