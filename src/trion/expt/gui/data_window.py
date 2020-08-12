@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 class DisplayMode(IntEnum): # TODO: remove
     raw = 0 # values indidcate the order in the stackwidget
     phase = 1
+    fourier = 2
 
 class RawCntrl(QWidget):
     def __init__(self, *a, **kw):
@@ -57,6 +58,12 @@ class PhaseCntrl(QWidget):
         lyt.setRowStretch(lyt.rowCount(), 1)
 
 
+class FourierCntrl(QWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.title = "Fourier view"
+
+
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -68,8 +75,10 @@ class ViewPanel(QDockWidget):
         self.panels = {}
         self.raw_cntrl =  RawCntrl()
         self.phase_cntrl = PhaseCntrl()
+        self.fourier_cntrl = FourierCntrl()
         self.panels[DisplayMode.raw] = self.raw_cntrl
         self.panels[DisplayMode.phase] = self.phase_cntrl
+        self.panels[DisplayMode.fourier] = self.fourier_cntrl
 
 
         self.stack = QStackedWidget()
@@ -270,7 +279,7 @@ class PhaseView(BaseView):
             self.curves[n].setData(x[m], y[m])
 
 
-class DemodulatedView(BaseView):
+class FourierView(BaseView):
     """
     View the Fourier components, similar to optical alignment in NeaScan.
 
@@ -279,7 +288,7 @@ class DemodulatedView(BaseView):
     `win_len` data points. The last `bufsize` values are kept for display in
     a rotating buffer.
     """
-    def __init__(self, *a, bufsize=250, win_len=100_000, max_order=4, **kw):
+    def __init__(self, *a, bufsize=250, win_len=50_000, max_order=4, **kw):
         super().__init__(*a, **kw)
         # this guy has an internal buffer to track history
         self.buf = None
@@ -300,16 +309,19 @@ class DemodulatedView(BaseView):
         for plot in self.ci.items: # TODO: condense this in a common setup method
             plot.setDownsampling(mode="subsample", auto=False, ds=1)
             plot.setClipToView(False)
-            plot.enableAutoRange("x", False)
-            plot.enableAutoRange("y", True)
-            plot.setYRange(0, 2)
+            plot.enableAutoRange(y=True)
+            #plot.setYRange(0, 2)
             plot.setXRange(0, bufsize)
-            plot.showAxis("top")
+            #plot.showAxis("bottom", False)
+            plot.hideAxis("bottom")
             plot.showAxis("right")
             if plot is not p0:
                 plot.setXLink(p0)
-
+        self.getItem(0,0).showAxis("top")
+        self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
+        self.ci.setContentsMargins()
         self.set_downsampling(1)
+        self.ci.setBorder((50, 50, 100))
         self.connect_signals()
 
     def prepare_plots(self, names):
@@ -342,7 +354,7 @@ class DemodulatedView(BaseView):
         # orders has shape (N_orders,)
         # final size should be (N_orders, N_sig)
         demod = np.mean(
-            data[:,None,:] * np.exp(
+            data[-self.win_len:,None,:] * np.exp(
                 -1j * self.orders[None,:,None] * phi[:,None,None]
             ),
             axis = 0, # for optimization this should be -1.
@@ -352,11 +364,12 @@ class DemodulatedView(BaseView):
 
     def plot(self, data, names):
         self.compute_components(data, names)
-        y = self.buf.get(self.buf.size)
+        y = self.buf.get(self.bufsize)
         vars = self.buf.vars
-        x = np.arange(y.shape)
+        x = np.arange(y.shape[0])
+        m = np.isfinite(y[:,0])
         for i, v in enumerate(vars):
-            self.curves[v].setData(x, y[:,i])
+            self.curves[v].setData(x[m], y[:,i].compress(m, axis=0))
 
 
 class DataWindow(QTabWidget):
@@ -367,10 +380,12 @@ class DataWindow(QTabWidget):
         # Create pages
         self.raw_view = RawView()
         self.phase_view = PhaseView()
+        self.fourier_view = FourierView()
 
         self.tab_map = bidict({
             DisplayMode.raw: self.addTab(self.raw_view, "Raw"),
-            DisplayMode.phase: self.addTab(self.phase_view, "Phase")
+            DisplayMode.phase: self.addTab(self.phase_view, "Phase"),
+            DisplayMode.fourier: self.addTab(self.fourier_view, "Fourier")
         })
 
         self.setTabPosition(QTabWidget.South)
