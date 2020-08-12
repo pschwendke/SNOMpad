@@ -80,9 +80,9 @@ class AbstractBuffer(ABC):
         return self._vrs
   
 class ArrayBuffer(AbstractBuffer):
-    def __init__(self, *, init_size, **kw):
+    def __init__(self, *, init_size, dtype=np.float, **kw):
         super().__init__(**kw)
-        self.buf = np.full((init_size, len(self.vars)), np.nan)
+        self.buf = np.full((init_size, len(self.vars)), np.nan, dtype=dtype)
 
     @property
     def size(self):

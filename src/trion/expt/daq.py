@@ -61,7 +61,7 @@ class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
     with shape (n_samp_per_chan, n_chan) instead of (n_chan, n_samp_per_chan).
     This is consitent with the C-ordering of the data buffer, required by
     nidaqmx. For C-ordered arrays, it is much less costly to extend along axis
-    0, therefore it should be used for the number of channels.
+    0, therefore it should be used for the n_samp_per_chan.
     """
     def _verify_array(self, data, number_of_samples_per_channel,
                       is_many_chan, is_many_samp):

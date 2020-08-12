@@ -1,5 +1,5 @@
 from abc import ABC
-from itertools import repeat, cycle
+from itertools import repeat, cycle, product
 
 import logging
 import numpy as np
@@ -12,6 +12,7 @@ from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
 
 from .utils import enum_to_combo, IntEdit, add_grid, FloatEdit
+from ..buffer import CircularArrayBuffer
 from ...analysis import signals
 from ...analysis.signals import signal_colormap, Signals
 
@@ -59,7 +60,6 @@ class PhaseCntrl(QWidget):
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        # TODO: populate this using a QStacked Widget.
         panel = QWidget()
         lyt = QGridLayout()
         panel.setLayout(lyt)
@@ -154,7 +154,7 @@ class RawView(BaseView):
         p0 = self.addPlot(row=0, col=0, name="Optical")
         self.addPlot(row=1, col=0, name="Tapping")
 
-        self.cmap = signal_colormap()
+        self.cmap = signal_colormap() # TODO: move to base class
 
         self.curves = {}
         for plot in self.ci.items:
@@ -193,8 +193,6 @@ class RawView(BaseView):
             y = data[:,i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m], connect="finite")
-
-
 
     # @property
     # def optical_ylim(self):
@@ -270,6 +268,95 @@ class PhaseView(BaseView):
             y = data[:,i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m])
+
+
+class DemodulatedView(BaseView):
+    """
+    View the Fourier components, similar to optical alignment in NeaScan.
+
+    The fourier components are computed from the signal amplitudes and the
+    modulation phases. The fourier components are computed over the last
+    `win_len` data points. The last `bufsize` values are kept for display in
+    a rotating buffer.
+    """
+    def __init__(self, *a, bufsize=250, win_len=100_000, max_order=4, **kw):
+        super().__init__(*a, **kw)
+        # this guy has an internal buffer to track history
+        self.buf = None
+        self.bufsize = bufsize
+        self.x_idx = None
+        self.y_idx = None
+        self.columns = {}  # signal name to index mapping
+        self.input_indices = []  # indices of the signals in the input data
+        self.win_len = win_len
+        self.orders = np.arange(max_order + 1) # can't change yet...
+        self.curves = {}
+        self.cmap = signal_colormap()
+
+        # Try a sparkline mode where each each order has its' plot, rescaled individually
+        for idx in self.orders:
+            self.addPlot(row=idx, col=0, name=f"Order {idx}")
+        p0 = self.getItem(0, 0)
+        for plot in self.ci.items: # TODO: condense this in a common setup method
+            plot.setDownsampling(mode="subsample", auto=False, ds=1)
+            plot.setClipToView(False)
+            plot.enableAutoRange("x", False)
+            plot.enableAutoRange("y", True)
+            plot.setYRange(0, 2)
+            plot.setXRange(0, bufsize)
+            plot.showAxis("top")
+            plot.showAxis("right")
+            if plot is not p0:
+                plot.setXLink(p0)
+
+        self.set_downsampling(1)
+        self.connect_signals()
+
+    def prepare_plots(self, names):
+        for item in self.ci.items: # TODO: this loop can be refactored into a base class
+            item.clear()
+            item.addLegend()
+
+        self.x_idx = names.index(Signals.tap_x)
+        self.y_idx = names.index(Signals.tap_y)
+        self.columns = {
+            n: names.index(n) for n in names if n in signals.all_detector_signals
+        } # mapping for input data indices.
+        self.input_indices = list(self.columns.values())
+        self.buf =  CircularArrayBuffer(
+            max_size=self.bufsize,
+            vars=list(product(self.orders, self.columns))
+        )
+        self.curves = {}
+        for order, n in self.buf.vars:
+            item = self.getItem(order, 0)
+            pen = item.plot(pen=self.cmap[n], name=f"S_{order}")
+            self.curves[order, n] = pen
+
+    def compute_components(self, data, names):
+        phi = np.arctan2(data[-self.win_len:, self.y_idx],
+                         data[-self.win_len:, self.x_idx])
+        data = data.take(self.input_indices, axis=1)
+        # data has shape (N_pts, N_sig)
+        # phi has shape (N_pts,)
+        # orders has shape (N_orders,)
+        # final size should be (N_orders, N_sig)
+        demod = np.mean(
+            data[:,None,:] * np.exp(
+                -1j * self.orders[None,:,None] * phi[:,None,None]
+            ),
+            axis = 0, # for optimization this should be -1.
+        )
+        assert demod.shape == (len(self.orders), len(self.input_indices))
+        self.buf.put(np.abs(demod).reshape(1,-1))
+
+    def plot(self, data, names):
+        self.compute_components(data, names)
+        y = self.buf.get(self.buf.size)
+        vars = self.buf.vars
+        x = np.arange(y.shape)
+        for i, v in enumerate(vars):
+            self.curves[v].setData(x, y[:,i])
 
 
 class DataWindow(QTabWidget):
