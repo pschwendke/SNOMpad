@@ -96,6 +96,7 @@ class AcquisitionController(QObject):
         self.daq.start()
         self.display_timer.start()
         self.read_timer.start()
+        self.display_cntrl.fps_updt_timer.start()
 
     def stop(self):
         logger.debug("Stopping update")
@@ -103,6 +104,7 @@ class AcquisitionController(QObject):
         self.read_timer.stop()
         self.display_timer.stop()
         self.display_timer.timeout.emit()  # fire once more, to be sure.
+        self.display_cntrl.fps_updt_timer.stop()
 
     def read_next(self):
         n = self.daq.reader.read()

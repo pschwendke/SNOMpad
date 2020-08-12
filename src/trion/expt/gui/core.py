@@ -4,7 +4,7 @@
 import logging
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QStatusBar, QMessageBox
+from PySide2.QtWidgets import QStatusBar, QMessageBox, QLabel
 from nidaqmx.system import System
 
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
@@ -60,6 +60,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # connect actions
 
         # finalize connections
+        self.display_cntrl.update_fps.connect(self.statusBar().update_fps)
 
         # build layout
         self.setCentralWidget(self.data_view)
@@ -95,6 +96,11 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 class TrionsStatusBar(QStatusBar):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
+        self.fps_indicator = QLabel("fps: -")
+        self.addPermanentWidget(self.fps_indicator)
 
     def showLog(self, msg):
         self.showMessage(msg, 2E3)
+
+    def update_fps(self, value):
+        self.fps_indicator.setText(f"fps: {value:.02f}")

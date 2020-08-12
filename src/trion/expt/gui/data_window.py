@@ -1,11 +1,14 @@
 from abc import ABC
+from collections import deque
 from itertools import repeat, cycle, product
 
 import logging
+from time import time
+
 import numpy as np
 import pyqtgraph as pg
 from enum import IntEnum, auto
-from PySide2.QtCore import QSize, QObject, QStateMachine, QState, Signal
+from PySide2.QtCore import QSize, QObject, QStateMachine, QState, Signal, QTimer
 from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, QVBoxLayout, \
     QGridLayout, QTabWidget
 from bidict import bidict
@@ -399,7 +402,9 @@ class DisplayController(QObject):
     """
     Handles connection between the display windows and the other elements.
     """
+    # TODO: move display timer here, include an "on_start" and "on_stop" slot
     view_changed = Signal()
+    update_fps = Signal(float)
     def __init__(self, *a, data_window: DataWindow=None,
                  view_panel: ViewPanel = None,
                  acquisition_controller = None,
@@ -414,6 +419,9 @@ class DisplayController(QObject):
         self.view_changed.connect(self.onViewChanged)
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
         self.data_view.currentChanged.connect(self.view_panel.onTabIndexChanged)
+        self._frame_log = deque([], 10)  # record of recent frames, to compute average framerate.
+        self.fps_updt_timer = QTimer()
+        self.fps_updt_timer.setInterval(500)
 
         for cntrl, view in [
             (self.view_panel.raw_cntrl, self.data_view.raw_view),
@@ -426,6 +434,8 @@ class DisplayController(QObject):
                 self.update_ui
             )
         self.update_ui()
+
+        self.fps_updt_timer.timeout.connect(self.on_update_fps)
 
     def onTabIndexChanged(self, idx):
         logger.debug("Tab changed to "+str(idx))
@@ -451,6 +461,7 @@ class DisplayController(QObject):
     def plot(self, *a, **kw):
         self.plot_cache = (a, kw)
         self.currentView.plot(*a, **kw)
+        self._frame_log.append(time())
 
     def update_ui(self):
         """Update UI elements to sync their values"""
@@ -463,3 +474,13 @@ class DisplayController(QObject):
             cntrl.downsampling.setValue(
                 view.get_downsampling()
             )
+
+    def fps(self):
+        """Estimate current fps from the last 10 frames."""
+        if len(self._frame_log) < 2:
+            return None
+        else:
+            return len(self._frame_log)/(self._frame_log[-1] - self._frame_log[0])
+
+    def on_update_fps(self):
+        self.update_fps.emit(self.fps())
