@@ -72,9 +72,11 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
     def shutdown(self):
         # stop acquisition
+        self.acq_cntrl.stop()
         # stop threads
         # wait threads
         # close objects
+        self.daq.close()
         logger.debug("Main window shutdown complete.")
 
     def closeEvent(self, event):
