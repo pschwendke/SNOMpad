@@ -304,7 +304,8 @@ class FourierView(BaseView):
 
         # Try a sparkline mode where each each order has its' plot, rescaled individually
         for idx in self.orders:
-            self.addPlot(row=idx, col=0, name=f"Order {idx}")
+            self.addPlot(row=idx, col=0, name=f"order {idx}")
+
         p0 = self.getItem(0, 0)
         for plot in self.ci.items: # TODO: condense this in a common setup method
             plot.setDownsampling(mode="subsample", auto=False, ds=1)
@@ -315,19 +316,22 @@ class FourierView(BaseView):
             #plot.showAxis("bottom", False)
             plot.hideAxis("bottom")
             plot.showAxis("right")
+            for ax in ["left", "right"]:
+                plot.getAxis(ax).setWidth(60)
             if plot is not p0:
                 plot.setXLink(p0)
         self.getItem(0,0).showAxis("top")
         self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
-        self.ci.setContentsMargins()
+        self.ci.setContentsMargins(0, 10, 0, 10)
         self.set_downsampling(1)
-        self.ci.setBorder((50, 50, 100))
+        #self.ci.setBorder((50, 50, 100))
         self.connect_signals()
 
     def prepare_plots(self, names):
-        for item in self.ci.items: # TODO: this loop can be refactored into a base class
+        for i, item in enumerate(self.ci.items): # TODO: this loop can be refactored into a base class
             item.clear()
-            item.addLegend()
+            if i == 0:
+                item.addLegend()
 
         self.x_idx = names.index(Signals.tap_x)
         self.y_idx = names.index(Signals.tap_y)
@@ -335,14 +339,14 @@ class FourierView(BaseView):
             n: names.index(n) for n in names if n in signals.all_detector_signals
         } # mapping for input data indices.
         self.input_indices = list(self.columns.values())
-        self.buf =  CircularArrayBuffer(
+        self.buf = CircularArrayBuffer(
             max_size=self.bufsize,
             vars=list(product(self.orders, self.columns))
         )
         self.curves = {}
         for order, n in self.buf.vars:
             item = self.getItem(order, 0)
-            pen = item.plot(pen=self.cmap[n], name=f"S_{order}")
+            pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[order, n] = pen
 
     def compute_components(self, data, names):
@@ -359,7 +363,7 @@ class FourierView(BaseView):
             ),
             axis = 0, # for optimization this should be -1.
         )
-        assert demod.shape == (len(self.orders), len(self.input_indices))
+        #assert demod.shape == (len(self.orders), len(self.input_indices))
         self.buf.put(np.abs(demod).reshape(1,-1))
 
     def plot(self, data, names):
