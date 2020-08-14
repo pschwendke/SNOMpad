@@ -21,7 +21,9 @@ from ...analysis.signals import signal_colormap, Signals
 
 logger = logging.getLogger(__name__)
 
-class DisplayMode(IntEnum): # TODO: remove
+# TODO: move all of these objects to their own thread.
+
+class DisplayMode(IntEnum):
     raw = 0 # values indidcate the order in the stackwidget
     phase = 1
     fourier = 2
@@ -109,6 +111,15 @@ class ViewPanel(QDockWidget):
 
 class BaseView(pg.GraphicsLayoutWidget):
     downsampling_cntrl_updated = Signal()
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.cmap = signal_colormap()
+
+
+    def clear_plots(self):
+        """Clear the contents of all plots"""
+        for i, item in enumerate(self.ci.items):
+            item.clear()
 
     def connect_signals(self):
         for plot in self.ci.items:
@@ -149,8 +160,8 @@ class RawView(BaseView):
     The displayed data has multiple Axes:
     - optical signals
     - tapping modulation
-    - TODO: reference modulation
-    - TODO: chopping
+    - (future) reference modulation
+    - (future) chopping
     """
     plot_indices = {
         Signals.sig_A: 0,
@@ -166,8 +177,6 @@ class RawView(BaseView):
         p0 = self.addPlot(row=0, col=0, name="Optical")
         self.addPlot(row=1, col=0, name="Tapping")
 
-        self.cmap = signal_colormap() # TODO: move to base class
-
         self.curves = {}
         for plot in self.ci.items:
             #plot.setDownsampling(mode="subsample", auto=True)
@@ -177,6 +186,7 @@ class RawView(BaseView):
             plot.setXRange(0, 200_000)
             plot.showAxis("top")
             plot.showAxis("right")
+            plot.addLegend(offset=(2,2))
             if plot is not p0:
                 plot.setXLink(p0)
 
@@ -186,9 +196,7 @@ class RawView(BaseView):
     def prepare_plots(self, names):
         """Prepares windows and pens for the different curves"""
         logger.debug("Raw plot names:" + repr(names))
-        for item in self.ci.items:
-            item.clear()
-            item.addLegend()
+        self.clear_plots()
 
         for n in names:
             idx = self.plot_indices[n]
@@ -231,28 +239,26 @@ class PhaseView(BaseView):
         super().__init__(*a, **kw)
         # start with a single window
         self.addPlot(row=0, col=0, name="tap phase")
-        self.cmap = signal_colormap()
 
         # index of columns for data processing
         self.x_idx = None
         self.y_idx = None
         self.columns = {}
-        self.curves = {} # merge with above?
+        self.curves = {}
 
         for plot in self.ci.items:
-            plot.setDownsampling(mode="subsample", auto=False, ds=20)
+            plot.setDownsampling(mode="subsample", auto=False, ds=100)
             plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
             plot.setYRange(-2, 2)
             plot.setXRange(-np.pi, np.pi)
+            plot.addLegend(offset=(2,2))
             plot.showAxis("top")
             plot.showAxis("right")
 
     def prepare_plots(self, names):
         """Prepares windows and pens for the different curves"""
-        for item in self.ci.items:
-            item.clear()
-            item.addLegend()
+        self.clear_plots()
 
         self.x_idx = names.index(Signals.tap_x)
         self.y_idx = names.index(Signals.tap_y)
@@ -291,7 +297,7 @@ class FourierView(BaseView):
     `win_len` data points. The last `bufsize` values are kept for display in
     a rotating buffer.
     """
-    def __init__(self, *a, bufsize=250, win_len=50_000, max_order=4, **kw):
+    def __init__(self, *a, bufsize=250, win_len=20_000, max_order=4, **kw):
         super().__init__(*a, **kw)
         # this guy has an internal buffer to track history
         self.buf = None
@@ -301,9 +307,8 @@ class FourierView(BaseView):
         self.columns = {}  # signal name to index mapping
         self.input_indices = []  # indices of the signals in the input data
         self.win_len = win_len
-        self.orders = np.arange(max_order + 1) # can't change yet...
+        self.orders = np.arange(max_order + 1)
         self.curves = {}
-        self.cmap = signal_colormap()
 
         # Try a sparkline mode where each each order has its' plot, rescaled individually
         for idx in self.orders:
@@ -324,6 +329,7 @@ class FourierView(BaseView):
             if plot is not p0:
                 plot.setXLink(p0)
         self.getItem(0,0).showAxis("top")
+        self.getItem(0,0).addLegend(offset=(2,2))
         self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
         self.ci.setContentsMargins(0, 10, 0, 10)
         self.set_downsampling(1)
@@ -331,10 +337,7 @@ class FourierView(BaseView):
         self.connect_signals()
 
     def prepare_plots(self, names):
-        for i, item in enumerate(self.ci.items): # TODO: this loop can be refactored into a base class
-            item.clear()
-            if i == 0:
-                item.addLegend()
+        self.clear_plots()
 
         self.x_idx = names.index(Signals.tap_x)
         self.y_idx = names.index(Signals.tap_y)

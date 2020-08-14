@@ -89,7 +89,6 @@ class DaqPanel(QDockWidget):
         grid.append([
             "Sample clock", self.sample_clock
         ])
-        # TODO: check if we can get the limits of the validators by inspection
         # sample rate
         self.sample_rate = FloatEdit(200_000, bottom=0, top=1E6, parent=self)
         grid.append([
@@ -130,21 +129,7 @@ class DaqPanel(QDockWidget):
         btn_layout.addWidget(self.go_btn)
 
         # Connect stuff
-        # THIS IS A LOT OF BOILERPLATE...
-        # I should probably make typed QEdits...
-        # The "right thing" is a metaclass.... or a class factory?
-        # or traits...
-        # TODO: move connections to controller.
-        # self.dev_name.activated.connect(
-        #     lambda: self.acq_ctrl.set_device(self.dev_name.currentText())
-        # )
-        # self.sample_clock.editingFinished.connect(
-        #     lambda: self.acq_ctrl.set_clock_channel(self.sample_clock.text())
-        # )
-        # self.sample_rate.valueEdited.connect(self.acq_ctrl.set_sample_rate)
-        # self.sig_range.valueEdited.connect(self.acq_ctrl.set_sig_range)
-        # self.phase_range.valueEdited.connect(self.acq_ctrl.set_phase_range)
-        # self.refresh_btn.clicked.connect(self.refresh)
+
 
     def on_go_btn(self):
         """

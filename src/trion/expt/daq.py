@@ -212,8 +212,6 @@ class DaqController:
         `channel_map` attribute, which you probably shouldn't change...
         """
         # TODO: will need to be redone when adding chopping
-        # TODO: currently we're tearing down and setting up all the time.
-        # We need to find a way to verify if the current required task is ok.
         logger.debug("Now in: DaqController.setup")
         # generate tasks
         if "analog" not in self.tasks:
@@ -267,7 +265,7 @@ class DaqController:
         for t in self.tasks.values():
             logger.debug(f"Starting task: {t.name}")
             t.start()
-        # TODO: fire a START TRIGGER event
+        # TODO: fire a START TRIGGER event when multiple tasks are involved.
         return self
 
     def is_done(self) -> bool:
