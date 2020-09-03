@@ -13,4 +13,5 @@ dependencies:
   - pyqtgraph
   - attrs
   - bidict
+  - toml
 prefix: C:\Users\samue\Anaconda3\envs\trion_dev
