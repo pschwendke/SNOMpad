@@ -7,23 +7,19 @@ from abc import abstractmethod
 from traitlets import HasTraits
 from PySide2.QtCore import QObject, Signal
 
-
-
 # How do we structure this?
 # The instance will be a subclass of the HasQtlet object. We will interact with
 # it. The instance will be used for `register_widget`, `sync_widgets`, `movetothread`
 #
 # The instance will have a the qtlets in a mapping similar to the traits.
 #
-# Mixins with Qt is painful, but that's a lot of Qtlets... I guess that's fine
-#
+
 
 class Qtlets(QObject):
     """Adapter between `traitlets` notification and Qt Signals and Slots"""
     # define custom signal per type?
     data_changed = Signal(object)  # fallback
-    # maybe we need another metaclass ... Due to Qt's constraints, we can't
-    # do otherwise...
+    # maybe we need another metaclass ... Due to Qt's constraints..
     def __init__(self, inst, attr, *a, **kw):
         super().__init__(*a, **kw)
         self.widgets = []
@@ -71,6 +67,28 @@ class Qtlets(QObject):
 class IntQtlet(Qtlets):
     data_changed = Signal(int)
 
+class FloatQtlet(Qtlets):
+    data_changed = Signal(float)
 
-class HasQtlet(HasTraits):  # or MetaHasTraits?
-    raise NotImplementedError
+
+#this may be premature. we need to test the qtlets first.
+class HasQtlet(HasTraits):
+    def __init__(self, *a, **kw):
+        super().__ini__(*a, **kw)
+        # I think defining this here will be ok. We'll create the qtlets later
+        self._qtlets = {}
+
+    def link_widget(self, widget, attr_name: str):
+        """Link widget to attr"""
+        # make sure qlet exists
+        # link qtlet to widget.
+        raise NotImplementedError
+
+    def unlink_widget(self, widget, attr_name: str):
+        # unlink qtlet from widget
+        # if qtlet doesn't have any widgets left, remove it.
+        raise NotImplementedError
+    # what more do we want? Creating qtlets. Linking them
+
+    def create_qtlet(self, attr_name: str):
+        raise NotImplementedError
