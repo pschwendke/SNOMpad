@@ -4,7 +4,7 @@
 # We don't need to change the keys ever, so we'll use instances.
 
 from abc import abstractmethod
-from traitlets import HasTraits
+from traitlets import HasTraits, TraitError
 from PySide2.QtCore import QObject, Signal
 
 # How do we structure this?
@@ -35,7 +35,11 @@ class Qtlets(QObject):
 
     @value.setter
     def value(self, value):
-        setattr(self.inst, self.attr, value)
+        try:
+            setattr(self.inst, self.attr, value)
+        except TraitError:  # validation failed
+            self.sync_widgets() # resync the widget to current value
+            raise
 
     def on_widget_edited(self, value):  # this is a slot
         """

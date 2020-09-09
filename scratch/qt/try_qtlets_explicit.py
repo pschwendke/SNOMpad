@@ -10,7 +10,7 @@ from trion.expt.gui.qtlets import Qtlets, IntQtlet
 
 
 class Data(HasTraits):
-    value = Integer(default_value=1)
+    value = Integer(default_value=1, min=0, max=10)
 
 
 class Form(QWidget):
@@ -20,7 +20,7 @@ class Form(QWidget):
         self.edit = IntEdit("...")
 
         self.otheredit = IntEdit("???")
-        self.otheredit.setEnabled(False)
+        #self.otheredit.setEnabled(False)
         self.button = QPushButton("Roll!")
 
         layout = QVBoxLayout()
@@ -47,9 +47,6 @@ class Form(QWidget):
         # we need a signal for the Qtlet in the other direction.
         # the we can just link the widget signals to the qtlet signal.
 
-        # will this work?
-
-
         # we could do:
         #
         # some access attribute magic, such as:
@@ -62,7 +59,7 @@ class Form(QWidget):
         # some signal connection, such as:
         #    self.data.qtlets["value"].data_changed.emit(randint(0,10))
         # or signals(self.data, "value").emit(randint(0,10))
-        # or
+        # or... descriptor __set__ that emits a signal ?!
 
 def update_cb(change):
     print(f"{change.old} -> {change.new}")
