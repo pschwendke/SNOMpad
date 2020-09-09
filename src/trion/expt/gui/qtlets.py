@@ -25,7 +25,7 @@ class Qtlets(QObject):
         self.widgets = []
         self.inst = inst # or use this to set attribute of the attribute proxy descriptor?
         self.attr = attr
-        inst.observe(self.notify_widgets, names=attr)
+        inst.observe(self.notify_widgets, names=attr) # link qtlet to traitlet
 
     # we're building a proxy to act as a descriptor... can we grab the attribute
     # directly?
@@ -59,9 +59,9 @@ class Qtlets(QObject):
         """Link a widget to the trait."""
         # todo: use a function and dispatch to get the two methods (widget.valueEdited, widget.setValue)
         widget.valueEdited.connect(self.on_widget_edited)
-        self.value_updated.connect(widget.setValue)
+        self.data_changed.connect(widget.setValue)
         self.widgets.append(widget)
-        self.value_updated.emit(self.value)
+        self.data_changed.emit(self.value)
 
 
 class IntQtlet(Qtlets):
