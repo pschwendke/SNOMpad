@@ -1,4 +1,5 @@
-# explicitely create a qtlet, and assign it.
+#
+
 import sys
 from random import randint
 
@@ -6,12 +7,10 @@ from PySide2.QtWidgets import QWidget, QPushButton, QVBoxLayout, QApplication
 from traitlets import HasTraits, Integer
 
 from trion.expt.gui.utils import IntEdit
-from trion.expt.gui.qtlets import Qtlet, IntQtlet
+from trion.expt.gui.qtlets import Qtlet, IntQtlet, HasQtlets
 
-
-class Data(HasTraits):
+class Data(HasQtlets):
     value = Integer(default_value=1, min=0, max=10)
-
 
 class Form(QWidget):
     def __init__(self, parent=None, data=None):
@@ -29,6 +28,9 @@ class Form(QWidget):
         layout.addWidget(self.button)
         self.setLayout(layout)
 
+        data.link_widget(self.edit, "value")
+        data.link_widget(self.otheredit, "value")
+
         # set the initial value, streamline this at initial connection
 
         self.button.clicked.connect(self.on_btn_click)
@@ -36,46 +38,21 @@ class Form(QWidget):
 
     def on_btn_click(self):
         print("Roll!!")
-        # this is done in the widget thread.
-        # we want to do this in the qtlet thread.
+        # this is done in the calling thread.
+        # We're not exploiting Qt's queued events in this direction
         self.data.value = randint(0, 10)
 
-        # this works as we wish, the change is made from a signal received by
-        # the qtlet object.
-        # NOPE! this only propagate to the widgets, no to data.value.
-        #self.data.qtlet.data_changed.emit(randint(0, 10))
-        # we need a signal for the Qtlet in the other direction.
-        # the we can just link the widget signals to the qtlet signal.
-
-        # we could do:
-        #
-        # some access attribute magic, such as:
-        # note in this case we need to put the signal indirection in the magic
-        # attribute access... bad idea
-        #    self.data.qtlets["value"] = randint(0,10)
-        # or set_qtlet(self.data, "value", randint(0,10))
-        # or self.data.set_qtl(name, value)
-        #
-        # some signal connection, such as:
-        #    self.data.qtlets["value"].data_changed.emit(randint(0,10))
-        # or signals(self.data, "value").emit(randint(0,10))
-        # or... descriptor __set__ that emits a signal ?!
 
 def update_cb(change):
     print(f"{change.old} -> {change.new}")
+
 
 if __name__ == '__main__':
     # Create the Qt Application
     app = QApplication(sys.argv)
     d = Data(value=3)
     d.observe(update_cb, names="value")
-    qtl = IntQtlet(d, "value")
-    d.qtlet = qtl
     form = Form(data=d)
-    qtl.link_widget(form.edit)
-    qtl.link_widget(form.otheredit)
     form.show()
     # Run the main Qt loop
     sys.exit(app.exec_())
-
-
