@@ -1,1 +1,9 @@
 nidaqmx
+matplotlib
+tqdm
+PySide2
+pyqtgraph
+attrs
+bidict
+toml
+traitlets
