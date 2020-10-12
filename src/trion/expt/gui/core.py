@@ -7,11 +7,12 @@ from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QStatusBar, QMessageBox, QLabel
 from nidaqmx.system import System
 
+from qtlets.qtlets import HasQtlets
+
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
 from .log import QPopupLogDlg
 from .qdaq import DaqPanel, ExpPanel
-from .acq_ctrl import AcquisitionController
-from ..daq import DaqController
+from .acq_ctrl import AcquisitionController, DaqController
 
 logger = logging.getLogger(__name__)
 

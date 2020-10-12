@@ -7,12 +7,13 @@ Buffers: Manage the output buffer.
     provide view into buffer.
     The destination buffer may also be the entrance into an analysis pipeline...
 
-NOT TREADSAFE.
+NOT THREADSAFE.
 """
-from abc import ABCMeta, ABC, abstractmethod # There go my dreams of keeping this vanilla...
+from abc import ABC, abstractmethod # There go my dreams of keeping this vanilla...
 import logging
 import numpy as np
 logger = logging.getLogger(__name__)
+
 
 class AbstractBuffer(ABC):
     """Defines the API for Buffer objects.
@@ -44,6 +45,8 @@ class AbstractBuffer(ABC):
         Cleanup after acquisition finished.
         """
         pass
+
+    # TODO: implement a "save" method.
 
     # may not be an abstract method: potentially useless for h5py...
     # @abstractmethod 
@@ -78,7 +81,8 @@ class AbstractBuffer(ABC):
     def vars(self):
         """Get the vars names present in buffer (ie: columns)"""
         return self._vrs
-  
+
+
 class ArrayBuffer(AbstractBuffer):
     def __init__(self, *, init_size, dtype=np.float, **kw):
         super().__init__(**kw)

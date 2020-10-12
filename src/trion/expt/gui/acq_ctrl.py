@@ -1,12 +1,19 @@
+import logging
 from PySide2.QtCore import QObject, QTimer
-
+from qtlets.qtlets import HasQtlets
 from trion.expt.buffer import CircularArrayBuffer
-from trion.expt.gui.qdaq import logger
+from ..daq import DaqController as OriginalDaqController
+
+logger = logging.getLogger(__name__)
+
+
+class DaqController(HasQtlets, OriginalDaqController):
+    pass
 
 
 class AcquisitionController(QObject):
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
-                 display_controller=None,
+                 display_controller: DaqController=None,
                  display_dt=0.02, read_dt=0.01,
                  **kw):
         """
@@ -40,17 +47,17 @@ class AcquisitionController(QObject):
         self.read_timer.timeout.connect(self.read_next)
         self.display_timer.timeout.connect(self.refresh_display)
 
-        self.refresh_controls()
+        #self.refresh_controls()
 
+        # TODO: have typed comboboxes
         self.daq_panel.dev_name.activated.connect(
             lambda: self.set_device(self.daq_panel.dev_name.currentText())
         )
-        self.daq_panel.sample_clock.editingFinished.connect(
-            lambda: self.set_clock_channel(self.daq_panel.sample_clock.text())
-        )
-        self.daq_panel.sample_rate.valueEdited.connect(self.set_sample_rate)
-        self.daq_panel.sig_range.valueEdited.connect(self.set_sig_range)
-        self.daq_panel.phase_range.valueEdited.connect(self.set_phase_range)
+        self.daq.link_widget(self.daq_panel.sample_clock, "clock_channel")
+        self.daq.link_widget(self.daq_panel.sample_rate, "sample_rate")
+        self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
+        self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
+
         self.daq_panel.refresh_btn.clicked.connect(self.refresh_controls)
 
         self.daq_panel.go_btn.toggled.connect(self.on_go)

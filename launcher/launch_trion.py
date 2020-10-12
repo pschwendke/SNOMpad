@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # Finalize Qt Log Handlers
     handlers = [l for l in logger.root.handlers if isinstance(l, QtLogHandler)]
     for h in handlers:
-        logger.info("Setting up logger")
+        logger.debug("Setting up logger: %s", h)
         h.setup(win)
 
     app.aboutToQuit.connect(win.shutdown)

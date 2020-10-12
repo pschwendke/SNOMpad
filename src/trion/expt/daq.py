@@ -174,8 +174,8 @@ class DaqController:
     dev: str = attr.ib(default="")
     clock_channel: str = attr.ib(kw_only=True, default="")
     sample_rate: float = attr.ib(kw_only=True, default=200_000)
-    sig_range: float = attr.ib(default=2, kw_only=True)
-    phase_range: float = attr.ib(default=1, kw_only=True)
+    sig_range: float = attr.ib(default=1.0, kw_only=True)
+    phase_range: float = attr.ib(default=1.0, kw_only=True)
     tasks: typing.Mapping[str, ni.Task] = attr.ib(factory=dict, kw_only=True)
     reader = attr.ib(init=False, default=None)
 

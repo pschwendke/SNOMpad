@@ -132,6 +132,7 @@ dmypy.json
 .vscode/settings.json
 
 # specific files
+launcher/log/
 scratch/test.tmp
 /scripts/trions.npy
 /scripts/out.npy
