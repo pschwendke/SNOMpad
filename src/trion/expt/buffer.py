@@ -5,13 +5,15 @@ Buffers: Manage the output buffer.
     its current index to enable reading by other classes without involving the
     reader. Must handle two read modes: manually put data and 
     provide view into buffer.
-    The destination buffer may also be the entrance into an analysis pipeline...
+    The destination buffer could also be the entrance into an analysis pipeline...
 
 NOT THREADSAFE.
 """
-from abc import ABC, abstractmethod # There go my dreams of keeping this vanilla...
+from abc import ABC, abstractmethod
 import logging
 import numpy as np
+import os.path as pth
+from ..analysis.io import export_data
 logger = logging.getLogger(__name__)
 
 
@@ -64,14 +66,14 @@ class AbstractBuffer(ABC):
     #     pass
 
     @abstractmethod 
-    def put(self, data) -> 'AbstractBuffer': # maybe we should overload __setitem__?
+    def put(self, data) -> 'AbstractBuffer':
         """
         Put data into buffer. Handles expansion if necessary
         """
         pass
 
     @abstractmethod
-    def get(self, len: int): # maybe we should overload __getitem__?
+    def get(self, len: int):
         """
         Get last values from buffer.
         """
@@ -81,6 +83,22 @@ class AbstractBuffer(ABC):
     def vars(self):
         """Get the vars names present in buffer (ie: columns)"""
         return self._vrs
+
+    def export(self, filename, len: int=None):
+        """
+        Export buffer contents to file.
+
+        Parameters
+        ----------
+        filename: str or path-like
+            Output file name
+        len: int or None (default)
+            Number of points to export, counting from end. If len is None
+            (default), exports the entire buffer.
+        """
+        self.finish()
+        len = self.size if (len is None) else len
+        export_data(filename, self.get(len), self.vars)
 
 
 class ArrayBuffer(AbstractBuffer):
