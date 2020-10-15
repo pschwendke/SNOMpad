@@ -3,15 +3,5 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python
-  - numpy
-  - matplotlib
-  - nidaqmx
-  - tqdm
-  - attrs
-  - PySide2
-  - pyqtgraph
-  - attrs
-  - bidict
-  - toml
+  - -r requirements.txt
 prefix: C:\Users\samue\Anaconda3\envs\trion_dev
