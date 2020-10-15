@@ -13,17 +13,18 @@ from nidaqmx.constants import (
     Edge, TriggerType, AcquisitionType, LineGrouping, Level, TaskMode, ProductCategory)
 from nidaqmx.utils import flatten_channel_string
 from nidaqmx.tests.helpers import generate_random_seed
-import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-logging.basicConfig(format="%(levelname)-7s | %(relativeCreated)6d - %(message)s", level=logging.DEBUG)
+logging.basicConfig(format="%(levelname)-7s | %(relativeCreated)6d - %(message)s", level=logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 dev = "Dev1"
 
 number_of_samples = int(1E3)
 sample_rate = 1E6
-freqs = np.arange(0, 1E6+1, 1E4)
+freqs = np.arange(0, 5E5+1, 1E2)
 amp = 0.5
+offset = 0.5
 t = np.arange(0, number_of_samples)/sample_rate
 
 data_out = []
@@ -57,15 +58,15 @@ with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
         sample_rate, source=sample_clk_terminal,
         active_edge=Edge.RISING, samps_per_chan=number_of_samples)
     
-    for target_freq in  freqs: # 10 kHz
+    for target_freq in tqdm(freqs, desc="In progress"):
         
-        y = amp*np.sin(t*2*np.pi*target_freq)
+        y = amp*np.sin(t*2*np.pi*target_freq)+offset
         payload = np.repeat(y.reshape((1, -1)), 2, axis=0)
         assert numpy.asanyarray(payload).shape == (2, number_of_samples)
 
         write_task.write(payload)
 
-        logging.info(f"Measuring f={target_freq:5.02e}.")
+        logging.info(f"Measuring f={target_freq:5.02e}")
         read_task.start()
         write_task.start()
         sample_clk_task.start()
@@ -86,6 +87,6 @@ with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
 
 data_out = np.array(data_out)
 assert data_out.shape == (freqs.size, 2, number_of_samples)
-outname = "trfunc_raw_ref.npz"
+outname = "trfunc_fine_ofst.npz"
 logging.info(f"Saving to: {outname}")
 np.savez_compressed(outname, freqs = freqs, t=t, data=data_out)
