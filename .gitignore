@@ -133,6 +133,7 @@ dmypy.json
 
 # specific files
 scratch/test.tmp
+/launcher/log/*
 /scripts/trions.npy
 /scripts/out.npy
 /scripts/my_data.npy
