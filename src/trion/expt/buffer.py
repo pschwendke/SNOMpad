@@ -11,6 +11,8 @@ NOT THREADSAFE.
 """
 from abc import ABC, abstractmethod
 import logging
+from math import ceil
+
 import numpy as np
 import os.path as pth
 from ..analysis.io import export_data
@@ -73,7 +75,7 @@ class AbstractBuffer(ABC):
         pass
 
     @abstractmethod
-    def get(self, len: int, offset: int=0): # TODO: change all usage!
+    def get(self, len: int, offset: int=0):
         """
         Get valid values from buffer.
 
@@ -98,15 +100,13 @@ class AbstractBuffer(ABC):
         """
         Get `len` last values from buffer.
         """
-        # TODO: add to test suite
-        offset = max(0, self.i-len)
+        offset = self.i-len
         return self.get(len, offset)
 
     def head(self, len):
         """
         Get `len` values from start of buffer.
         """
-        # TODO: add to test suite
         return self.get(len)
 
     @property
@@ -198,6 +198,15 @@ class CircularArrayBuffer(ArrayBuffer):
         return min(self.n_written, self.buf_size)
 
     def put(self, data):
+        if data.shape[0] <= self.buf_size:
+            self._put_single(data)
+        else:
+            nchunks = ceil(data.shape[0]/self.buf_size)
+            for chunk in np.array_split(data, nchunks, axis=0):
+                self._put_single(chunk)
+        return self
+
+    def _put_single(self, data):
         n = np.asarray(data).shape[0]
         j = self.i+n
         if j <= self.buf_size:
@@ -211,13 +220,12 @@ class CircularArrayBuffer(ArrayBuffer):
 
         self._nwritten += n
         self.i = j % self.buf_size
-        return self
 
     def get(self, len: int, offset=0):
         # truncate to show only valid values
         len = min(len, self.size)
         # rotate to bring oldest value to the start of array.
-        return np.roll(self.buf, self.size-self.i, axis=0)[offset:offset+len,:]
+        return np.roll(self.buf, self.size-self.i-offset, axis=0)[:len,:]
 
     def close(self):
         return self
@@ -260,9 +268,12 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return avail
 
     def get(self, len, offset=0):
-        # returns by view
-        r0 = self.i # there I fixed it...
-        return self.buf[r0-len:r0,:]
+        return self.buf[offset:offset+len,:]
+    #
+    # def tail(self, len):
+    #     # returns by view
+    #     r0 = self.i # there I fixed it...
+    #     return self.buf[r0-len:r0,:]
 
     def finish(self):
         self.truncate()

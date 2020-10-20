@@ -13,49 +13,9 @@ def gen_test_data(npts, nsigs):
 buf_cfs = (
     [23, 3, 10],
     [50, 5, 10],
-    #[1_000, 20, 100],
-    #[1_000, 1, 100],
+    [1_000, 20, 100],
+    [1_000, 1, 100], # chunks will be bigger than size.
 )
-cases = [
-    [e]+b for e, b in product(exp_configs, buf_cfs)
-]
-@pytest.mark.parametrize(
-    "exp, npts, nchunks, bufsize",
-    cases
-)
-def test_circ_buffer(exp, npts, nchunks, bufsize):
-    sigs = exp.signals()
-    buf = CircularArrayBuffer(size=bufsize, vars=sigs)
-    data = gen_test_data(npts, len(sigs))
-    #nchunks = data.shape[0] // nchunks
-    for chunk in np.array_split(data, nchunks, axis=0):
-        buf.put(chunk)
-    ret = buf.get(bufsize)
-    assert ret.shape == (bufsize, len(sigs))
-    assert np.allclose(ret, data[-bufsize:,:])
-
-
-@pytest.mark.parametrize(
-    "exp, npts, nchunks, bufsize",
-    cases,
-)
-def test_extending_buffer(exp, npts, nchunks, bufsize):
-    sigs = exp.signals()
-    buf = ExtendingArrayBuffer(vars=sigs, size=bufsize)
-    data = gen_test_data(npts, len(sigs))
-    for chunk in np.array_split(data, nchunks, axis=0):
-        buf.put(chunk)
-    assert buf.size >= npts  # extented appropriately
-    assert np.allclose(data, buf.buf[:npts, :])  # data is correct
-    buf.truncate()
-    assert buf.size == npts # truncation works
-    assert buf.i == buf.size
-    # check tail is ok
-    tail_len = 10
-    tail = buf.tail(tail_len)
-    assert tail.shape[0] == tail_len
-    assert np.allclose(data[-tail_len:,:], tail)
-    assert np.allclose(data, buf.get(buf.size))
 
 
 cases = list(product(
@@ -66,23 +26,6 @@ cases = list(product(
     exp_configs,
     n_samples,
 ))
-
-@pytest.mark.parametrize(
-    "cls, exp, npts",
-    cases,
-)
-def test_buffers(cls, exp, npts):
-    # for all types. Use this to formalize the common behavior.
-    sigs = exp.signals()
-    buf = cls(vars=sigs, size=npts)
-    data = gen_test_data(npts, len(sigs))
-    buf.put(data)
-    assert buf.buf.shape[0] >= npts
-    assert buf.size == npts
-    assert np.allclose(buf.get(len=buf.size), data)
-    # assert buf.size == n_samples
-    # assert bug.get(len).shape[0] <= len  # will be smaller in case
-    # test there are no nans.
 
 @pytest.mark.parametrize(
     "cls, exp, npts",
@@ -100,6 +43,33 @@ def test_buffer_get(cls, exp, npts):
     assert ret.shape[1] == len(sigs)
     assert np.all(~np.isnan(ret))
     assert np.allclose(data, ret)
+    # get correct length
+    n = npts//3
+    ret = buf.get(n)
+    assert ret.shape[0] == n
+    assert np.allclose(data[:n], ret)
+    ofst = n
+    ret = buf.get(n, ofst)
+    assert ret.shape[0] == n
+    assert np.allclose(data[ofst:n+ofst], ret)
+
+
+@pytest.mark.parametrize(
+    "cls, exp, npts",
+    cases,
+)
+def test_buffers(cls, exp, npts):
+    # for all types. Use this to formalize the common behavior.
+    sigs = exp.signals()
+    buf = cls(vars=sigs, size=npts)
+    data = gen_test_data(npts, len(sigs))
+    buf.put(data)
+    buf.finish()
+    assert buf.size == npts
+    assert np.allclose(buf.get(len=buf.size), data)
+    n = buf.size//3
+    assert np.allclose(buf.head(n), data[:n,:])
+    assert np.allclose(buf.tail(n), data[-n:, :])
 
 
 @pytest.mark.parametrize(
@@ -119,3 +89,49 @@ def test_export(tmp_path, buffer_type, exp, n_samples):
     loaded_cols = loaded.columns
     assert np.allclose(loaded_data, data)
     assert all(loaded_cols == sigs)
+
+
+cases_chunked = [
+    [e]+b for e, b in product(
+        exp_configs,
+        buf_cfs,
+    )
+]
+
+@pytest.mark.parametrize(
+    "exp, npts, nchunks, bufsize",
+    cases_chunked,
+)
+def test_circ_buffer(exp, npts, nchunks, bufsize):
+    sigs = exp.signals()
+    buf = CircularArrayBuffer(size=bufsize, vars=sigs)
+    data = gen_test_data(npts, len(sigs))
+    #nchunks = data.shape[0] // nchunks
+    for chunk in np.array_split(data, nchunks, axis=0):
+        buf.put(chunk)
+    ret = buf.get(bufsize)
+    assert ret.shape == (bufsize, len(sigs))
+    assert np.allclose(ret, data[-bufsize:,:])
+
+@pytest.mark.parametrize(
+    "exp, npts, nchunks, bufsize",
+    cases_chunked,
+)
+def test_extending_buffer(exp, npts, nchunks, bufsize):
+    sigs = exp.signals()
+    buf = ExtendingArrayBuffer(vars=sigs, size=bufsize)
+    data = gen_test_data(npts, len(sigs))
+    for chunk in np.array_split(data, nchunks, axis=0):
+        buf.put(chunk)
+    assert buf.size >= npts  # extented appropriately
+    assert np.allclose(data, buf.buf[:npts, :])  # data is correct
+    buf.truncate()
+    assert buf.size == npts  # truncation works
+    assert buf.i == buf.size
+    # check tail is ok
+    tail_len = 10
+    tail = buf.tail(tail_len)
+    assert tail.shape[0] == tail_len
+    assert np.allclose(data[-tail_len:, :], tail)
+    assert np.allclose(data, buf.get(buf.size))
+

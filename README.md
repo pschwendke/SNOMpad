@@ -20,5 +20,6 @@ Required changes:
 - ~~Add ability to save buffer to file.~~
 - Make better test suite for buffers.
 - Make go, stop, save etc as actions. Good point for performing improvements.
+- Add self-calibrate, action.
 - Design and implement HDF5 buffer.
 - Integrate control of SNOM.
