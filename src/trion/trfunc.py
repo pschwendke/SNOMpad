@@ -41,7 +41,7 @@ parser.add_argument("-v", "--verbose", action="store_true", help="Logging at DEB
 parser.add_argument("--noprogress", action="store_false", dest="pbar", help="Don't use a progress bar.")
 parser.add_argument("--skip", action="store_true", help="Skip measurement")
 parser.add_argument("--print_toml", action="store_true", help="print config in TOML")
-parser.add_argument("config", help="Configuration file")
+parser.add_argument("-c", "--cfg", help="Configuration file", default=None)
 parser.add_argument("filename", help="Output file name")
 
 args = parser.parse_args()
@@ -66,9 +66,11 @@ defaults = {
     "offset": 0,
 }
 
-with open(args.config) as f:
-    cfg_file = toml.load(f)
-
+if args.cfg:
+    with open(args.cfg) as f:
+        cfg_file = toml.load(f)
+else:
+    cfg_file = {}
 
 cfg = {**defaults, **cfg_file}
 
@@ -85,8 +87,8 @@ t = np.arange(0, n_samples)/cfg["sample_rate"]
 assert freqs[-1] == cfg["f_max"]
 
 pbar = tqdm.tqdm(
+    freqs,
     desc="Acquisition in progress...",
-    total=len(freqs),
     disable=not args.pbar,
 )
 

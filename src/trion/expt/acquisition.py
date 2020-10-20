@@ -92,9 +92,12 @@ def transfer_func_acq(
 
         # prepare write task
         logger.debug("Setting up output task.")
-        write_task.ao_channels.add_ao_voltage_chan(
-            [device+"/"+c for c in write_channels], max_val=5, min_val=-5,
-        )
+        ao_channel_names = [device+"/"+c for c in write_channels]
+        logger.debug("Write channel names: "+repr(ao_channel_names))
+        for c in ao_channel_names:
+            write_task.ao_channels.add_ao_voltage_chan(
+                c, max_val=5, min_val=-5,
+            )
         write_task.timing.cfg_samp_clk_timing(
             sample_rate, source=sample_clk_terminal,
             active_edge=Edge.RISING,
@@ -102,9 +105,12 @@ def transfer_func_acq(
 
         # prepare read task
         logger.debug("Setting up input task.")
-        read_task.ai_channels.add_ai_voltage_chan(
-            [device+"/"+c for c in read_channels], max_val=5, min_val=-5,
-        )
+        ai_channel_names = [device+"/"+c for c in read_channels]
+        logger.debug("Read channel names: "+repr(ao_channel_names))
+        for c in ai_channel_names:
+            read_task.ai_channels.add_ai_voltage_chan(
+                c, max_val=5, min_val=-5,
+            )
         read_task.timing.cfg_samp_clk_timing(
             sample_rate, source=sample_clk_terminal,
             active_edge=Edge.RISING, samps_per_chan=n_samples)
@@ -121,7 +127,7 @@ def transfer_func_acq(
             assert payload.shape == (write_task.number_of_channels, n_samples + tail_len)
 
             write_task.write(payload)
-            logger.info(f"Measuring f={target_freq:5.02e}")
+            logger.debug(f"Measuring f={target_freq:5.02e}")
 
             read_task.start()
             write_task.start()
@@ -138,6 +144,6 @@ def transfer_func_acq(
 
     logger.info("Done...")
     measured = np.array(measured)
-    assert measured.shape == (freqs.size, read_task.number_of_channels, n_samples)
+    assert measured.shape == (freqs.size, len(read_channels), n_samples)
     return measured
 
