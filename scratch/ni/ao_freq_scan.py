@@ -19,13 +19,16 @@ logging.basicConfig(format="%(levelname)-7s | %(relativeCreated)6d - %(message)s
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 dev = "Dev1"
+outname = "trfunc_wide_sine.npz"
 
 number_of_samples = int(1E3)
 sample_rate = 1E6
-freqs = np.arange(0, 5E5+1, 1E2)
+freqs = np.arange(0, 5E5+1, 1E3)
 amp = 0.5
-offset = 0.5
+offset = 0
 t = np.arange(0, number_of_samples)/sample_rate
+
+tail_len = 500
 
 data_out = []
 
@@ -36,7 +39,7 @@ with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
     sample_clk_task.co_channels.add_co_pulse_chan_freq(
         f'{dev}/ctr0', freq=sample_rate)
     sample_clk_task.timing.cfg_implicit_timing(
-        samps_per_chan=number_of_samples)
+        samps_per_chan=number_of_samples+tail_len)
     sample_clk_task.control(TaskMode.TASK_COMMIT)
     sample_clk_terminal = f"/{dev}/Ctr0InternalOutput"
 
@@ -47,24 +50,28 @@ with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
     )
     write_task.timing.cfg_samp_clk_timing(
         sample_rate, source=sample_clk_terminal,
-        active_edge=Edge.RISING, samps_per_chan=number_of_samples)
+        active_edge=Edge.RISING, samps_per_chan=number_of_samples+tail_len)
     
     # prepare read task
     logging.debug("Setting up input task.")
     read_task.ai_channels.add_ai_voltage_chan(
-        f"{dev}/ai0:1", max_val=1, min_val=-1,
+        f"{dev}/ai0:1", max_val=5, min_val=-5,
     )
     read_task.timing.cfg_samp_clk_timing(
         sample_rate, source=sample_clk_terminal,
         active_edge=Edge.RISING, samps_per_chan=number_of_samples)
+
+    tail = np.ones((2, tail_len))*offset
     
-    for target_freq in tqdm(freqs, desc="In progress"):
+    for target_freq in tqdm(freqs, desc="Measuring..."):
         
         y = amp*np.sin(t*2*np.pi*target_freq)+offset
         payload = np.repeat(y.reshape((1, -1)), 2, axis=0)
-        assert numpy.asanyarray(payload).shape == (2, number_of_samples)
+        payload = np.hstack((payload, tail))
+        assert numpy.asanyarray(payload).shape == (2, number_of_samples+tail_len)
 
         write_task.write(payload)
+
 
         logging.info(f"Measuring f={target_freq:5.02e}")
         read_task.start()
@@ -87,6 +94,6 @@ with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
 
 data_out = np.array(data_out)
 assert data_out.shape == (freqs.size, 2, number_of_samples)
-outname = "trfunc_fine_ofst.npz"
+
 logging.info(f"Saving to: {outname}")
 np.savez_compressed(outname, freqs = freqs, t=t, data=data_out)

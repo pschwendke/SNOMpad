@@ -141,3 +141,5 @@ scratch/test.tmp
 /scripts/data2.npy
 /scripts/data1.npy
 /scripts/compare.ipynb
+scratch/ni/*.npz
+
