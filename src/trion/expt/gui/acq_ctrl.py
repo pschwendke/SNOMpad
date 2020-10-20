@@ -92,7 +92,7 @@ class AcquisitionController(QObject):
         signals = exp.signals()
         # get buffer size
         buf_size = self.daq_panel.buffer_size.value()
-        self.buffer = CircularArrayBuffer(vars=signals, max_size=buf_size)
+        self.buffer = CircularArrayBuffer(vars=signals, size=buf_size)
         for k, v in kw.items():
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
@@ -144,7 +144,7 @@ class AcquisitionController(QObject):
     def refresh_display(self):
         "pass the data from the buffer to the display controller."
         names = self.buffer.vars
-        y = self.buffer.get(self.buffer.size)
+        y = self.buffer.tail(self.buffer.size)
         self.display_cntrl.plot(y, names)
 
     def prepare_display(self):

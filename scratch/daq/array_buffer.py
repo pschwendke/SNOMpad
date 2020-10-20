@@ -19,7 +19,7 @@ variables = ["sig_A", "tap_x", "tap_y"]
 
 ctrl = DaqController("DevT", clock_channel="")
 
-buffer = CircularArrayBuffer(vars=variables, max_size=n_tot)
+buffer = CircularArrayBuffer(vars=variables, size=n_tot)
 ctrl.setup(buffer=buffer)
 
 ctrl.start()

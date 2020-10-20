@@ -128,7 +128,7 @@ class AbstractBuffer(ABC):
         """
         self.finish()
         len = self.size if (len is None) else len
-        export_data(filename, self.get(len), self.vars)
+        export_data(filename, self.tail(len), self.vars)
 
 
 class ArrayBuffer(AbstractBuffer):
@@ -231,8 +231,10 @@ class ExtendingArrayBuffer(ArrayBuffer):
         """
         An array that extends as required.
         """
+        defaults = dict(size=20_000)
+        kw = {**defaults, **kw}
         super().__init__(**kw)
-        self.chunk_size = kw.get("size", 20_000)
+        self.chunk_size = kw["size"]
         self.max_size = max_size
 
     @property

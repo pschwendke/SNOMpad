@@ -7,7 +7,7 @@ signals = ["sig_A", "tap_x", "tap_y"]
 n_samples = 100_000
 
 ctrl = DaqController("DevT", clock_channel="")
-buffer = ExtendingArrayBuffer(vars=signals, max_size=n_samples)
+buffer = ExtendingArrayBuffer(vars=signals, size=20_000, max_size=n_samples)
 n_read = 0
 ctrl.setup(buffer=buffer).start()
 try:

@@ -346,7 +346,7 @@ class FourierView(BaseView):
         } # mapping for input data indices.
         self.input_indices = list(self.columns.values())
         self.buf = CircularArrayBuffer(
-            max_size=self.bufsize,
+            size=self.bufsize,
             vars=list(product(self.orders, self.columns))
         )
         self.curves = {}
@@ -374,7 +374,7 @@ class FourierView(BaseView):
 
     def plot(self, data, names):
         self.compute_components(data, names)
-        y = self.buf.get(self.bufsize)
+        y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
         x = np.arange(y.shape[0])
         m = np.isfinite(y[:,0])
