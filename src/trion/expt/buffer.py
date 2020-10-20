@@ -114,6 +114,15 @@ class ArrayBuffer(AbstractBuffer):
 class CircularArrayBuffer(ArrayBuffer):
     """
     A simple circular buffer using a numpy array.
+
+    Parameters
+    ----------
+    var : iterable of Signals
+        Signals contained in the buffer (ie: columns)
+    max_size : int
+        Size of the circular buffer.
+    dtype : type
+        dtype of the buffer. Defaults to np.float.
     """
     def __init__(self, *, max_size, **kw):
         super().__init__(**{"init_size" : max_size, **kw})
@@ -174,7 +183,7 @@ class ExtendingArrayBuffer(ArrayBuffer):
 
     def get(self, len):
         # returns by view
-        r0 = self.i-1
+        r0 = self.i # there I fixed it...
         return self.buf[r0-len:r0,:]
 
     def finish(self):

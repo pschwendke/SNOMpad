@@ -7,9 +7,13 @@ from itertools import product, chain
 from common import exp_configs, n_samples
 
 
+def gen_test_data(npts, nsigs):
+    return np.arange(1, npts+1)[:,np.newaxis] * 10.0**np.arange(0, nsigs)[np.newaxis,:]
+
 buf_cfs = (
     [23, 3, 10],
     [50, 5, 10],
+    [1_000, 20, 100]
 )
 cases = [
     [e]+b for e, b in product(exp_configs, buf_cfs)
@@ -21,7 +25,7 @@ cases = [
 def test_circ_buffer(exp, npts, nchunks, bufsize):
     sigs = exp.signals()
     buf = CircularArrayBuffer(max_size=bufsize, vars=sigs)
-    data = np.arange(1, npts+1)[:,np.newaxis] * 10.0**np.arange(0, len(sigs))[np.newaxis,:]
+    data = gen_test_data(npts, len(sigs))
     #nchunks = data.shape[0] // nchunks
     for chunk in np.array_split(data, nchunks, axis=0):
         buf.put(chunk)
@@ -31,11 +35,29 @@ def test_circ_buffer(exp, npts, nchunks, bufsize):
     assert np.allclose(ret, data[-5:,:])
 
 
-
 # TODO: there's something wrong with the ExtendingArrayBuffer, likely an off-by-one
-@pytest.mark.xfail
-def test_extending_buffer():
-    raise NotImplementedError
+@pytest.mark.parametrize(
+    "exp, npts, nchunks, bufsize",
+    cases,
+)
+def test_extending_buffer(exp, npts, nchunks, bufsize):
+    sigs = exp.signals()
+    buf = ExtendingArrayBuffer(vars=sigs, chunk_size=bufsize)
+    data = gen_test_data(npts, len(sigs))
+    for chunk in np.array_split(data, nchunks, axis=0):
+        buf.put(chunk)
+    assert buf.size >= npts  # extented appropriately
+    assert np.allclose(data, buf.buf[:npts, :])  # data is correct
+    buf.truncate()
+    assert buf.size == npts # truncation works
+    assert buf.i == buf.size
+    # check tail is ok
+    tail_len = 10
+    tail = buf.get(tail_len)
+    assert tail.shape[0] == tail_len
+    assert np.allclose(data[-tail_len:,:], tail)
+    assert np.allclose(data, buf.get(buf.size))
+
 
 @pytest.mark.xfail
 def test_buffers():
