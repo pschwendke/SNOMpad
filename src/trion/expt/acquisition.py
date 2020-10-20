@@ -79,6 +79,7 @@ def transfer_func_acq(
     t = np.arange(0, n_samples)/sample_rate
     tail_len = int(5E-4*sample_rate) # 500 us of tail
     measured = []
+
     with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
             nidaqmx.Task("clock") as sample_clk_task:
         # prepare sample clock
@@ -119,7 +120,10 @@ def transfer_func_acq(
         if pbar is None:
             pbar = tqdm(freqs, disable=True)
         for target_freq in pbar:
-            y = amp * np.sin(t * 2 * np.pi * target_freq) + offset
+            if target_freq == 0:
+                y = np.ones_like(t)*amp #+offset
+            else:
+                y = amp * np.sin(t * 2 * np.pi * target_freq) + offset
             payload = np.repeat(y.reshape((1, -1)),
                                 write_task.number_of_channels,
                                 axis=0)
