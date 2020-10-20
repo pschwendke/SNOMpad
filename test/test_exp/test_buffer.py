@@ -13,7 +13,8 @@ def gen_test_data(npts, nsigs):
 buf_cfs = (
     [23, 3, 10],
     [50, 5, 10],
-    [1_000, 20, 100]
+    #[1_000, 20, 100],
+    #[1_000, 1, 100],
 )
 cases = [
     [e]+b for e, b in product(exp_configs, buf_cfs)
@@ -24,25 +25,23 @@ cases = [
 )
 def test_circ_buffer(exp, npts, nchunks, bufsize):
     sigs = exp.signals()
-    buf = CircularArrayBuffer(max_size=bufsize, vars=sigs)
+    buf = CircularArrayBuffer(size=bufsize, vars=sigs)
     data = gen_test_data(npts, len(sigs))
     #nchunks = data.shape[0] // nchunks
     for chunk in np.array_split(data, nchunks, axis=0):
         buf.put(chunk)
-    n = 5
-    ret = buf.get(n)
-    assert ret.shape == (n, len(sigs))
-    assert np.allclose(ret, data[-5:,:])
+    ret = buf.get(bufsize)
+    assert ret.shape == (bufsize, len(sigs))
+    assert np.allclose(ret, data[-bufsize:,:])
 
 
-# TODO: there's something wrong with the ExtendingArrayBuffer, likely an off-by-one
 @pytest.mark.parametrize(
     "exp, npts, nchunks, bufsize",
     cases,
 )
 def test_extending_buffer(exp, npts, nchunks, bufsize):
     sigs = exp.signals()
-    buf = ExtendingArrayBuffer(vars=sigs, chunk_size=bufsize)
+    buf = ExtendingArrayBuffer(vars=sigs, size=bufsize)
     data = gen_test_data(npts, len(sigs))
     for chunk in np.array_split(data, nchunks, axis=0):
         buf.put(chunk)
@@ -53,27 +52,55 @@ def test_extending_buffer(exp, npts, nchunks, bufsize):
     assert buf.i == buf.size
     # check tail is ok
     tail_len = 10
-    tail = buf.get(tail_len)
+    tail = buf.tail(tail_len)
     assert tail.shape[0] == tail_len
     assert np.allclose(data[-tail_len:,:], tail)
     assert np.allclose(data, buf.get(buf.size))
 
 
-@pytest.mark.xfail
-def test_buffers():
-    # for all types. Use this to formalize the common behavior.
-    # assert np.allclose(buf.get(len=buf.size), data)
-    # assert buf.size == n_samples
-    raise NotImplementedError
-
 cases = list(product(
     [
         CircularArrayBuffer,
-        #ExtendingArrayBuffer,
+        ExtendingArrayBuffer,
     ],
     exp_configs,
     n_samples,
 ))
+
+@pytest.mark.parametrize(
+    "cls, exp, npts",
+    cases,
+)
+def test_buffers(cls, exp, npts):
+    # for all types. Use this to formalize the common behavior.
+    sigs = exp.signals()
+    buf = cls(vars=sigs, size=npts)
+    data = gen_test_data(npts, len(sigs))
+    buf.put(data)
+    assert buf.buf.shape[0] >= npts
+    assert buf.size == npts
+    assert np.allclose(buf.get(len=buf.size), data)
+    # assert buf.size == n_samples
+    # assert bug.get(len).shape[0] <= len  # will be smaller in case
+    # test there are no nans.
+
+@pytest.mark.parametrize(
+    "cls, exp, npts",
+    cases,
+)
+def test_buffer_get(cls, exp, npts):
+    sigs = exp.signals()
+    buf = cls(vars=sigs, size=npts+10)
+    data = gen_test_data(npts, len(sigs))
+    buf.put(data)
+    # check getting all gets the complete valid buffer
+    assert np.any(np.isnan(buf.buf))
+    ret = buf.get(npts)
+    assert ret.shape[0] <= npts
+    assert ret.shape[1] == len(sigs)
+    assert np.all(~np.isnan(ret))
+    assert np.allclose(data, ret)
+
 
 @pytest.mark.parametrize(
     "buffer_type, exp, n_samples",
@@ -81,7 +108,7 @@ cases = list(product(
 )
 def test_export(tmp_path, buffer_type, exp, n_samples):
     sigs = exp.signals()
-    buf = buffer_type(max_size=n_samples, vars=sigs)
+    buf = buffer_type(size=n_samples, vars=sigs)
     data = np.arange(0.0, n_samples*len(sigs)).reshape((n_samples, len(sigs)))
     buf.put(data)
     pth = tmp_path / "test.csv"

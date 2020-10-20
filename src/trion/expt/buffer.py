@@ -18,27 +18,38 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractBuffer(ABC):
-    """Defines the API for Buffer objects.
-    """
     def __init__(self, *, vars):
+        """
+        Defines the API for Buffer objects.
+
+        Parameters
+        ----------
+        vars : iterable of Signals
+
+
+        Attributes
+        ----------
+        i : int
+            Index of next value to be written
+        size : int, read-only
+            Current size of buffer.
+        """
         self.i = 0
         self._vrs = vars
 
     @property
     @abstractmethod
     def size(self):
-        """Current buffer size"""
+        """
+        Current buffer size.
+        """
         pass
-
-
-    # those are only for file-based...
-    # @abstractmethod
-    # def open(self, name, mode: str): # not sure about the arguments
-    #     """Open a buffer."""
-    #     pass
 
     @abstractmethod
     def close(self) -> 'AbstractBuffer':
+        """
+        Close the buffer.
+        """
         pass
 
     @abstractmethod
@@ -48,36 +59,55 @@ class AbstractBuffer(ABC):
         """
         pass
 
-    # TODO: implement a "save" method.
-
-    # may not be an abstract method: potentially useless for h5py...
-    # @abstractmethod 
-    # def writing_view(self, len): # I don't like the names of these...
-    #     """
-    #     Provide a view into underlying buffer, for direct writing.
-    #     """
-    #     pass
-
-    # @abstractmethod 
-    # def reading_view(self, len): # I don't like the names of these...
-    #     """
-    #     Provide a view into underlying buffer for direct reading.
-    #     """
-    #     pass
 
     @abstractmethod 
     def put(self, data) -> 'AbstractBuffer':
         """
-        Put data into buffer. Handles expansion if necessary
+        Put data into buffer. Handles expansion if necessary.
+
+        Parameters
+        ----------
+        data : array_like of shape (N,M)
+            Data to be added. N points with M variables.
         """
         pass
 
     @abstractmethod
-    def get(self, len: int):
+    def get(self, len: int, offset: int=0): # TODO: change all usage!
         """
-        Get last values from buffer.
+        Get valid values from buffer.
+
+        This method does not return values that may be present in the buffer
+        but were not written (ie: allocated space).
+
+        Parameters
+        ----------
+        len : int
+            Number of points to return.
+        offset : int
+            Start position
+
+        Returns
+        -------
+        data : np.ndarray of shape (N,M)
+            Data points of up to `len` points and `M` columns.
         """
         pass
+
+    def tail(self, len):
+        """
+        Get `len` last values from buffer.
+        """
+        # TODO: add to test suite
+        offset = max(0, self.i-len)
+        return self.get(len, offset)
+
+    def head(self, len):
+        """
+        Get `len` values from start of buffer.
+        """
+        # TODO: add to test suite
+        return self.get(len)
 
     @property
     def vars(self):
@@ -102,50 +132,92 @@ class AbstractBuffer(ABC):
 
 
 class ArrayBuffer(AbstractBuffer):
-    def __init__(self, *, init_size, dtype=np.float, **kw):
+    def __init__(self, *, size, dtype=np.float, **kw):
+        """
+        Base class for buffers based on numpy arrays.
+
+        Parameters
+        ----------
+        size : int
+            Initial size of the underlying buffer
+        dtype : type
+            dtype for the underlying buffer
+
+        Attributes
+        ----------
+        buf : np.ndarray
+            Underlying data buffer. Depending on the exact concrete class, this
+            buffer may contain invalid data.
+        buf_size : int, read-only
+            Size of the underlying buffer (number of points).
+        """
         super().__init__(**kw)
-        self.buf = np.full((init_size, len(self.vars)), np.nan, dtype=dtype)
+        self.buf = np.full((size, len(self.vars)), np.nan, dtype=dtype)
 
     @property
-    def size(self):
+    def buf_size(self):
         return self.buf.shape[0]
 
 
 class CircularArrayBuffer(ArrayBuffer):
-    """
-    A simple circular buffer using a numpy array.
+    def __init__(self, *a, **kw):
+        """
+        A simple circular buffer using a numpy array.
 
-    Parameters
-    ----------
-    var : iterable of Signals
-        Signals contained in the buffer (ie: columns)
-    max_size : int
-        Size of the circular buffer.
-    dtype : type
-        dtype of the buffer. Defaults to np.float.
-    """
-    def __init__(self, *, max_size, **kw):
-        super().__init__(**{"init_size" : max_size, **kw})
+        Parameters
+        ----------
+        vars : iterable of Signals
+            Signals contained in the buffer (ie: columns)
+        size : int
+            Size of the circular buffer.
+        dtype : type
+            dtype of the buffer. Defaults to np.float.
+
+        Attributes
+        ----------
+        i : int
+            Index of next value to be written
+        size : int, read-only
+            Current size of buffer. This is the number of valid data points
+        buf : (N, M) np.ndarray
+            Underlying buffer with a total capacity of N points for M columns.
+        buf_size : int, read-only
+            Size of the underlying buffer (number of points).
+        n_written : int, read-only
+            Total number of points written.
+        """
+        super().__init__(**kw)
+        self._nwritten = 0
+
+    @property
+    def n_written(self):
+        return self._nwritten
+
+    @property
+    def size(self):
+        return min(self.n_written, self.buf_size)
 
     def put(self, data):
         n = np.asarray(data).shape[0]
         j = self.i+n
-        if j <= self.size:
+        if j <= self.buf_size:
             self.buf[self.i:j,:] = data[:,:]
         else: # rotate
             # lengths of first and second segments (`pre` and `post`)
-            pre_len = self.size - self.i
-            post_len = j - self.size
+            pre_len = self.buf_size - self.i
+            post_len = j - self.buf_size
             self.buf[self.i:, :] = data[:pre_len, :]
             self.buf[:post_len, :] = data[pre_len:, :]
 
-        self.i = (self.i + n) % self.size
+        self._nwritten += n
+        self.i = j % self.buf_size
         return self
 
-    def get(self, len):
-        r0 = self.i
+    def get(self, len: int, offset=0):
+        # truncate to show only valid values
+        len = min(len, self.size)
         # rotate to bring oldest value to the start of array.
-        return np.roll(self.buf, -r0, axis=0)[-len:,:]
+        return np.roll(self.buf, self.size-self.i, axis=0)[offset:offset+len,:]
 
     def close(self):
         return self
@@ -155,18 +227,22 @@ class CircularArrayBuffer(ArrayBuffer):
 
 
 class ExtendingArrayBuffer(ArrayBuffer):
-    """
-    An array that extends as required.
-    """
-    def __init__(self, *, chunk_size=20_000, max_size=2_000_000, **kw):
-        super().__init__(**{"init_size" : chunk_size, **kw})
-        self.chunk_size = chunk_size
+    def __init__(self, *, max_size=2_000_000, **kw):
+        """
+        An array that extends as required.
+        """
+        super().__init__(**kw)
+        self.chunk_size = kw.get("size", 20_000)
         self.max_size = max_size
+
+    @property
+    def size(self):
+        return self.i
     
     def put(self, data):
         n = np.asarray(data).shape[0]
         j = self.i+n
-        if j > self.size:
+        if j > self.buf_size:
             self.expand().put(data)
         else:
             self.buf[self.i:j,:] = data[:,:]
@@ -181,7 +257,7 @@ class ExtendingArrayBuffer(ArrayBuffer):
         self.i += avail
         return avail
 
-    def get(self, len):
+    def get(self, len, offset=0):
         # returns by view
         r0 = self.i # there I fixed it...
         return self.buf[r0-len:r0,:]
