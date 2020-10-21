@@ -2,9 +2,14 @@
 # core elements for TRION GUI
 
 import logging
+from types import SimpleNamespace
+from os.path import expanduser
+import os.path as pth
+
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QStatusBar, QMessageBox, QLabel
+from PySide2.QtWidgets import QStatusBar, QMessageBox, QLabel, QAction, \
+    QToolBar, QFileDialog
 from nidaqmx.system import System
 
 from qtlets.qtlets import HasQtlets
@@ -18,49 +23,109 @@ logger = logging.getLogger(__name__)
 
 
 class TRIONMainWindow(QtWidgets.QMainWindow):
-    def __init__(self, *a, daq=None,  **kw):
+    def __init__(self, *a, daq=None, default_dir=None,
+                 **kw):
         super().__init__(*a, **kw)
-
-        # Setup UI elements
+        if default_dir is None:
+            default_dir = expanduser("~")
+        self.dir = default_dir
+        # Setup graphical elements
+        # ========================
+        # vizualization window
         self.data_view = DataWindow(parent=self)#, size=(1200, 800))
-
-        # setup control panels
         # Experimental control panel
         self.expt_panel = ExpPanel("Experiment", parent=self)
         # DAQ control panel
-
         self.daq_panel = DaqPanel("Acquisition", parent=self)
-
         # Display control panel
         self.view_panel = ViewPanel("Data display", parent=self)
 
-        # store references to Trion objects
+        # setup threads
+
+        # Create actions
+        # ==============
+        # Most actions get connected by the controllers.
+        self.act = SimpleNamespace()  # simple container to organize the actions
+
+        # Application
+        # -----------
+        self.act.exit = QAction("E&xit", self)
+        self.act.exit.setStatusTip("Close the application")
+
+        # DAQ
+        # ---
+        self.act.run_cont = QAction("Acquire continuous", self)
+        self.act.run_cont.setStatusTip("Acquire data continuously")
+        self.act.run_finite = QAction("Acquire finite", self)
+        self.act.run_finite.setStatusTip("Acquire a finite number of samples")
+        self.act.run_finite.setVisible(False)
+        self.act.stop = QAction("Stop", self)
+        self.act.stop.setStatusTip("Stop current acquisition")
+        self.act.self_cal = QAction("Self-calibrate", self)
+        self.act.self_cal.setStatusTip("Self calibrate DAQ")
+
+        # Data handling
+        # -------------
+        self.act.export = QAction("Export data", self)
+        self.act.export.setStatusTip("Export raw data to file")
+
+        # Create auxiliary window elements
+        # ================================
+        # create statusbar
+        self.setStatusBar(TrionsStatusBar())
+
+        # create menubar
+        app_menu = self.menuBar().addMenu("App")
+        app_menu.addAction(self.act.exit)
+
+        acq_menu = self.menuBar().addMenu("DAQ")
+        acq_menu.addAction(self.act.self_cal)
+        acq_menu.addSeparator()
+        acq_menu.addAction(self.act.run_finite)
+        acq_menu.addAction(self.act.run_cont)
+        acq_menu.addAction(self.act.stop)
+
+        data_menu = self.menuBar().addMenu("Data")
+        data_menu.addAction(self.act.export)
+
+        # create toolbar
+        self.toolbar = QToolBar("toolbar", self)
+        self.addToolBar(self.toolbar)
+        self.toolbar.setFloatable(False)
+        self.toolbar.setMovable(False)
+        self.toolbar.addAction(self.act.self_cal)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.act.run_finite)
+        self.toolbar.addAction(self.act.run_cont)
+        self.toolbar.addAction(self.act.stop)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.act.export)
+
+        # create log popup dialog
+        self.log_popup = QPopupLogDlg(self)
+
+
+        # Setup controllers
+        # =================
         self.daq = daq or DaqController(dev=System().devices.device_names[0])
+
         self.display_cntrl = DisplayController(
+            parent=self,
             data_window=self.data_view,
             view_panel=self.view_panel,
         )
         self.acq_cntrl = AcquisitionController(
+            parent=self,
             daq=self.daq,
             expt_panel=self.expt_panel,
             daq_panel=self.daq_panel,
             display_controller=self.display_cntrl
         )
 
-        # setup threads
-
-        # create actions
-        # create statusbar
-        self.setStatusBar(TrionsStatusBar())
-        # create menubar
-        # create toolbar
-
-        # create log popup dialog
-        self.log_popup = QPopupLogDlg(self)
-
-        # connect actions
 
         # finalize connections
+        self.act.exit.triggered.connect(self.close)
+        self.act.export.triggered.connect(self.on_export)
         self.display_cntrl.update_fps.connect(self.statusBar().update_fps)
 
         # build layout
@@ -71,6 +136,17 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("TRION Experimental controller")
         self.resize(800, 480)
+
+    def on_export(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            parent=self,
+            dir=pth.join(self.dir, "trions.csv"),
+            filter="csv (*.csv);;npz archive (*.npz);;any (*.*)"
+        )
+        logger.debug("export filename="+repr(filename))
+        if filename:
+            self.acq_cntrl.export.emit(filename)
+
 
     def shutdown(self):
         # stop acquisition
