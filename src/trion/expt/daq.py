@@ -277,7 +277,13 @@ class DaqController:
             t.stop()
             # self.tasks.remove(t)
         logger.debug(f"Task list is now: {self.tasks}")
-        self.reader.stop() # or before?
+        try:
+            self.reader.stop() # or before?
+        except AttributeError:
+            if self.reader is None:
+                pass
+            else:
+                raise
         # undo the actions of `self.start`
         # signal end of read to reader (he can then delegate to buffer
         # if necessary)""
@@ -295,7 +301,8 @@ class DaqController:
 
     def self_calibrate(self) -> 'DaqController':
         # TODO: handle the other related information, such as last calibration temperature
-        self_cal(self._name)
+        self_cal(self.dev)
+        return self
 
     def monitor_cb(self, task, event, n_samples, cb_data):
         raise NotImplementedError()

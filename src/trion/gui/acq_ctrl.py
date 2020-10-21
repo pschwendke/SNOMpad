@@ -1,5 +1,8 @@
 import logging
-from PySide2.QtCore import QObject, QTimer
+from types import SimpleNamespace
+
+from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
+from PySide2.QtWidgets import QFileDialog
 from qtlets.qtlets import HasQtlets
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController as OriginalDaqController
@@ -12,6 +15,7 @@ class DaqController(HasQtlets, OriginalDaqController):
 
 
 class AcquisitionController(QObject):
+    export = Signal(str)
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
                  display_controller: DaqController=None,
                  display_dt=0.02, read_dt=0.01,
@@ -39,6 +43,46 @@ class AcquisitionController(QObject):
         self.display_cntrl = display_controller
         self.daq = daq
         self.buffer = None
+        self.act = self.parent().act
+
+        # setup state machine
+        self.statemachine = QStateMachine()
+        self.states = SimpleNamespace()
+        self.states.idle = QState()
+        self.states.running = QState()
+
+        # state behavior
+        self.states.idle.entered.connect(self.stop)
+        self.states.running.entered.connect(self.start)
+
+        # state properties
+        for obj, attr, status_on_idle in [
+            (self.daq_panel.go_btn, "checked", False),
+            (self.act.run_cont, "enabled", True),
+            (self.act.stop, "enabled", False),
+            (self.act.self_cal, "enabled", True),
+            (self.act.export, "enabled", True),
+        ]:
+            self.states.idle.assignProperty(obj, attr, status_on_idle)
+            self.states.running.assignProperty(obj, attr, not status_on_idle)
+
+        # state transitions
+        for sig in [
+            self.daq_panel.go_btn.clicked,
+            self.act.run_cont.triggered,
+        ]:
+            self.states.idle.addTransition(sig, self.states.running)
+        for sig in [
+            self.daq_panel.go_btn.clicked,
+            self.act.stop.triggered,
+        ]:
+            self.states.running.addTransition(sig, self.states.idle)
+
+        # finalize state machine
+        self.statemachine.addState(self.states.idle)
+        self.statemachine.addState(self.states.running)
+        self.statemachine.setInitialState(self.states.idle)
+
         self.display_timer = QTimer()
         self.display_timer.setInterval(display_dt * 1000)
         self.read_timer = QTimer()
@@ -47,7 +91,10 @@ class AcquisitionController(QObject):
         self.read_timer.timeout.connect(self.read_next)
         self.display_timer.timeout.connect(self.refresh_display)
 
-        #self.refresh_controls()
+        self.act.self_cal.triggered.connect(self.on_self_calibrate)
+        self.export.connect(self.on_export)
+
+        #self.act.run_cont.toggled.connect(self.toggle_acquisition)
 
         # TODO: have typed comboboxes
         self.daq_panel.dev_name.activated.connect(
@@ -60,14 +107,9 @@ class AcquisitionController(QObject):
 
         self.daq_panel.refresh_btn.clicked.connect(self.refresh_controls)
 
-        self.daq_panel.go_btn.toggled.connect(self.on_go)
+        #self.daq_panel.go_btn.clicked.connect(self.on_go_btn)
 
-    def on_go(self, go):
-        if go:
-            self.setup()
-            self.start()
-        else:
-            self.stop()
+        self.statemachine.start()
 
     def close(self):
         self.daq.close()
@@ -98,6 +140,7 @@ class AcquisitionController(QObject):
         self.daq.setup(buffer=self.buffer)
 
     def start(self):
+        self.setup()
         logger.debug("Starting update")
         self.prepare_display()
         self.daq.start()
@@ -143,9 +186,24 @@ class AcquisitionController(QObject):
 
     def refresh_display(self):
         "pass the data from the buffer to the display controller."
-        names = self.buffer.vars
-        y = self.buffer.tail(self.buffer.size)
-        self.display_cntrl.plot(y, names)
+        try:
+            names = self.buffer.vars
+        except AttributeError:
+            if self.buffer is not None:
+                raise
+            # otherwise we just don't have a buffer yet...
+        else:
+            y = self.buffer.tail(self.buffer.size)
+            self.display_cntrl.plot(y, names)
 
     def prepare_display(self):
         self.display_cntrl.prepare_plots(self.buffer.vars)
+
+    def on_self_calibrate(self):
+        self.daq.self_calibrate()
+
+    def on_export(self, filename):
+        if self.buffer is None:
+            raise RuntimeError("Cannot export empty buffer.")
+        self.buffer.export(filename)
+
