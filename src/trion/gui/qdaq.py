@@ -10,9 +10,9 @@ from PySide2.QtCore import Qt
 
 from qtlets.widgets import StrEdit, FloatEdit, IntEdit
 
-from ..daq import  System
+from trion.expt.daq import  System
 from .acq_ctrl import DaqController
-from ...analysis.signals import Scan, Acquisition, Detector, Experiment
+from trion.analysis.signals import Scan, Acquisition, Detector, Experiment
 from .utils import ToggleButton, add_grid, enum_to_combo
 
 logger = logging.getLogger(__name__)

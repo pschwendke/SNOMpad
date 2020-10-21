@@ -15,9 +15,9 @@ from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
 
 from .utils import enum_to_combo, IntEdit, add_grid, FloatEdit
-from ..buffer import CircularArrayBuffer
-from ...analysis import signals
-from ...analysis.signals import signal_colormap, Signals
+from trion.expt.buffer import CircularArrayBuffer
+from trion.analysis import signals
+from trion.analysis.signals import signal_colormap, Signals
 
 logger = logging.getLogger(__name__)
 

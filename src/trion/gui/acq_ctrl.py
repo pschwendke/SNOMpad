@@ -2,7 +2,7 @@ import logging
 from PySide2.QtCore import QObject, QTimer
 from qtlets.qtlets import HasQtlets
 from trion.expt.buffer import CircularArrayBuffer
-from ..daq import DaqController as OriginalDaqController
+from trion.expt.daq import DaqController as OriginalDaqController
 
 logger = logging.getLogger(__name__)
 

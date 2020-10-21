@@ -1,15 +1,13 @@
 # launch_trion.py: launch the trion experiment GUI
 
 import sys
-import os
 import os.path
-import logging
 import logging.config
-from PySide2 import QtGui, QtWidgets
+from PySide2 import QtWidgets
 import toml
 
-from trion.expt.gui.core import TRIONMainWindow
-from trion.expt.gui.log import QtLogHandler
+from trion.gui.core import TRIONMainWindow
+from trion.gui.log import QtLogHandler
 
 if not os.path.exists("./log/"):
     os.mkdir("log")

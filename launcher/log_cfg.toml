@@ -18,7 +18,7 @@ level = "INFO"
     datefmt = "%H:%M:%S"
 
     [formatters.brief]
-    "()" = "trion.expt.gui.log.BriefFormatter"
+    "()" = "trion.gui.log.BriefFormatter"
     format = "%(message)s"
 
 [handlers]
@@ -37,11 +37,11 @@ level = "INFO"
     encoding = "ascii"
 
     [handlers.statusbar]
-    class = "trion.expt.gui.log.StatusBarLogger"
+    class = "trion.gui.log.StatusBarLogger"
     level = "INFO"
     formatter = "brief"
 
     [handlers.popup]
-    class = "trion.expt.gui.log.PopupLogger"
+    class = "trion.gui.log.PopupLogger"
     level = "WARNING"
     formatter = "brief"
