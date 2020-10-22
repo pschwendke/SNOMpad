@@ -11,4 +11,4 @@ NOT THREADSAFE.
 """
 from .base import AbstractBuffer
 from .array import CircularArrayBuffer, ExtendingArrayBuffer
-
+from .h5 import H5Buffer

@@ -7,3 +7,4 @@ pyqtgraph
 attrs
 bidict
 toml
+h5py

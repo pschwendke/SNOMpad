@@ -7,6 +7,7 @@ from trion.expt.buffer import AbstractBuffer
 
 logger = logging.getLogger(__name__)
 
+
 class ArrayBuffer(AbstractBuffer):
     def __init__(self, *, size, dtype=np.float, **kw):
         """
@@ -62,7 +63,7 @@ class CircularArrayBuffer(ArrayBuffer):
         n_written : int, read-only
             Total number of points written.
         """
-        super().__init__(**kw)
+        super().__init__(*a, **kw)
         self._nwritten = 0
 
     @property
@@ -104,7 +105,7 @@ class CircularArrayBuffer(ArrayBuffer):
         return np.roll(self.buf, self.size-self.i-offset, axis=0)[:len,:]
 
     def close(self):
-        return self
+        pass
 
     def finish(self):
         return self
@@ -157,7 +158,6 @@ class ExtendingArrayBuffer(ArrayBuffer):
 
     def close(self):
         self.finish()
-        return self
 
     def truncate(self):
         logger.debug(f"Truncating buffer to: {self.i}")

@@ -7,6 +7,8 @@ import pytest
 def test_sortable():
     assert len(list(Signals)) == len(Signals.__members__) # make sure these are actually the members
     assert sorted(Signals) == list(Signals)
+    values = [s.value for s in Signals]
+    assert all(isinstance(v, str) for v in values)
 
 
 exp_configs = {

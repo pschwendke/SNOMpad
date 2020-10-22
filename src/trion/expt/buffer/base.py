@@ -4,7 +4,7 @@ from trion.analysis.io import export_data
 
 
 class AbstractBuffer(ABC):
-    def __init__(self, *, vars):
+    def __init__(self, *a, vars, **kw):
         """
         Defines the API for Buffer objects.
 
@@ -20,19 +20,25 @@ class AbstractBuffer(ABC):
         size : int, read-only
             Current size of buffer.
         """
+        super().__init__(*a, **kw)
         self.i = 0
         self._vrs = vars
 
     @property
     @abstractmethod
-    def size(self):
+    def size(self) -> int:
         """
         Current buffer size.
         """
         pass
 
+    @property
     @abstractmethod
-    def close(self) -> 'AbstractBuffer':
+    def buf_size(self) -> int:
+        pass
+
+    @abstractmethod
+    def close(self):
         """
         Close the buffer.
         """
