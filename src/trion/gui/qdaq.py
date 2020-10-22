@@ -138,12 +138,10 @@ class DaqPanel(QDockWidget):
         back_panel.layout().addLayout(btn_layout)
         # TODO: these all need to be made into actions!
         self.go_btn = ToggleButton("Start", alt_text="Stop") # TODO: connect
-        self.refresh_btn = QPushButton("Refresh") # TODO: remove this and put somewhere else
         self.save_btn = QPushButton("Save")
         self.save_btn.setEnabled(False)
         btn_layout.addStretch()
         btn_layout.addWidget(self.save_btn)
-        btn_layout.addWidget(self.refresh_btn)
         btn_layout.addWidget(self.go_btn)
 
         # Finalize

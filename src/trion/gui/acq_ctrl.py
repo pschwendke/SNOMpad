@@ -105,9 +105,6 @@ class AcquisitionController(QObject):
         self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
         self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
 
-        self.daq_panel.refresh_btn.clicked.connect(self.refresh_controls)
-
-        #self.daq_panel.go_btn.clicked.connect(self.on_go_btn)
 
         self.statemachine.start()
 
