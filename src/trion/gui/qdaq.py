@@ -2,17 +2,19 @@
 # GUI elements related to the DAQ
 
 import logging
+from enum import IntEnum
+
 from PySide2.QtWidgets import (
     QDockWidget, QGridLayout, QPushButton, QLineEdit, QWidget,
-    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox,
+    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QStackedWidget,
 )
 from PySide2.QtCore import Qt
 
 from qtlets.widgets import StrEdit, FloatEdit, IntEdit
 
-from trion.expt.daq import  System
-from .acq_ctrl import DaqController
+from trion.expt.daq import System
 from trion.analysis.signals import Scan, Acquisition, Detector, Experiment
+from .buffer import MemoryBufferPanel, H5BufferPanel
 from .utils import ToggleButton, add_grid, enum_to_combo
 
 logger = logging.getLogger(__name__)
@@ -64,9 +66,9 @@ class ExpPanel(QDockWidget):
         return self.widget().experiment()
 
 
+
 class DaqPanel(QDockWidget):
     def __init__(self, *args,
-                 daq: DaqController = None,
                  acq_ctrl=None,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -122,11 +124,27 @@ class DaqPanel(QDockWidget):
         grid = []
         # TODO: there bug when buffer size is too small. Should be fixed.
         grid.append(["Type", QComboBox()])
-        self.buffer_size = IntEdit(200_000, bottom=10_000, parent=self)
-        grid.append([
-            "Buffer size", self.buffer_size
-        ])
         add_grid(grid, buffer_group.layout())
+
+        self.memory_buffer = MemoryBufferPanel()
+        self.h5_buffer = H5BufferPanel()
+
+        self.buffer_stack = QStackedWidget()
+        for widget in [
+            self.memory_buffer,
+            self.h5_buffer,
+        ]:
+            self.buffer_stack.addWidget(widget)
+        buffer_group.layout().addWidget(
+            self.buffer_stack,
+            1,
+            0, 1, buffer_group.layout().columnCount()
+        )
+        self.buffer_stack.setCurrentIndex(1)
+
+        # we should probably have a "HasQtlets" to hold this field.
+        # Buffer config, we will call it...
+        self.buffer_size = self.memory_buffer.buffer_size
 
         for grp in [daq_group, buffer_group]:
             grp.layout().setRowStretch(grp.layout().rowCount(), 1)
