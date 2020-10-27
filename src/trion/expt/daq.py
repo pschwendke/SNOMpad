@@ -301,7 +301,8 @@ class DaqController:
 
     def self_calibrate(self) -> 'DaqController':
         # TODO: handle the other related information, such as last calibration temperature
-        self_cal(self.dev)
+        if not ni.system.Device(self.dev).dev_is_simulated:
+            self_cal(self.dev)
         return self
 
     def monitor_cb(self, task, event, n_samples, cb_data):

@@ -6,7 +6,7 @@ import logging.config
 from PySide2 import QtWidgets
 import toml
 
-from trion.gui.core import TRIONMainWindow
+from trion.gui.main import TRIONMainWindow
 from trion.gui.log import QtLogHandler
 
 if not os.path.exists("./log/"):

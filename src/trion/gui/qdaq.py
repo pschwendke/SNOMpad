@@ -2,17 +2,19 @@
 # GUI elements related to the DAQ
 
 import logging
+
 from PySide2.QtWidgets import (
     QDockWidget, QGridLayout, QPushButton, QLineEdit, QWidget,
-    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox,
+    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QStackedWidget,
 )
 from PySide2.QtCore import Qt
 
-from qtlets.widgets import StrEdit, FloatEdit, IntEdit
+from qtlets.widgets import StrEdit, FloatEdit, IntEdit, ValuedComboBox
 
-from trion.expt.daq import  System
-from .acq_ctrl import DaqController
+from trion.expt.daq import System
 from trion.analysis.signals import Scan, Acquisition, Detector, Experiment
+from trion.expt.buffer.factory import BackendType
+from .buffer import MemoryBufferPanel, H5BufferPanel
 from .utils import ToggleButton, add_grid, enum_to_combo
 
 logger = logging.getLogger(__name__)
@@ -66,13 +68,13 @@ class ExpPanel(QDockWidget):
 
 class DaqPanel(QDockWidget):
     def __init__(self, *args,
-                 daq: DaqController = None,
-                 acq_ctrl=None,
+                 acq_ctrl=None, buffer_cfg=None,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
-
         self.acq_ctrl = acq_ctrl
+        self.buffer_cfg = buffer_cfg
+
         back_panel = QWidget()
         self.setWidget(back_panel)
         back_panel.setLayout(QVBoxLayout())
@@ -93,7 +95,7 @@ class DaqPanel(QDockWidget):
             "Device", self.dev_name
         ])
         # clock channel
-        self.sample_clock = StrEdit("", parent=self) # TODO: use a dropdown
+        self.sample_clock = StrEdit("", parent=self)  # TODO: use a dropdown
         grid.append([
             "Sample clock", self.sample_clock
         ])
@@ -120,13 +122,33 @@ class DaqPanel(QDockWidget):
         # Populate buffer group
         buffer_group.setLayout(QGridLayout())
         grid = []
-        # TODO: there bug when buffer size is too small. Should be fixed.
-        grid.append(["Type", QComboBox()])
-        self.buffer_size = IntEdit(200_000, bottom=10_000, parent=self)
-        grid.append([
-            "Buffer size", self.buffer_size
-        ])
+        self.buffer_type_combo = ValuedComboBox()
+
+        grid.append(["Type", self.buffer_type_combo])
         add_grid(grid, buffer_group.layout())
+
+        self.memory_buffer = MemoryBufferPanel()
+        self.h5_buffer = H5BufferPanel()
+
+        self.buffer_stack = QStackedWidget()
+        for name, widget, backend in [
+            ("Memory", self.memory_buffer, BackendType.numpy),
+            ("H5 file", self.h5_buffer, BackendType.hdf5),
+        ]:
+            self.buffer_type_combo.addItem(name, backend)
+            self.buffer_stack.addWidget(widget)
+
+        buffer_group.layout().addWidget(
+            self.buffer_stack,
+            1,
+            0, 1, buffer_group.layout().columnCount()
+        )
+        self.buffer_stack.setCurrentIndex(0)
+
+        self.buffer_cfg.link_widget(self.buffer_type_combo, "backend")
+        self.buffer_cfg.link_widget(self.memory_buffer.buffer_size, "size")
+        self.buffer_cfg.link_widget(self.h5_buffer.buffer_size, "size")
+        self.buffer_cfg.link_widget(self.h5_buffer.filename, "fname")
 
         for grp in [daq_group, buffer_group]:
             grp.layout().setRowStretch(grp.layout().rowCount(), 1)
@@ -137,14 +159,14 @@ class DaqPanel(QDockWidget):
         btn_layout = QHBoxLayout()
         back_panel.layout().addLayout(btn_layout)
         # TODO: these all need to be made into actions!
-        self.go_btn = ToggleButton("Start", alt_text="Stop") # TODO: connect
-        self.refresh_btn = QPushButton("Refresh") # TODO: remove this and put somewhere else
+        self.go_btn = ToggleButton("Start", alt_text="Stop")
         self.save_btn = QPushButton("Save")
         self.save_btn.setEnabled(False)
         btn_layout.addStretch()
         btn_layout.addWidget(self.save_btn)
-        btn_layout.addWidget(self.refresh_btn)
         btn_layout.addWidget(self.go_btn)
+
+        self.buffer_type_combo.currentIndexChanged.connect(self.on_buffer_type_changed)
 
         # Finalize
         self.setAllowedAreas(Qt.LeftDockWidgetArea)
@@ -153,8 +175,5 @@ class DaqPanel(QDockWidget):
             QDockWidget.DockWidgetFloatable
         )
 
-
-
-
-
-
+    def on_buffer_type_changed(self, idx: int):
+        self.buffer_stack.setCurrentIndex(idx)

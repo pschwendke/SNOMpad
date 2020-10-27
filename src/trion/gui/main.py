@@ -17,18 +17,21 @@ from qtlets.qtlets import HasQtlets
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
 from .log import QPopupLogDlg
 from .qdaq import DaqPanel, ExpPanel
-from .acq_ctrl import AcquisitionController, DaqController
+from .acq_ctrl import AcquisitionController, DaqController, BufferConfig
 
 logger = logging.getLogger(__name__)
 
 
 class TRIONMainWindow(QtWidgets.QMainWindow):
     def __init__(self, *a, daq=None, default_dir=None,
+                 buffer_cfg=None,
                  **kw):
         super().__init__(*a, **kw)
-        if default_dir is None:
-            default_dir = expanduser("~")
+        default_dir = pth.abspath(".") if default_dir is None else default_dir
         self.dir = default_dir
+
+        self.buffer_cfg = BufferConfig() if buffer_cfg is None else buffer_cfg
+        self.buffer_cfg.fname = self.buffer_cfg.fname or pth.join(self.dir, "test.h5")
         # Setup graphical elements
         # ========================
         # vizualization window
@@ -36,7 +39,8 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # Experimental control panel
         self.expt_panel = ExpPanel("Experiment", parent=self)
         # DAQ control panel
-        self.daq_panel = DaqPanel("Acquisition", parent=self)
+        self.daq_panel = DaqPanel("Acquisition", buffer_cfg=self.buffer_cfg,
+                                  parent=self)
         # Display control panel
         self.view_panel = ViewPanel("Data display", parent=self)
 
@@ -109,6 +113,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # =================
         self.daq = daq or DaqController(dev=System().devices.device_names[0])
 
+
         self.display_cntrl = DisplayController(
             parent=self,
             data_window=self.data_view,
@@ -117,6 +122,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.acq_cntrl = AcquisitionController(
             parent=self,
             daq=self.daq,
+            buffer_cfg=self.buffer_cfg,
             expt_panel=self.expt_panel,
             daq_panel=self.daq_panel,
             display_controller=self.display_cntrl

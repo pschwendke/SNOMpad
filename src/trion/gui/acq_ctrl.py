@@ -1,10 +1,13 @@
 import logging
 from types import SimpleNamespace
 
+import attr
+
 from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QFileDialog
 from qtlets.qtlets import HasQtlets
 from trion.expt.buffer import CircularArrayBuffer
+from trion.expt.buffer.factory import prepare_buffer, BackendType
 from trion.expt.daq import DaqController as OriginalDaqController
 
 logger = logging.getLogger(__name__)
@@ -14,10 +17,28 @@ class DaqController(HasQtlets, OriginalDaqController):
     pass
 
 
+@attr.s(order=False)
+class BufferConfig(HasQtlets):
+    """Holds the configuration of the buffer."""
+    fname: str = attr.ib(default="")
+    backend: BackendType = attr.ib(default=BackendType.numpy)
+    size: int = attr.ib(default=200_000)
+    continuous: bool = attr.ib(default=True)
+    returnable = ["fname", "backend", "size", "continuous"]
+
+    def __attrs_post_init__(self):
+        super().__init__()  # tsk tsk tsk...
+
+    def config(self):
+        return {k: getattr(self, k) for k in self.returnable}
+
+
+
 class AcquisitionController(QObject):
     export = Signal(str)
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
                  display_controller: DaqController=None,
+                 buffer_cfg: BufferConfig=None,
                  display_dt=0.02, read_dt=0.01,
                  **kw):
         """
@@ -41,6 +62,7 @@ class AcquisitionController(QObject):
         self.expt_panel = expt_panel
         self.daq_panel = daq_panel
         self.display_cntrl = display_controller
+        self.buffer_cfg = buffer_cfg
         self.daq = daq
         self.buffer = None
         self.act = self.parent().act
@@ -94,8 +116,6 @@ class AcquisitionController(QObject):
         self.act.self_cal.triggered.connect(self.on_self_calibrate)
         self.export.connect(self.on_export)
 
-        #self.act.run_cont.toggled.connect(self.toggle_acquisition)
-
         # TODO: have typed comboboxes
         self.daq_panel.dev_name.activated.connect(
             lambda: self.set_device(self.daq_panel.dev_name.currentText())
@@ -105,9 +125,6 @@ class AcquisitionController(QObject):
         self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
         self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
 
-        self.daq_panel.refresh_btn.clicked.connect(self.refresh_controls)
-
-        #self.daq_panel.go_btn.clicked.connect(self.on_go_btn)
 
         self.statemachine.start()
 
@@ -133,8 +150,8 @@ class AcquisitionController(QObject):
         exp = self.expt_panel.experiment()
         signals = exp.signals()
         # get buffer size
-        buf_size = self.daq_panel.buffer_size.value()
-        self.buffer = CircularArrayBuffer(vars=signals, size=buf_size)
+        buf_cfg = self.buffer_cfg.config()
+        self.buffer = prepare_buffer(vars=signals, **buf_cfg)
         for k, v in kw.items():
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
@@ -157,7 +174,11 @@ class AcquisitionController(QObject):
         self.display_cntrl.fps_updt_timer.stop()
 
     def read_next(self):
-        n = self.daq.reader.read()
+        try:
+            n = self.daq.reader.read()
+        except Exception:
+            self.act.stop.tigger()
+            raise
 
     def set_device(self, name):
         self.daq.dev = name
