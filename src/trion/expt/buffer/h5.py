@@ -52,6 +52,7 @@ class H5Buffer(AbstractBuffer):
                  pix_idx=0,
                  size=20_000,
                  dtype=np.float,
+                 #chunk_size=5000,
                  h5_kw=None,
                  **kw):
         """
@@ -65,13 +66,15 @@ class H5Buffer(AbstractBuffer):
         self.h5f.attrs["version"] = "0.1"
         self.h5f.attrs["scan_type"] = "single_point"
         self.pix_idx = pix_idx
+        self.chunk_size = size
         self.raw = self.h5f.create_group("/raw", track_order=True)
         self.raw.attrs["vars"] = [v.value for v in self._vrs]
         self.buf = self.h5f.create_dataset(
             self.raw_fmt.format(**locals()),
             shape=(size, len(self.vars)),
             dtype=dtype,
-            maxshape=(None, len(self.vars)),
+            chunks=(self.chunk_size, len(self.vars)),
+            maxshape=(2_000_000, len(self.vars)),
         )
 
     @property
@@ -85,9 +88,17 @@ class H5Buffer(AbstractBuffer):
     def put(self, data):
         n = np.asarray(data).shape[0]
         j = self.i+n
-        self.buf[self.i:j,:] = data[:,:]
-        self.i = j
+        if j > self.buf_size:
+            self.expand().put(data)
+        else:
+            self.buf[self.i:j,:] = data[:,:]
+            self.i = j
         return n
+
+    def expand(self, by=None):
+        by = by or self.chunk_size
+        self.buf.resize(self.buf.shape[0]+by, axis=0)
+        return self
 
     def get(self, len, offset=0):
         return self.buf[offset:offset+len,:]

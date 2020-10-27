@@ -1,7 +1,7 @@
 import logging
 from enum import IntEnum
 
-from PySide2.QtWidgets import (QWidget, QGridLayout, QPushButton)
+from PySide2.QtWidgets import (QWidget, QGridLayout, QPushButton, QCheckBox)
 from PySide2.QtCore import Qt
 from qtlets.widgets import IntEdit, StrEdit
 
@@ -24,7 +24,7 @@ class MemoryBufferPanel(QWidget):
         # TODO: there bug when buffer size is too small. Should be fixed.
         self.buffer_size = IntEdit(200_000, bottom=10_000, parent=self)
 
-        grid.append(["Buffer size", self.buffer_size])
+        grid.append(["Size", self.buffer_size])
         add_grid(grid, self.layout())
 
         self.layout().setRowStretch(self.layout().rowCount(), 1)
@@ -43,6 +43,7 @@ class H5BufferPanel(QWidget):
 
         self.filename = StrEdit("trions.h5")
         self.open_btn = QPushButton("-")
+        self.open_btn.setFixedSize(23, 23)
         grid.append(["File", self.filename, self.open_btn])
 
         self.buffer_size = IntEdit(200_000, bottom=0, parent=self)
