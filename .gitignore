@@ -143,4 +143,4 @@ dmypy.json
 /scripts/compare.ipynb
 /scratch/io/test.csv
 /scratch/ni/*.npz
-
+*.h5
