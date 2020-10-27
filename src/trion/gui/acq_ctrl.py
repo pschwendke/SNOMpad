@@ -177,7 +177,7 @@ class AcquisitionController(QObject):
         try:
             n = self.daq.reader.read()
         except Exception:
-            self.act.stop.tigger()
+            self.act.stop.trigger()
             raise
 
     def set_device(self, name):
