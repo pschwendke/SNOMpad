@@ -132,8 +132,8 @@ dmypy.json
 .vscode/settings.json
 
 # specific files
-launcher/log/
-scratch/test.tmp
+/scratch/test.tmp
+/launcher/log/*
 /scripts/trions.npy
 /scripts/out.npy
 /scripts/my_data.npy
@@ -142,3 +142,5 @@ scratch/test.tmp
 /scripts/data1.npy
 /scripts/compare.ipynb
 /scratch/io/test.csv
+/scratch/ni/*.npz
+
