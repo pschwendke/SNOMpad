@@ -221,28 +221,6 @@ class AcquisitionController(QObject):
     def set_device(self, name):
         self.daq.dev = name
 
-    def set_clock_channel(self, chan):
-        self.daq.clock_channel = chan
-
-    def set_sample_rate(self, rate):
-        logger.debug("setting sample_rate to: %s", rate)
-        self.daq.sample_rate = rate
-
-    def set_sig_range(self, value):
-        self.daq.sig_range = float(value)
-
-    def set_phase_range(self, value):
-        self.daq.phase_range = float(value)
-
-    def refresh_controls(self):
-        self.daq_panel.dev_name.setCurrentIndex(
-            self.daq_panel.dev_name.findText(self.daq.dev)
-        )
-        self.daq_panel.sample_clock.setText(self.daq.clock_channel)
-        self.daq_panel.sample_rate.setValue(self.daq.sample_rate)
-        self.daq_panel.sig_range.setValue(self.daq.sig_range)
-        self.daq_panel.phase_range.setValue(self.daq.phase_range)
-
     def refresh_display(self):
         "pass the data from the buffer to the display controller."
         try:

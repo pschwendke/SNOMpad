@@ -4,7 +4,7 @@ from enum import Enum, auto
 from typing import Iterable
 import attr
 from bidict import bidict
-from functools import total_ordering
+from functools import total_ordering, singledispatch
 import toml
 
 
@@ -158,9 +158,20 @@ def is_optical_signal(role: Signals) -> bool:
     return role in all_detector_signals
 
 
-def is_tap_modulation(role: Signals) -> bool:
-    return role in [Signals.tap_x, Signals.tap_y]
+@singledispatch
+def is_tap_modulation(role) -> bool:
+    raise TypeError(f"Didn't find implementation for {type(role)}")
 
 
-# def is_pshet_modulation(role: str) -> bool:
-#     return role.startswith("ref")
+@is_tap_modulation.register(Signals)
+def is_tap_modulation_sig(role: Signals) -> bool:
+    return role in [Signals.tap_x, Signals.tap_y, Signals.tap_p]
+
+
+@is_tap_modulation.register(str)
+def is_tap_modulation_str(role: str) -> bool:
+    try:
+        s = Signals[role]
+    except KeyError:
+        return False
+    return is_tap_modulation(s)
