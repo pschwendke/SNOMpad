@@ -39,7 +39,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # Experimental control panel
         self.expt_panel = ExpPanel("Experiment", parent=self)
         # DAQ control panel
-        self.daq_panel = DaqPanel("Acquisition", buffer_cfg=self.buffer_cfg,
+        self.daq_panel = DaqPanel("DAQ", buffer_cfg=self.buffer_cfg,
                                   parent=self)
         # Display control panel
         self.view_panel = ViewPanel("Data display", parent=self)
@@ -58,11 +58,8 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
 
         # DAQ
         # ---
-        self.act.run_cont = QAction("Acquire continuous", self)
-        self.act.run_cont.setStatusTip("Acquire data continuously")
-        self.act.run_finite = QAction("Acquire finite", self)
-        self.act.run_finite.setStatusTip("Acquire a finite number of samples")
-        self.act.run_finite.setVisible(False)
+        self.act.run_cont = QAction("Acquire", self)
+        self.act.run_cont.setStatusTip("Start acquisition")
         self.act.stop = QAction("Stop", self)
         self.act.stop.setStatusTip("Stop current acquisition")
         self.act.self_cal = QAction("Self-calibrate", self)
@@ -85,7 +82,6 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         acq_menu = self.menuBar().addMenu("DAQ")
         acq_menu.addAction(self.act.self_cal)
         acq_menu.addSeparator()
-        acq_menu.addAction(self.act.run_finite)
         acq_menu.addAction(self.act.run_cont)
         acq_menu.addAction(self.act.stop)
 
@@ -99,7 +95,6 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.toolbar.setMovable(False)
         self.toolbar.addAction(self.act.self_cal)
         self.toolbar.addSeparator()
-        self.toolbar.addAction(self.act.run_finite)
         self.toolbar.addAction(self.act.run_cont)
         self.toolbar.addAction(self.act.stop)
         self.toolbar.addSeparator()

@@ -105,10 +105,19 @@ class Experiment:
         Interferometric Near field acquisition modes: self-homodyne, pshet, etc.
     detector: Detector
         Optical detector configuration
+    nreps: int
+        Number of repetitions. Default `1`
+    npts: int
+        Number of points per frame. Ignored if `continuous`. Default 200_000.
+    continuous:
+        Continous acquisition. Default True.
     """
     scan: Scan = attr.ib()
     acquisition: Acquisition = attr.ib()
     detector: Detector = attr.ib()
+    nreps: int = attr.ib(default=1)
+    npts: int = attr.ib(default=200_000)
+    continuous: bool = attr.ib(default=True)
 
     def signals(self) -> Iterable[Signals]:
         """

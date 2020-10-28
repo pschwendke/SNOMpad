@@ -2,12 +2,14 @@
 # GUI elements related to the DAQ
 
 import logging
+from types import SimpleNamespace
 
 from PySide2.QtWidgets import (
     QDockWidget, QGridLayout, QPushButton, QLineEdit, QWidget,
-    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QStackedWidget,
+    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QStackedWidget, QCheckBox,
 )
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, QStateMachine, QState, QEvent, \
+    QAbstractTransition
 
 from qtlets.widgets import StrEdit, FloatEdit, IntEdit, ValuedComboBox
 
@@ -20,50 +22,102 @@ from .utils import ToggleButton, add_grid, enum_to_combo
 logger = logging.getLogger(__name__)
 
 
-class ExpConfig(QWidget):
+class ExpPanel(QDockWidget):
     """
     Widget for holding the experimental configuration.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        back_panel = QWidget()
+        self.setWidget(back_panel)
+        back_panel.setLayout(QGridLayout())
 
         self.scan_type = enum_to_combo(Scan)
         self.acquisition_type = enum_to_combo(Acquisition)
         self.detector_type = enum_to_combo(Detector)
 
-        self.setLayout(QGridLayout())
+        self.nreps = IntEdit(1, bottom=1)
+        self.nreps.setStatusTip(
+            "Number of repetitions")
+        self.buffer_type_combo = ValuedComboBox()
+        self.npts = IntEdit(200_000, bottom=10)
+        self.npts.setStatusTip("Number of points. Ignored for continuous acquisition.")
+        self.continous = QCheckBox("")
+        self.continous.setStatusTip("Acquire continuously. "
+                                    "Not possible for all buffer types.")
+        self.filename = StrEdit("trions.h5")
+        file_edit = QWidget()
+        file_edit.setLayout(QHBoxLayout())
+        file_edit.layout().setContentsMargins(0,0,0,0)
+        file_edit.layout().addWidget(self.filename)
+        self.open_btn = QPushButton("-")
+        self.open_btn.setFixedSize(23, 23)
+        file_edit.layout().addWidget(self.open_btn)
         grid = [
             ["Scan type:", self.scan_type],
             ["Acquisition:", self.acquisition_type],
-            ["Detector:", self.detector_type]
-
+            ["Detector:", self.detector_type],
+            ["Buffer:", self.buffer_type_combo],
+            ["Filename:", file_edit],
+            ["N reps:", self.nreps],
+            ["N pts:", self.npts],
+            ["Continuous?", self.continous],
         ]
 
-        add_grid(grid, self.layout())
-        self.layout().setRowStretch(self.layout().rowCount(), 1)
+        for name, widget, backend in [
+            ("Memory", None, BackendType.numpy),
+            ("H5 file", None, BackendType.hdf5),
+        ]:
+            self.buffer_type_combo.addItem(name, backend)
 
-    def experiment(self):
-        exp = Experiment(
-            self.scan_type.currentData(),
-            self.acquisition_type.currentData(),
-            self.detector_type.currentData()
-        )
-        logger.debug("Experiment is: %s", exp)
-        return exp
+        add_grid(grid, back_panel.layout())
+        back_panel.layout().setRowStretch(back_panel.layout().rowCount(), 1)
 
+        self.enabled_on_numpy = [
+            (self.filename, False),
+            (self.open_btn, False),
+            (self.nreps, False),
+            (self.continous, True),
+        ]
+        # finalize layout
 
-class ExpPanel(QDockWidget):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, **kw)
-        self.setWidget(ExpConfig())
+        self.buffer_type_combo.valueEdited.connect(self.on_buffer_type_changed)
+        self.buffer_type_combo.valueEdited.emit(self.buffer_type_combo.currentData())
+
         self.setAllowedAreas(Qt.LeftDockWidgetArea)
         self.setFeatures(
             QDockWidget.DockWidgetMovable |
             QDockWidget.DockWidgetFloatable
         )
 
-    def experiment(self): # Not sure I like this...
-        return self.widget().experiment()
+    def experiment(self): # This is experimental logic in a gui element...
+        exp = Experiment(
+            self.scan_type.currentData(),
+            self.acquisition_type.currentData(),
+            self.detector_type.currentData(),
+        )
+        logger.debug("Experiment is: %s", exp)
+        return exp
+
+    def on_buffer_type_changed(self, backend):
+        # I tried using a statemachine but it crashed.
+        flip = backend != BackendType.numpy
+        for widget, status in self.enabled_on_numpy:
+            widget.setEnabled(status ^ flip)
+
+
+# class ExpPanel(QDockWidget):
+#     def __init__(self, *a, **kw):
+#         super().__init__(*a, **kw)
+#         self.setWidget(ExpConfig())
+#         self.setAllowedAreas(Qt.LeftDockWidgetArea)
+#         self.setFeatures(
+#             QDockWidget.DockWidgetMovable |
+#             QDockWidget.DockWidgetFloatable
+#         )
+#
+#     def experiment(self): # Not sure I like this...
+#         return self.widget().experiment()
 
 
 class DaqPanel(QDockWidget):
@@ -78,15 +132,10 @@ class DaqPanel(QDockWidget):
         back_panel = QWidget()
         self.setWidget(back_panel)
         back_panel.setLayout(QVBoxLayout())
-        daq_group = QGroupBox("DAQ")
-        daq_group.setFlat(True)
-        back_panel.layout().addWidget(daq_group)
-        buffer_group = QGroupBox("Buffer")
-        buffer_group.setFlat(True)
-        back_panel.layout().addWidget(buffer_group)
+        daq_layout = QGridLayout()
+        back_panel.layout().addLayout(daq_layout)
 
         # Populate DAQ group
-        daq_group.setLayout(QGridLayout())
         grid = []
         # show device name,
         self.dev_name = QComboBox()
@@ -117,47 +166,12 @@ class DaqPanel(QDockWidget):
             "Modulation range", self.phase_range, "V"
         ])
 
-        add_grid(grid, daq_group.layout())
-
-        # Populate buffer group
-        buffer_group.setLayout(QGridLayout())
-        grid = []
-        self.buffer_type_combo = ValuedComboBox()
-
-        grid.append(["Type", self.buffer_type_combo])
-        add_grid(grid, buffer_group.layout())
-
-        self.memory_buffer = MemoryBufferPanel()
-        self.h5_buffer = H5BufferPanel()
-
-        self.buffer_stack = QStackedWidget()
-        for name, widget, backend in [
-            ("Memory", self.memory_buffer, BackendType.numpy),
-            ("H5 file", self.h5_buffer, BackendType.hdf5),
-        ]:
-            self.buffer_type_combo.addItem(name, backend)
-            self.buffer_stack.addWidget(widget)
-
-        buffer_group.layout().addWidget(
-            self.buffer_stack,
-            1,
-            0, 1, buffer_group.layout().columnCount()
-        )
-        self.buffer_stack.setCurrentIndex(0)
-
-        self.buffer_cfg.link_widget(self.buffer_type_combo, "backend")
-        self.buffer_cfg.link_widget(self.memory_buffer.buffer_size, "size")
-        self.buffer_cfg.link_widget(self.h5_buffer.buffer_size, "size")
-        self.buffer_cfg.link_widget(self.h5_buffer.filename, "fname")
-
-        for grp in [daq_group, buffer_group]:
-            grp.layout().setRowStretch(grp.layout().rowCount(), 1)
-            grp.layout().setColumnStretch(1, 1)
-
+        add_grid(grid, daq_layout)
 
         # Button at the end
         btn_layout = QHBoxLayout()
         back_panel.layout().addLayout(btn_layout)
+        back_panel.layout().addStretch(1)
         # TODO: these all need to be made into actions!
         self.go_btn = ToggleButton("Start", alt_text="Stop")
         self.save_btn = QPushButton("Save")
@@ -166,7 +180,6 @@ class DaqPanel(QDockWidget):
         btn_layout.addWidget(self.save_btn)
         btn_layout.addWidget(self.go_btn)
 
-        self.buffer_type_combo.currentIndexChanged.connect(self.on_buffer_type_changed)
 
         # Finalize
         self.setAllowedAreas(Qt.LeftDockWidgetArea)
@@ -174,6 +187,3 @@ class DaqPanel(QDockWidget):
             QDockWidget.DockWidgetMovable |
             QDockWidget.DockWidgetFloatable
         )
-
-    def on_buffer_type_changed(self, idx: int):
-        self.buffer_stack.setCurrentIndex(idx)

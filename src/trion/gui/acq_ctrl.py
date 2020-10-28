@@ -1,5 +1,6 @@
 import logging
 from types import SimpleNamespace
+import os.path as pth
 
 import attr
 
@@ -125,6 +126,10 @@ class AcquisitionController(QObject):
         self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
         self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
 
+        self.buffer_cfg.link_widget(self.expt_panel.buffer_type_combo, "backend")
+        self.buffer_cfg.link_widget(self.expt_panel.npts, "size")
+        self.buffer_cfg.link_widget(self.expt_panel.filename, "fname")
+        self.expt_panel.open_btn.clicked.connect(self.on_select_file)
 
         self.statemachine.start()
 
@@ -227,4 +232,16 @@ class AcquisitionController(QObject):
         if self.buffer is None:
             raise RuntimeError("Cannot export empty buffer.")
         self.buffer.export(filename)
+
+    def on_select_file(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            parent=self.parent(),
+            dir=pth.join(
+                pth.dirname(self.buffer_cfg.fname),
+                "trions.h5"),
+            filter="hdf5 (*.h5);;any (*.*)"
+        )
+        logger.debug("File selected: " + repr(filename))
+        if filename:
+            self.buffer_cfg.fname = filename
 
