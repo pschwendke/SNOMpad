@@ -16,7 +16,8 @@ from qtlets.qtlets import HasQtlets
 
 from .data_window import RawView, ViewPanel, DisplayController, DataWindow
 from .log import QPopupLogDlg
-from .qdaq import DaqPanel, ExpPanel
+from .qdaq import DaqPanel
+from .expt import ExpPanel
 from .acq_ctrl import AcquisitionController, DaqController, BufferConfig
 
 logger = logging.getLogger(__name__)
