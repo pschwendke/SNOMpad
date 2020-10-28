@@ -74,14 +74,15 @@ class CircularArrayBuffer(ArrayBuffer):
     def size(self):
         return min(self.n_written, self.buf_size)
 
-    def put(self, data):
+    def put(self, data) -> int:
         if data.shape[0] <= self.buf_size:
-            self._put_single(data)
+            n = self._put_single(data)
         else:
+            n = 0
             nchunks = ceil(data.shape[0]/self.buf_size)
             for chunk in np.array_split(data, nchunks, axis=0):
-                self._put_single(chunk)
-        return self
+                n += self._put_single(chunk)
+        return n
 
     def _put_single(self, data):
         n = np.asarray(data).shape[0]
@@ -97,6 +98,7 @@ class CircularArrayBuffer(ArrayBuffer):
 
         self._nwritten += n
         self.i = j % self.buf_size
+        return n
 
     def get(self, len: int, offset=0):
         # truncate to show only valid values
@@ -126,7 +128,7 @@ class ExtendingArrayBuffer(ArrayBuffer):
     def size(self):
         return self.i
 
-    def put(self, data):
+    def put(self, data) -> int:
         n = np.asarray(data).shape[0]
         j = self.i+n
         if j > self.buf_size:

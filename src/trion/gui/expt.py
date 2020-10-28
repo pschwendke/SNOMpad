@@ -19,9 +19,9 @@ class ExpPanel(QDockWidget):
         self.setWidget(back_panel)
         back_panel.setLayout(QGridLayout())
 
-        self.scan_type = enum_to_combo(Scan)
-        self.acquisition_type = enum_to_combo(Acquisition)
-        self.detector_type = enum_to_combo(Detector)
+        self.scan_type = enum_to_combo(Scan, ValuedComboBox)
+        self.acquisition_type = enum_to_combo(Acquisition, ValuedComboBox)
+        self.detector_type = enum_to_combo(Detector, ValuedComboBox)
 
         self.nreps = IntEdit(1, bottom=1)
         self.nreps.setStatusTip(
@@ -29,8 +29,9 @@ class ExpPanel(QDockWidget):
         self.buffer_type_combo = ValuedComboBox()
         self.npts = IntEdit(200_000, bottom=10)
         self.npts.setStatusTip("Number of points. Ignored for continuous acquisition.")
-        self.continous = QCheckBox("")
-        self.continous.setStatusTip("Acquire continuously. "
+        self.continuous = QCheckBox("")
+        self.continuous.setChecked(True)
+        self.continuous.setStatusTip("Acquire continuously. "
                                     "Not possible for all buffer types.")
         self.filename = StrEdit("trions.h5")
         file_edit = QWidget()
@@ -48,7 +49,7 @@ class ExpPanel(QDockWidget):
             ["Filename:", file_edit],
             ["N reps:", self.nreps],
             ["N pts:", self.npts],
-            ["Continuous?", self.continous],
+            ["Continuous?", self.continuous],
         ]
 
         for name, widget, backend in [
@@ -64,7 +65,7 @@ class ExpPanel(QDockWidget):
             (self.filename, False),
             (self.open_btn, False),
             (self.nreps, False),
-            (self.continous, True),
+            (self.continuous, True),
         ]
         # finalize layout
 
@@ -77,14 +78,17 @@ class ExpPanel(QDockWidget):
             QDockWidget.DockWidgetFloatable
         )
 
-    def experiment(self): # This is experimental logic in a gui element...
-        exp = Experiment(
-            self.scan_type.currentData(),
-            self.acquisition_type.currentData(),
-            self.detector_type.currentData(),
-        )
-        logger.debug("Experiment is: %s", exp)
-        return exp
+    # def experiment(self): # This is experimental logic in a gui element...
+    #     exp = Experiment(
+    #         self.scan_type.currentData(),
+    #         self.acquisition_type.currentData(),
+    #         self.detector_type.currentData(),
+    #         nreps=self.nreps.value(),
+    #         npts=self.npts.value(),
+    #         continuous=self.continous.isChecked(),
+    #     )
+    #     logger.debug("Experiment is: %s", exp)
+    #     return exp
 
     def on_buffer_type_changed(self, backend):
         # I tried using a statemachine but it crashed.

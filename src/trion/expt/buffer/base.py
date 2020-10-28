@@ -53,7 +53,7 @@ class AbstractBuffer(ABC):
 
 
     @abstractmethod
-    def put(self, data) -> 'AbstractBuffer':
+    def put(self, data) -> int:
         """
         Put data into buffer. Handles expansion if necessary.
 
@@ -61,6 +61,11 @@ class AbstractBuffer(ABC):
         ----------
         data : array_like of shape (N,M)
             Data to be added. N points with M variables.
+
+        Returns
+        -------
+        n : int
+            number of points written
         """
         pass
 

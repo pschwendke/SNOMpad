@@ -112,12 +112,15 @@ class Experiment:
     continuous:
         Continous acquisition. Default True.
     """
-    scan: Scan = attr.ib()
-    acquisition: Acquisition = attr.ib()
-    detector: Detector = attr.ib()
+    scan: Scan = attr.ib(default=Scan.point)
+    acquisition: Acquisition = attr.ib(default=Acquisition.shd)
+    detector: Detector = attr.ib(default=Detector.single)
     nreps: int = attr.ib(default=1)
     npts: int = attr.ib(default=200_000)
     continuous: bool = attr.ib(default=True)
+
+    def __attrs_post_init__(self):
+        super().__init__()
 
     def signals(self) -> Iterable[Signals]:
         """

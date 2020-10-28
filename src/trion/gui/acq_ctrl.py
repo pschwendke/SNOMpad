@@ -1,17 +1,25 @@
 import logging
 from types import SimpleNamespace
 import os.path as pth
+from copy import deepcopy
 
 import attr
 
 from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QFileDialog
 from qtlets.qtlets import HasQtlets
+
+from trion.analysis.signals import Scan, Acquisition, Detector
+from trion.analysis.signals import Experiment as OriginalExperiment
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.buffer.factory import prepare_buffer, BackendType
 from trion.expt.daq import DaqController as OriginalDaqController
 
 logger = logging.getLogger(__name__)
+
+
+class Experiment(HasQtlets, OriginalExperiment):
+    pass
 
 
 class DaqController(HasQtlets, OriginalDaqController):
@@ -34,7 +42,6 @@ class BufferConfig(HasQtlets):
         return {k: getattr(self, k) for k in self.returnable}
 
 
-
 class AcquisitionController(QObject):
     export = Signal(str)
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
@@ -54,7 +61,7 @@ class AcquisitionController(QObject):
             uses ms.
 
         Tracks the acquisition process and wraps the DaqController and
-        aquisition buffer.
+        acquisition buffer.
 
         Currently supports only continuous acquisition in memory.
         """
@@ -66,7 +73,10 @@ class AcquisitionController(QObject):
         self.buffer_cfg = buffer_cfg
         self.daq = daq
         self.buffer = None
+        self.exp = Experiment()
+        self.current_exp = None
         self.act = self.parent().act
+        self.n_acquired = 0
 
         # setup state machine
         self.statemachine = QStateMachine()
@@ -126,6 +136,16 @@ class AcquisitionController(QObject):
         self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
         self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
 
+        # It can be dangerous to change this during the acquisition.
+        # It will probably be necessary disable some of these during acquisition
+        self.exp.link_widget(self.expt_panel.scan_type, "scan")
+        self.exp.link_widget(self.expt_panel.acquisition_type, "acquisition")
+        self.exp.link_widget(self.expt_panel.detector_type, "detector")
+        self.exp.link_widget(self.expt_panel.npts, "npts")
+        self.exp.link_widget(self.expt_panel.nreps, "nreps")
+        self.exp.link_widget(self.expt_panel.continuous, "continuous")
+        # continuous not yet supported I think
+
         self.buffer_cfg.link_widget(self.expt_panel.buffer_type_combo, "backend")
         self.buffer_cfg.link_widget(self.expt_panel.npts, "size")
         self.buffer_cfg.link_widget(self.expt_panel.filename, "fname")
@@ -152,14 +172,23 @@ class AcquisitionController(QObject):
         """
         logger.debug("Setting up experiment")
         # get experiment
-        exp = self.expt_panel.experiment()
-        signals = exp.signals()
+        config = self.exp.__dict__.copy()
+        try:
+            del config["qtlets"]
+        except KeyError:
+            print(type(self.exp))
+            raise
+        self.current_exp = OriginalExperiment(**config)
+        self.current_exp.continuous = (self.current_exp.continuous
+                           and self.buffer_cfg.backend is BackendType.numpy)
+        signals = self.current_exp.signals()
         # get buffer size
         buf_cfg = self.buffer_cfg.config()
         self.buffer = prepare_buffer(vars=signals, **buf_cfg)
         for k, v in kw.items():
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
+        self.n_acquired = 0
 
     def start(self):
         self.setup()
@@ -184,6 +213,10 @@ class AcquisitionController(QObject):
         except Exception:
             self.act.stop.trigger()
             raise
+        else:
+            self.n_acquired += n
+        if not self.current_exp.continuous and self.n_acquired >= self.current_exp.npts:
+            self.act.stop.trigger()
 
     def set_device(self, name):
         self.daq.dev = name

@@ -85,7 +85,7 @@ class H5Buffer(AbstractBuffer):
     def buf_size(self) -> int:
         return self.buf.shape[0]
 
-    def put(self, data):
+    def put(self, data) -> int:
         n = np.asarray(data).shape[0]
         j = self.i+n
         if j > self.buf_size:

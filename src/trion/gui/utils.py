@@ -18,8 +18,8 @@ def add_grid(grid, layout, row_offset = 0, column_offset=0):
             layout.addWidget(elem, i+row_offset, j+column_offset)
 
 
-def enum_to_combo(enum):
-    combo = QComboBox()
+def enum_to_combo(enum, cls=QComboBox):
+    combo = cls()
     for member in enum:
         combo.addItem(member.name, member)
     return combo
