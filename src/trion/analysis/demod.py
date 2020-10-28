@@ -75,7 +75,7 @@ def binned_average(df, n_bins, compute_counts=True):
     return avg
 
 
-def binned_ft(avg):
+def binned_ft(avg):  # todo: these names suck
     step = np.diff(avg["phi"].iloc[:2])[0] # argh...
     sigs = avg.drop(columns="phi")
     return pd.DataFrame(np.fft.rfft(sigs, axis=0)*step/2/np.pi, columns=sigs.columns)
