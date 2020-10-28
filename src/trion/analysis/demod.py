@@ -35,7 +35,7 @@ def dft_naive(phi, y, orders):
         np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])*y_s[np.newaxis,:],
         phi_s,
         axis=1
-    )
+    )/2/np.pi
 
 
 def calc_phase(df, in_place=False):
@@ -78,7 +78,7 @@ def binned_average(df, n_bins, compute_counts=True):
 def binned_ft(avg):
     step = np.diff(avg["phi"].iloc[:2])[0] # argh...
     sigs = avg.drop(columns="phi")
-    return pd.DataFrame(np.fft.rfft(sigs, axis=0)*step, columns=sigs.columns)
+    return pd.DataFrame(np.fft.rfft(sigs, axis=0)*step/2/np.pi, columns=sigs.columns)
 
 
 def dft_binned(phi, sig, n_bins=256):
@@ -93,3 +93,21 @@ def dft_binned(phi, sig, n_bins=256):
     # TODO: expand to multiple signals
     df = pd.DataFrame(np.vstack([phi, sig]).T, columns=["tap_p", "sig"])
     return np.squeeze(binned_ft(binned_average(df, n_bins, compute_counts=False)).to_numpy())
+
+
+def dft_lstsq(phi, sig, max_order: int):
+    assert phi.ndim == 1
+    assert max_order > 1
+    orders = np.arange(1, max_order+1)
+    coeff = np.hstack([
+        np.ones_like(phi)[:,np.newaxis], # DC
+        np.cos(orders[np.newaxis,:] * phi[:,np.newaxis]), # cos
+        np.sin(orders[np.newaxis,:] * phi[:,np.newaxis])  # sin
+    ])
+    assert coeff.shape == (phi.size, 2*max_order+1)
+    soln, _, _, _ = np.linalg.lstsq(coeff, sig, rcond=None)
+    ret = np.asarray(soln[:max_order+1], dtype=complex) # what happens if sig.ndim > 1?
+    ret[1:] += 1j*soln[max_order+1:]
+    return ret
+
+
