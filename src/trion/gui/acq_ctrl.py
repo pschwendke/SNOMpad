@@ -9,9 +9,8 @@ from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QFileDialog
 from qtlets.qtlets import HasQtlets
 
-from trion.analysis.signals import Scan, Acquisition, Detector
 from trion.analysis.signals import Experiment as OriginalExperiment
-from trion.expt.buffer import CircularArrayBuffer
+
 from trion.expt.buffer.factory import prepare_buffer, BackendType
 from trion.expt.daq import DaqController as OriginalDaqController
 
@@ -45,7 +44,7 @@ class BufferConfig(HasQtlets):
 class AcquisitionController(QObject):
     export = Signal(str)
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
-                 display_controller: DaqController=None,
+                 display_controller=None,
                  buffer_cfg: BufferConfig=None,
                  display_dt=0.02, read_dt=0.01,
                  **kw):
@@ -116,13 +115,10 @@ class AcquisitionController(QObject):
         self.statemachine.addState(self.states.running)
         self.statemachine.setInitialState(self.states.idle)
 
-        self.display_timer = QTimer()
-        self.display_timer.setInterval(display_dt * 1000)
         self.read_timer = QTimer()
         self.read_timer.setInterval(read_dt * 1000)
 
         self.read_timer.timeout.connect(self.read_next)
-        self.display_timer.timeout.connect(self.refresh_display)
 
         self.act.self_cal.triggered.connect(self.on_self_calibrate)
         self.export.connect(self.on_export)
@@ -185,6 +181,7 @@ class AcquisitionController(QObject):
         # get buffer size
         buf_cfg = self.buffer_cfg.config()
         self.buffer = prepare_buffer(vars=signals, **buf_cfg)
+        self.display_cntrl.prepare_plots(self.buffer)
         for k, v in kw.items():
             setattr(self.daq, k, v)
         self.daq.setup(buffer=self.buffer)
@@ -193,19 +190,15 @@ class AcquisitionController(QObject):
     def start(self):
         self.setup()
         logger.debug("Starting update")
-        self.prepare_display()
         self.daq.start()
-        self.display_timer.start()
         self.read_timer.start()
-        self.display_cntrl.fps_updt_timer.start()
+        self.display_cntrl.start()
 
     def stop(self):
         logger.debug("Stopping update")
         self.daq.stop()
         self.read_timer.stop()
-        self.display_timer.stop()
-        self.display_timer.timeout.emit()  # fire once more, to be sure.
-        self.display_cntrl.fps_updt_timer.stop()
+        self.display_cntrl.stop()
 
     def read_next(self):
         try:
@@ -220,21 +213,6 @@ class AcquisitionController(QObject):
 
     def set_device(self, name):
         self.daq.dev = name
-
-    def refresh_display(self):
-        "pass the data from the buffer to the display controller."
-        try:
-            names = self.buffer.vars
-        except AttributeError:
-            if self.buffer is not None:
-                raise
-            # otherwise we just don't have a buffer yet...
-        else:
-            y = self.buffer.tail(self.buffer.size)
-            self.display_cntrl.plot(y, names)
-
-    def prepare_display(self):
-        self.display_cntrl.prepare_plots(self.buffer.vars)
 
     def on_self_calibrate(self):
         self.daq.self_calibrate()

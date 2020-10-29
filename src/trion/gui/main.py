@@ -123,6 +123,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
             daq_panel=self.daq_panel,
             display_controller=self.display_cntrl
         )
+        self.display_cntrl.acquisition_controller = self.acq_cntrl
 
 
         # finalize connections

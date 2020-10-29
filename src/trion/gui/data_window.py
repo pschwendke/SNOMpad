@@ -8,17 +8,20 @@ from time import time
 import numpy as np
 import pyqtgraph as pg
 from enum import IntEnum, auto
-from PySide2.QtCore import QSize, QObject, QStateMachine, QState, Signal, QTimer
-from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, QVBoxLayout, \
-    QGridLayout, QTabWidget
+from PySide2.QtCore import QSize, QObject, Signal, QTimer
+from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, \
+    QGridLayout, QTabWidget, QSpinBox
 from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
+from qtlets import HasQtlets
+import attr
 
-from .utils import enum_to_combo, add_grid
-from qtlets.widgets import IntEdit, FloatEdit
+from .utils import add_grid
+from qtlets.widgets import IntEdit
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals
+from ..analysis.demod import dft_naive
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +40,17 @@ class RawCntrl(QWidget):
         self.setLayout(lyt)
 
         self.downsampling = IntEdit(1, None)
+        self.display_size = IntEdit(200_000)
         grid = []
-
+        grid.append(["Display pts:", self.display_size])
         grid.append(
-            ["Downsampling", self.downsampling]
+            ["Downsampling:", self.downsampling]
         )
         add_grid(grid, lyt)
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
+        lyt.setContentsMargins(0,0,0,0)
+
 
 class PhaseCntrl(QWidget):
     def __init__(self, *a, **kw):
@@ -54,20 +60,35 @@ class PhaseCntrl(QWidget):
         self.setLayout(lyt)
 
         self.downsampling = IntEdit(1, None)
+        self.display_size = IntEdit(200_000)
         grid = []
-
+        grid.append(["Display pts:", self.display_size])
         grid.append(
-            ["Downsampling", self.downsampling]
+            ["Downsampling:", self.downsampling]
         )
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
+        lyt.setContentsMargins(0,0,0,0)
 
 
 class FourierCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.title = "Fourier view"
+        self.window_len = QSpinBox()
+        self.window_len.setMinimum(10)
+        self.window_len.setMaximum(2_000_000)
+        lyt = QGridLayout()
+        self.setLayout(lyt)
+        grid = []
+        grid.append(["Window size:", self.window_len])
+
+        add_grid(grid, lyt)
+        lyt.setColumnStretch(1, 1)
+        lyt.setRowStretch(lyt.rowCount(), 1)
+        lyt.setContentsMargins(0,0,0,0)
+
 
 
 class ViewPanel(QDockWidget):
@@ -111,7 +132,6 @@ class ViewPanel(QDockWidget):
 
 
 class BaseView(pg.GraphicsLayoutWidget):
-    downsampling_cntrl_updated = Signal()
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.cmap = signal_colormap()
@@ -121,34 +141,6 @@ class BaseView(pg.GraphicsLayoutWidget):
         """Clear the contents of all plots"""
         for i, item in enumerate(self.ci.items):
             item.clear()
-
-    def connect_signals(self):
-        for plot in self.ci.items:
-            plot.ctrl.downsampleSpin.valueChanged.connect(
-                self.downsampling_cntrl_updated
-            )
-    def set_downsampling(self, value):
-        """Set identical downsampling for all plots"""
-        logger.debug("Setting downsampling to: "+repr(value))
-        for plot in self.ci.items:
-            plot.setDownsampling(ds=value, mode="subsample", auto=False)
-
-    def get_downsampling(self):
-        """
-        Get downsampling factor for all plots.
-
-        If mode is "auto" or downsampling factor is not the same for all plots,
-        return False.
-        """
-        ds_config = [it.downsampleMode() for it in self.ci.items]
-        automode = any(cfg[1] for cfg in ds_config)
-        if automode:
-            return False
-        ds = [cfg[0] for cfg in ds_config]
-        if any(v != ds[0] for v in ds):
-            return False
-        assert type(ds[0]) is int
-        return ds[0]
 
     def minimumSizeHint(self):
         return QSize(400, 400)
@@ -180,7 +172,6 @@ class RawView(BaseView):
 
         self.curves = {}
         for plot in self.ci.items:
-            #plot.setDownsampling(mode="subsample", auto=True)
             plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
             plot.setYRange(-1, 1)
@@ -190,9 +181,6 @@ class RawView(BaseView):
             plot.addLegend(offset=(2,2))
             if plot is not p0:
                 plot.setXLink(p0)
-
-        self.set_downsampling(200)
-        self.connect_signals()
 
     def prepare_plots(self, names):
         """Prepares windows and pens for the different curves"""
@@ -204,35 +192,15 @@ class RawView(BaseView):
             item = self.getItem(idx, 0)
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[n] = pen
-        #logger.debug("Optical Y lim:" + repr(self.optical_ylim))
-        self.connect_signals()
 
-    def plot(self, data, names):
+    def plot(self, data, names, **kwargs):
         """Plot data. Names are the associated columns."""
-        x = np.arange(data.shape[0])
+        ds = kwargs["downsample"]
+        x = np.arange(0, data.shape[0])[::ds]
         for i, n in enumerate(names):
-            y = data[:,i]
+            y = data[::ds,i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m], connect="finite")
-
-    # @property
-    # def optical_ylim(self):
-    #     plot = self.getItem(0, 0)
-    #     return plot.viewRange()[1]
-    #
-    # def set_optical_ylim(self, vmin, vmax):
-    #     plot = self.getItem(0,0)
-    #     plot.setYRange(vmin, vmax, padding=0)
-    #
-    # @property
-    # def modulation_ylim(self):
-    #     plot = self.getItem(1,0)
-    #     return plot.viewRange()[1]
-    #
-    # def set_modulation_ylim(self, vmin, vmax):
-    #     plot = self.getItem(1,0)
-    #     plot.setYRange(vmin, vmax, padding=0)
-
 
 
 class PhaseView(BaseView):
@@ -248,7 +216,6 @@ class PhaseView(BaseView):
         self.curves = {}
 
         for plot in self.ci.items:
-            plot.setDownsampling(mode="subsample", auto=False, ds=100)
             plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
             plot.setYRange(-2, 2)
@@ -280,11 +247,12 @@ class PhaseView(BaseView):
             )
             self.curves[n] = crv
 
-    def plot(self, data, names):
+    def plot(self, data, names, **kwargs):
         #data[~np.isfinite(data)] = 0
-        x = np.arctan2(data[:,self.y_idx], data[:,self.x_idx])
+        ds = kwargs["downsample"]
+        x = np.arctan2(data[::ds,self.y_idx], data[::ds,self.x_idx])
         for n, i in self.columns.items():
-            y = data[:,i]
+            y = data[::ds,i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m])
 
@@ -298,7 +266,7 @@ class FourierView(BaseView):
     `win_len` data points. The last `bufsize` values are kept for display in
     a rotating buffer.
     """
-    def __init__(self, *a, bufsize=250, win_len=20_000, max_order=4, **kw):
+    def __init__(self, *a, bufsize=250, max_order=4, **kw):
         super().__init__(*a, **kw)
         # this guy has an internal buffer to track history
         self.buf = None
@@ -307,7 +275,6 @@ class FourierView(BaseView):
         self.y_idx = None
         self.columns = {}  # signal name to index mapping
         self.input_indices = []  # indices of the signals in the input data
-        self.win_len = win_len
         self.orders = np.arange(max_order + 1)
         self.curves = {}
 
@@ -317,7 +284,6 @@ class FourierView(BaseView):
 
         p0 = self.getItem(0, 0)
         for plot in self.ci.items: # TODO: condense this in a common setup method
-            plot.setDownsampling(mode="subsample", auto=False, ds=1)
             plot.setClipToView(False)
             plot.enableAutoRange(y=True)
             #plot.setYRange(0, 2)
@@ -333,9 +299,8 @@ class FourierView(BaseView):
         self.getItem(0,0).addLegend(offset=(2,2))
         self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
         self.ci.setContentsMargins(0, 10, 0, 10)
-        self.set_downsampling(1)
+
         #self.ci.setBorder((50, 50, 100))
-        self.connect_signals()
 
     def prepare_plots(self, names):
         self.clear_plots()
@@ -356,25 +321,20 @@ class FourierView(BaseView):
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[order, n] = pen
 
-    def compute_components(self, data, names):
-        phi = np.arctan2(data[-self.win_len:, self.y_idx],
-                         data[-self.win_len:, self.x_idx])
+    def compute_components(self, data, names, **kwargs):
+        win_len = kwargs["window_size"]
+        phi = np.arctan2(data[-win_len:, self.y_idx],
+                         data[-win_len:, self.x_idx])
         data = data.take(self.input_indices, axis=1)
         # data has shape (N_pts, N_sig)
         # phi has shape (N_pts,)
         # orders has shape (N_orders,)
         # final size should be (N_orders, N_sig)
-        demod = np.mean(
-            data[-self.win_len:,None,:] * np.exp(
-                -1j * self.orders[None,:,None] * phi[:,None,None]
-            ),
-            axis = 0, # for optimization this should be -1.
-        )
-        #assert demod.shape == (len(self.orders), len(self.input_indices))
-        self.buf.put(np.abs(demod).reshape(1,-1))
+        demod = dft_naive(phi, data.T, orders=self.orders)
+        self.buf.put(np.abs(demod).reshape(1, -1))
 
-    def plot(self, data, names):
-        self.compute_components(data, names)
+    def plot(self, data, names, **kwargs):
+        self.compute_components(data, names, **kwargs)
         y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
         x = np.arange(y.shape[0])
@@ -402,6 +362,17 @@ class DataWindow(QTabWidget):
         self.setTabPosition(QTabWidget.South)
 
 
+
+@attr.s(auto_attribs=True)
+class DisplayConfig(HasQtlets):
+    display_size: int = 200_000
+    downsample: int = 200
+    window_size: int = 2000
+
+    def __attrs_post_init__(self):
+        super().__init__()
+
+
 class DisplayController(QObject):
     """
     Handles connection between the display windows and the other elements.
@@ -409,16 +380,22 @@ class DisplayController(QObject):
     # TODO: move display timer here, include an "on_start" and "on_stop" slot
     view_changed = Signal()
     update_fps = Signal(float)
+
     def __init__(self, *a, data_window: DataWindow=None,
-                 view_panel: ViewPanel = None,
-                 acquisition_controller = None,
+                 view_panel: ViewPanel=None,
+                 acquisition_controller=None,
+                 buffer=None,
+                 display_dt=0.02,
+                 display_config = None,
                  **kw):
         super().__init__(*a, **kw)
         self.data_view = data_window
         self.view_panel = view_panel
+        self.buffer = buffer
         self.mode_map = self.data_view.tab_map
         self.current = self.data_view.tab_map.inverse[self.data_view.currentIndex()]
         self.acquisition_controller = acquisition_controller
+        self.display_cfg = display_config or DisplayConfig()
         self.plot_cache = None #((),{})
         self.view_changed.connect(self.onViewChanged)
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
@@ -426,20 +403,17 @@ class DisplayController(QObject):
         self._frame_log = deque([], 10)  # record of recent frames, to compute average framerate.
         self.fps_updt_timer = QTimer()
         self.fps_updt_timer.setInterval(500)
+        self.display_timer = QTimer()
+        self.display_timer.setInterval(display_dt * 1000)
 
-        for cntrl, view in [
-            (self.view_panel.raw_cntrl, self.data_view.raw_view),
-            (self.view_panel.phase_cntrl, self.data_view.phase_view),
-            ]:
-            cntrl.downsampling.valueEdited.connect(
-                view.set_downsampling
-            )
-            view.downsampling_cntrl_updated.connect(
-                self.update_ui
-            )
-        self.update_ui()
+        for cntrl in [self.view_panel.raw_cntrl, self.view_panel.phase_cntrl]:
+            self.display_cfg.link_widget(cntrl.downsampling, "downsample")
+            self.display_cfg.link_widget(cntrl.display_size, "display_size")
+        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.window_len,
+                                     "window_size")
 
         self.fps_updt_timer.timeout.connect(self.on_update_fps)
+        self.display_timer.timeout.connect(self.refresh_display)
 
     def onTabIndexChanged(self, idx):
         logger.debug("Tab changed to "+str(idx))
@@ -459,25 +433,32 @@ class DisplayController(QObject):
         return [self.data_view.widget(i) for i in range(self.data_view.count())]
 
     def prepare_plots(self, buf):
+        self.buffer = buf
         for view in self.views:
-            view.prepare_plots(buf)
+            view.prepare_plots(buf.vars)
+
+    def refresh_display(self):
+        "pass the data from the buffer to the display controller."
+        try:
+            names = self.buffer.vars
+        except AttributeError:
+            if self.buffer is not None:
+                raise
+            # otherwise we just don't have a buffer yet...
+        else:
+            try:
+                y = self.buffer.tail(self.display_cfg.display_size)
+                self.plot(y, names, **attr.asdict(self.display_cfg))
+            except Exception:
+                if self.acquisition_controller is not None:
+                    self.acquisition_controller.act.stop.trigger()
+                self.display_timer.stop() # we'll fall out of sync...
+                raise
 
     def plot(self, *a, **kw):
         self.plot_cache = (a, kw)
         self.currentView.plot(*a, **kw)
         self._frame_log.append(time())
-
-    def update_ui(self):
-        """Update UI elements to sync their values"""
-        # signal to sync this is missing. I should probably change the
-        # behavior of the right-click menu.
-        for cntrl, view in [
-            (self.view_panel.raw_cntrl, self.data_view.raw_view),
-            (self.view_panel.phase_cntrl, self.data_view.phase_view),
-            ]:
-            cntrl.downsampling.setValue(
-                view.get_downsampling()
-            )
 
     def fps(self):
         """Estimate current fps from the last 10 frames."""
@@ -488,3 +469,12 @@ class DisplayController(QObject):
 
     def on_update_fps(self):
         self.update_fps.emit(self.fps())
+
+    def start(self):
+        self.fps_updt_timer.start()
+        self.display_timer.start()
+
+    def stop(self):
+        self.display_timer.stop()
+        self.display_timer.timeout.emit()  # fire once more, to be sure.
+        self.fps_updt_timer.stop()

@@ -78,6 +78,15 @@ def test_buffers(buffer, npts, data):
     assert np.allclose(buffer.tail(n), data[-n:, :])
 
 
+@pytest.mark.parametrize("nchunks", [3,5,20,1])
+def test_tail(buffer, npts, data, nchunks):
+    for chunk in np.array_split(data, nchunks, axis=0):
+        buffer.put(chunk)
+        ret = buffer.tail(npts)
+        assert ret.shape[0] >= 1
+        assert np.count_nonzero(np.isnan(ret)) == 0
+
+
 def test_export(tmp_path, buffer, exp, data):
     sigs = exp.signals()
     buffer.put(data)

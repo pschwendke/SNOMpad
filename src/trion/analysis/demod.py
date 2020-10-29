@@ -28,11 +28,13 @@ def dft_naive(phi, y, orders):
     """
     # TODO: check how to handle multiple y values...
     assert phi.ndim == 1
+    if y.ndim == 1:
+        y = y[np.newaxis,:]
     idx = np.argsort(phi)
-    y_s = y[idx]
+    y_s = y[:,idx]
     phi_s = phi[idx]
     return np.trapz(
-        np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])*y_s[np.newaxis,:],
+        np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])*y_s,
         phi_s,
         axis=1
     )/2/np.pi

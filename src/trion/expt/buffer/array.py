@@ -147,7 +147,8 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return avail
 
     def get(self, len, offset=0):
-        return self.buf[offset:offset+len,:]
+        end = min(self.i, offset+len)
+        return self.buf[offset:end,:]
     #
     # def tail(self, len):
     #     # returns by view

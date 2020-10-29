@@ -95,7 +95,7 @@ class AbstractBuffer(ABC):
         """
         Get `len` last values from buffer.
         """
-        offset = self.i-len
+        offset = max(0, self.i-len)
         return self.get(len, offset)
 
     def head(self, len):
