@@ -9,6 +9,6 @@ Buffers: Manage the output buffer.
 
 NOT THREADSAFE.
 """
-from .base import AbstractBuffer
+from .base import AbstractBuffer, Overfill
 from .array import CircularArrayBuffer, ExtendingArrayBuffer
 from .h5 import H5Buffer

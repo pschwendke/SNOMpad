@@ -138,7 +138,7 @@ class AcquisitionController(QObject):
         self.exp.link_widget(self.expt_panel.acquisition_type, "acquisition")
         self.exp.link_widget(self.expt_panel.detector_type, "detector")
         self.exp.link_widget(self.expt_panel.npts, "npts")
-        self.exp.link_widget(self.expt_panel.nreps, "nreps")
+        self.exp.link_widget(self.expt_panel.frame_reps, "frame_reps")
         self.exp.link_widget(self.expt_panel.continuous, "continuous")
         # continuous not yet supported I think
 
@@ -188,11 +188,15 @@ class AcquisitionController(QObject):
         self.n_acquired = 0
 
     def start(self):
-        self.setup()
-        logger.debug("Starting update")
-        self.daq.start()
-        self.read_timer.start()
-        self.display_cntrl.start()
+        try:
+            self.setup()
+            logger.debug("Starting update")
+            self.daq.start()
+            self.read_timer.start()
+            self.display_cntrl.start()
+        except Exception:
+            self.act.stop.trigger()
+            raise
 
     def stop(self):
         logger.debug("Stopping update")

@@ -115,7 +115,7 @@ class Experiment:
     scan: Scan = attr.ib(default=Scan.point)
     acquisition: Acquisition = attr.ib(default=Acquisition.shd)
     detector: Detector = attr.ib(default=Detector.single)
-    nreps: int = attr.ib(default=1)
+    frame_reps: int = attr.ib(default=1)
     npts: int = attr.ib(default=200_000)
     continuous: bool = attr.ib(default=True)
 

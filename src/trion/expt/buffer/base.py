@@ -1,10 +1,18 @@
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 
 from trion.analysis.io import export_data
 
 
+class Overfill(Enum):
+    """Control behavior on overfilling."""
+    raise_ = auto()
+    clip = auto()
+    ignore = auto()
+
+
 class AbstractBuffer(ABC):
-    def __init__(self, *a, vars, **kw):
+    def __init__(self, *a, vars, overfill=Overfill.raise_, **kw):
         """
         Defines the API for Buffer objects.
 
@@ -23,6 +31,7 @@ class AbstractBuffer(ABC):
         super().__init__(*a, **kw)
         self.i = 0
         self._vrs = vars
+        self.overfill = overfill
 
     @property
     @abstractmethod
@@ -61,6 +70,8 @@ class AbstractBuffer(ABC):
         ----------
         data : array_like of shape (N,M)
             Data to be added. N points with M variables.
+        overfill : Overfill
+            Behavior on overfill.
 
         Returns
         -------

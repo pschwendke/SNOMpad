@@ -3,7 +3,7 @@ import logging
 
 import numpy as np
 
-from trion.expt.buffer import AbstractBuffer
+from . import AbstractBuffer, Overfill
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,7 @@ class CircularArrayBuffer(ArrayBuffer):
         n_written : int, read-only
             Total number of points written.
         """
+        kw["overfill"] = Overfill.ignore
         super().__init__(*a, **kw)
         self._nwritten = 0
 
@@ -74,7 +75,7 @@ class CircularArrayBuffer(ArrayBuffer):
     def size(self):
         return min(self.n_written, self.buf_size)
 
-    def put(self, data) -> int:
+    def put(self, data, overfill=Overfill.raise_) -> int:
         if data.shape[0] <= self.buf_size:
             n = self._put_single(data)
         else:
@@ -132,28 +133,37 @@ class ExtendingArrayBuffer(ArrayBuffer):
         n = np.asarray(data).shape[0]
         j = self.i+n
         if j > self.buf_size:
-            self.expand().put(data)
+            try:
+                self.expand()
+            except ValueError as e:
+                if not str(e).startswith("Cannot expand buffer beyond max_size"):
+                    raise
+                # we are overfilling
+                if self.overfill is Overfill.clip:
+                    r = self.expand_max().fillup(data)
+                elif self.overfill is Overfill.ignore:
+                    return 0
+                else:
+                    raise
+            else:
+                r = self.put(data)
         else:
             self.buf[self.i:j,:] = data[:,:]
             self.i = j
-        return n
+            r = n
+        return r
 
-    def fill(self, data):
+    def fillup(self, data):
         """Fill with as much as possible"""
         logger.debug("Filling array.")
-        avail = self.size-self.i
-        self.buf[self.i:self.size,:] = data[:avail,:]
+        avail = self.buf_size-self.i
+        self.buf[self.i:,:] = data[:avail,:]
         self.i += avail
         return avail
 
     def get(self, len, offset=0):
         end = min(self.i, offset+len)
         return self.buf[offset:end,:]
-    #
-    # def tail(self, len):
-    #     # returns by view
-    #     r0 = self.i # there I fixed it...
-    #     return self.buf[r0-len:r0,:]
 
     def finish(self):
         self.truncate()
@@ -179,3 +189,6 @@ class ExtendingArrayBuffer(ArrayBuffer):
             ),
         )
         return self
+
+    def expand_max(self):
+        return self.expand(by=self.max_size - self.size)

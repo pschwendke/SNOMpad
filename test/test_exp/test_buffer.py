@@ -3,7 +3,7 @@ import pytest
 
 from trion.analysis.signals import Signals
 from trion.expt.buffer import (
-    CircularArrayBuffer, ExtendingArrayBuffer, H5Buffer,
+    CircularArrayBuffer, ExtendingArrayBuffer, H5Buffer, Overfill,
 )
 import numpy as np
 import pandas as pd
@@ -132,3 +132,26 @@ def test_extending_buffer(exp, npts, nchunks, bufsize, data):
     assert np.allclose(data[-tail_len:, :], tail)
     assert np.allclose(data, buf.get(buf.size))
 
+@pytest.mark.parametrize("bufsize", [10, 100])
+@pytest.mark.parametrize("cls", [ExtendingArrayBuffer, H5Buffer])
+@pytest.mark.parametrize("overfill", [Overfill.clip, Overfill.raise_])
+def test_overfill(cls, exp, npts, bufsize, data, tmp_path, overfill):
+    sigs = exp.signals()
+    dn = 3
+    kwargs = dict(
+        vars=sigs,
+        size=bufsize,
+        max_size=npts-dn,
+        overfill=overfill,
+    )
+    if cls == H5Buffer:
+        kwargs["fname"] = tmp_path / "test_buffer.h5"
+    buf = cls(**kwargs)
+    assert buf.max_size == dn
+    if overfill is Overfill.raise_:
+        with pytest.raises(ValueError):
+            buf.put(data)
+    else:
+        buf.put(data)
+    assert buf.size == buf.max_size # test expended to maximum
+    assert buf.get(buf.size).shape[0] == buf.max_size
