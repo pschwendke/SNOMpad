@@ -120,7 +120,7 @@ def test_extending_buffer(exp, npts, nchunks, bufsize, data):
     buf = ExtendingArrayBuffer(vars=sigs, size=bufsize)
     for chunk in np.array_split(data, nchunks, axis=0):
         buf.put(chunk)
-    assert buf.size >= npts  # extented appropriately
+    assert buf.size >= npts  # extanded appropriately
     assert np.allclose(data, buf.buf[:npts, :])  # data is correct
     buf.truncate()
     assert buf.size == npts  # truncation works
@@ -138,20 +138,24 @@ def test_extending_buffer(exp, npts, nchunks, bufsize, data):
 def test_overfill(cls, exp, npts, bufsize, data, tmp_path, overfill):
     sigs = exp.signals()
     dn = 3
+    initsize = min(bufsize, npts-dn)
     kwargs = dict(
         vars=sigs,
-        size=bufsize,
+        size=initsize,
         max_size=npts-dn,
         overfill=overfill,
     )
     if cls == H5Buffer:
         kwargs["fname"] = tmp_path / "test_buffer.h5"
     buf = cls(**kwargs)
-    assert buf.max_size == dn
+    assert buf.i == 0
+    assert buf.buf_size == initsize
+    assert buf.buf.shape[0] == initsize
+    assert buf.max_size == npts-dn
     if overfill is Overfill.raise_:
         with pytest.raises(ValueError):
             buf.put(data)
     else:
         buf.put(data)
-    assert buf.size == buf.max_size # test expended to maximum
-    assert buf.get(buf.size).shape[0] == buf.max_size
+        assert buf.size == buf.max_size # test expanded to maximum
+        assert buf.get(buf.size).shape[0] == buf.max_size

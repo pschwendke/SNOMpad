@@ -103,7 +103,7 @@ class H5Buffer(AbstractBuffer):
             try:
                 self.expand()
             except ValueError as e:
-                if "dimension cannot exceed the existing maximal size" in  str(e):
+                if not str(e).startswith("Unable to set extend dataset (dimension cannot exceed the existing maximal size"):
                     raise
                 # we are overfilling
                 if self.overfill is Overfill.clip:
@@ -121,7 +121,9 @@ class H5Buffer(AbstractBuffer):
         return r
 
     def expand(self, by=None):
-        by = by or self.chunk_size
+        by = self.chunk_size if by is None else by
+        if by < 0:
+            raise ValueError("Cannot expand buffer by negative value.")
         self.buf.resize(self.buf_size+by, axis=0)
         return self
 
@@ -134,7 +136,8 @@ class H5Buffer(AbstractBuffer):
         return self.put(data[:avail])
 
     def get(self, len, offset=0):
-        return self.buf[offset:offset+len,:]
+        end = min(self.i, offset + len)
+        return self.buf[offset:end,:]
 
     def finish(self) -> AbstractBuffer:
         self.truncate()

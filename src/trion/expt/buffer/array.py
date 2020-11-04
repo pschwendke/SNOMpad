@@ -180,7 +180,9 @@ class ExtendingArrayBuffer(ArrayBuffer):
     def expand(self, by=None):
         if by is None:
             by=self.chunk_size
-        if self.size + by > self.max_size:
+        if by < 0:
+            raise ValueError("Cannot expand buffer by negative value.")
+        if self.buf_size + by > self.max_size:
             raise ValueError(f"Cannot expand buffer beyond max_size: {self.size+by} > {self.max_size}.")
         logger.debug(f"Expanding buffer to: {self.size+by}")
         self.buf = np.vstack(
@@ -191,4 +193,4 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return self
 
     def expand_max(self):
-        return self.expand(by=self.max_size - self.size)
+        return self.expand(by=self.max_size - self.buf_size)
