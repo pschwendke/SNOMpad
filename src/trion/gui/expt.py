@@ -3,7 +3,8 @@ from PySide2.QtWidgets import QDockWidget, QWidget, QGridLayout, QCheckBox, \
     QHBoxLayout, QPushButton
 from qtlets.widgets import IntEdit, ValuedComboBox, StrEdit
 
-from trion.analysis.signals import Scan, Acquisition, Detector, Experiment
+from trion.analysis.signals import Scan, Acquisition, Detector
+from trion.analysis.experiment import Experiment
 from trion.expt.buffer.factory import BackendType
 from trion.gui.qdaq import logger
 from trion.gui.utils import enum_to_combo, add_grid

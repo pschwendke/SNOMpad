@@ -2,12 +2,29 @@ from enum import Enum, auto
 from inspect import Signature, Parameter, signature
 from typing import Iterable
 
+import attr
+
 from ..buffer import CircularArrayBuffer, ExtendingArrayBuffer, H5Buffer
 
 
 class BackendType(Enum):
     numpy = auto()
     hdf5 = auto()
+
+
+@attr.s(order=False)
+class BufferConfig:
+    """Holds the configuration of the buffer."""
+    fname: str = attr.ib(default="")
+    backend: BackendType = attr.ib(default=BackendType.numpy)
+    size: int = attr.ib(default=200_000)
+    continuous: bool = attr.ib(default=True)
+
+    def __attrs_post_init__(self):
+        super().__init__()  # tsk tsk tsk...
+
+    def config(self):
+        return attr.asdict(self)
 
 
 def buffer_class(
@@ -44,9 +61,11 @@ def possible_kws(cls):
     return list(sig.keys())
 
 
-def prepare_buffer(**cfg):
+def prepare_buffer(exp_config, buffer_config):
+    cfg = buffer_config.config()
     cls = buffer_class(**cfg)
-    kws = {k: v for k, v in cfg.items() if k in possible_kws(cls)}
+    kws = dict()
+    kws["vars"] = exp_config.signals()
+    kws |= {k: v for k, v in cfg.items() if k in possible_kws(cls)}
     return cls(**kws)
-
 

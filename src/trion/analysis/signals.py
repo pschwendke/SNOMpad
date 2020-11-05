@@ -1,8 +1,6 @@
 from itertools import chain
 import os.path as pth
 from enum import Enum, auto
-from typing import Iterable
-import attr
 from bidict import bidict
 from functools import total_ordering, singledispatch
 import toml
@@ -90,68 +88,6 @@ acquisition_signals = bidict({
 })
 
 all_acquisition_signals = frozenset(chain(*acquisition_signals.values()))
-
-
-@attr.s(order=False)
-class Experiment:
-    """
-    Describes a TRION experimental configuration.
-
-    Parameters
-    ----------
-    scan: Scan
-        AFM scan protocol, such as single-point, approach curve or AFM
-    acquisition: Acquisition
-        Interferometric Near field acquisition modes: self-homodyne, pshet, etc.
-    detector: Detector
-        Optical detector configuration
-    nreps: int
-        Number of repetitions. Default `1`
-    npts: int
-        Number of points per frame. Ignored if `continuous`. Default 200_000.
-    continuous:
-        Continous acquisition. Default True.
-    """
-    scan: Scan = attr.ib(default=Scan.point)
-    acquisition: Acquisition = attr.ib(default=Acquisition.shd)
-    detector: Detector = attr.ib(default=Detector.single)
-    frame_reps: int = attr.ib(default=1)
-    npts: int = attr.ib(default=200_000)
-    continuous: bool = attr.ib(default=True)
-
-    def __attrs_post_init__(self):
-        super().__init__()
-
-    def signals(self) -> Iterable[Signals]:
-        """
-        Lists the signals for the current Experimental configuration.
-        """
-        return sorted(chain(
-            detection_signals[self.detector],
-            acquisition_signals[self.acquisition]
-        ))
-
-    def is_valid(self) -> bool:
-        """
-        Check if the experimental configuration is valid.
-        """
-        # Currently this is a bit basic, but this will get more complicated
-        return (
-            type(self.scan) is Scan and
-            type(self.acquisition) is Acquisition and
-            type(self.detector) is Detector
-        )
-
-    @classmethod
-    def from_signals(cls, signals: Iterable[Signals]):
-        acq_sigs = {s for s in signals
-                    if s in all_acquisition_signals}
-        det_sigs = {s for s in signals
-                    if s in all_detector_signals}
-        scan = Scan.single
-        acq = acquisition_signals.inverse[acq_sigs]
-        det = detection_signals.inverse[det_sigs]
-        return cls(scan, acq, det)
 
 
 def is_optical_signal(role: Signals) -> bool:

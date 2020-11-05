@@ -1,17 +1,15 @@
 import logging
 from types import SimpleNamespace
 import os.path as pth
-from copy import deepcopy
-
-import attr
 
 from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QFileDialog
 from qtlets.qtlets import HasQtlets
 
-from trion.analysis.signals import Experiment as OriginalExperiment
+from trion.analysis.experiment import Experiment as OriginalExperiment
 
 from trion.expt.buffer.factory import prepare_buffer, BackendType
+from trion.expt.buffer.factory import BufferConfig as OriginalBufferConfig
 from trion.expt.daq import DaqController as OriginalDaqController
 
 logger = logging.getLogger(__name__)
@@ -25,24 +23,12 @@ class DaqController(HasQtlets, OriginalDaqController):
     pass
 
 
-@attr.s(order=False)
-class BufferConfig(HasQtlets):
-    """Holds the configuration of the buffer."""
-    fname: str = attr.ib(default="")
-    backend: BackendType = attr.ib(default=BackendType.numpy)
-    size: int = attr.ib(default=200_000)
-    continuous: bool = attr.ib(default=True)
-    returnable = ["fname", "backend", "size", "continuous"]
-
-    def __attrs_post_init__(self):
-        super().__init__()  # tsk tsk tsk...
-
-    def config(self):
-        return {k: getattr(self, k) for k in self.returnable}
+class BufferConfig(HasQtlets, OriginalBufferConfig): pass
 
 
 class AcquisitionController(QObject):
     export = Signal(str)
+
     def __init__(self, *a, daq=None, expt_panel=None, daq_panel=None,
                  display_controller=None,
                  buffer_cfg: BufferConfig=None,
@@ -168,19 +154,13 @@ class AcquisitionController(QObject):
         """
         logger.debug("Setting up experiment")
         # get experiment
-        config = self.exp.__dict__.copy()
-        try:
-            del config["qtlets"]
-        except KeyError:
-            print(type(self.exp))
-            raise
-        self.current_exp = OriginalExperiment(**config)
+
+        self.current_exp = Experiment(**self.exp.to_dict())
         self.current_exp.continuous = (self.current_exp.continuous
                            and self.buffer_cfg.backend is BackendType.numpy)
-        signals = self.current_exp.signals()
+
         # get buffer size
-        buf_cfg = self.buffer_cfg.config()
-        self.buffer = prepare_buffer(vars=signals, **buf_cfg)
+        self.buffer = prepare_buffer(self.current_exp, self.buffer_cfg)
         self.display_cntrl.prepare_plots(self.buffer)
         for k, v in kw.items():
             setattr(self.daq, k, v)
@@ -205,13 +185,16 @@ class AcquisitionController(QObject):
         self.display_cntrl.stop()
 
     def read_next(self):
+        # A lot is going on here...
         try:
             n = self.daq.reader.read()
         except Exception:
+            # stop otherwise we go will raise this infinitely
             self.act.stop.trigger()
             raise
         else:
             self.n_acquired += n
+
         if not self.current_exp.continuous and self.n_acquired >= self.current_exp.npts:
             self.act.stop.trigger()
 

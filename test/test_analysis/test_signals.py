@@ -1,6 +1,7 @@
 from trion.analysis.signals import (
-    Signals, Experiment, Scan, Acquisition, Detector
+    Signals, Scan, Acquisition, Detector
 )
+from trion.analysis.experiment import Experiment
 import pytest
 
 

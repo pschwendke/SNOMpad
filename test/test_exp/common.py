@@ -1,4 +1,5 @@
-from trion.analysis.signals import Experiment, Scan, Acquisition, Detector
+from trion.analysis.signals import Scan, Acquisition, Detector
+from trion.analysis.experiment import Experiment
 
 exp_configs = (
     Experiment(Scan.point, Acquisition.shd, Detector.single),
