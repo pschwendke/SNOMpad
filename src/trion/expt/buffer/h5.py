@@ -49,23 +49,43 @@ h5py.get_config().track_order = True
 class H5Buffer(AbstractBuffer):
     raw_fmt = "raw/frame{self.frame_idx:06d}"
 
-    def __init__(self, *a,
+    def __init__(self, *,
                  fname=None,
-                 mode="x",
-                 frame_idx=0,
-                 size=20_000,
-                 dtype=np.float,
-                 axes=None,
-                 #chunk_size=5000,
-                 h5_kw=None,
-                 max_size = 2_000_000,
+                 mode: str = "x",
+                 frame_idx: int = 0,
+                 size: int = 20_000,
+                 dtype: type = np.float,
+                 max_size: int = 2_000_000,
+                 h5_kw: dict = None,
                  **kw):
         """
         Buffer backed by an H5Py file.
+
+        Parameters
+        ----------
+        vars : iterable of Signals
+            Signals contained in the buffer (ie: columns)
+        size : int
+            Size of h5py chunks. Defaults to 20_000
+        dtype : type
+            dtype of the buffer. Defaults to np.float.
+        overfill: Overfill enum
+            Behavior on buffer overfill. Defaults to Overfill.raise_
+        fname : str or file-like
+            H5py file name
+        mode : str, one of "w", "r", "r+", "a", "w-" "x"
+            Mode in which to open file. Refer to `h5py.File` documentation.
+            Defaults to "x".
+        frame_idx : positive int
+            Index of next frame. Defaults to 0.
+        max_size : positive int
+            Maximum size of an frame. Defaults to 2_000_000
+        h5_kw : dict
+            Extra arguments file `h5py.File`.
         """
         if pth.exists(fname):
             raise RuntimeError("Opening exisiting files is not supported.")
-        super().__init__(*a, **kw)
+        super().__init__(**kw)
         h5_kw = {} if h5_kw is None else h5_kw
         self.h5f = h5py.File(fname, mode, **h5_kw)
         self.h5f.attrs["version"] = "0.1"

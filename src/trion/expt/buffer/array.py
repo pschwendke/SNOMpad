@@ -15,13 +15,19 @@ class ArrayBuffer(AbstractBuffer):
 
         Parameters
         ----------
+        vars : iterable of Signals
+            Signals contained in the buffer (ie: columns)
         size : int
             Initial size of the underlying buffer
         dtype : type
             dtype for the underlying buffer
+        overfill: Overfill enum
+            Behavior on buffer overfill. Defaults to Overfill.raise_
 
         Attributes
         ----------
+        i : int, property
+            Index of next value to be written
         buf : np.ndarray
             Underlying data buffer. Depending on the exact concrete class, this
             buffer may contain invalid data.
@@ -46,9 +52,9 @@ class CircularArrayBuffer(ArrayBuffer):
         vars : iterable of Signals
             Signals contained in the buffer (ie: columns)
         size : int
-            Size of the circular buffer.
+            Initial size of the underlying buffer
         dtype : type
-            dtype of the buffer. Defaults to np.float.
+            dtype for the underlying buffer
 
         Attributes
         ----------
@@ -62,6 +68,11 @@ class CircularArrayBuffer(ArrayBuffer):
             Size of the underlying buffer (number of points).
         n_written : int, read-only
             Total number of points written.
+
+        Notes
+        -----
+        The rotating buffer cannot overfill. It's "overfill" parameter is
+        ignored. It is nevertheless always set to `Overfill.ignore`
         """
         kw["overfill"] = Overfill.ignore
         super().__init__(*a, **kw)
@@ -118,6 +129,33 @@ class ExtendingArrayBuffer(ArrayBuffer):
     def __init__(self, *, max_size=2_000_000, **kw):
         """
         An array that extends as required.
+
+        Parameters
+        ----------
+        vars : iterable of Signals
+            Signals contained in the buffer (ie: columns)
+        size : int
+            Size of expansion chunks. Defaults to 20_000
+        dtype : type
+            dtype of the buffer. Defaults to np.float.
+        overfill : Overfill enum
+            Behavior on buffer overfill. Defaults to Overfill.raise_
+        max_size: int
+            Maximum size of buffer. Defaults to 2_000_000.
+
+        Attributes
+        ----------
+        i : int, property
+            Index of next value to be written
+        size : int, read-only, property
+            Number of valid data points
+        buf : np.ndarray
+            Underlying data buffer. Depending on the exact concrete class, this
+            buffer may contain invalid data.
+        buf_size : int, read-only
+            Size of the underlying buffer (number of points).
+        chunk_size : int
+            Default size of expansion. D
         """
         defaults = dict(size=20_000)
         kw = {**defaults, **kw}
@@ -178,6 +216,11 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return self
 
     def expand(self, by=None):
+        """
+        Expand buffer by the given number of frames.
+
+        By default, expand by `self.chunk_size`
+        """
         if by is None:
             by=self.chunk_size
         if by < 0:

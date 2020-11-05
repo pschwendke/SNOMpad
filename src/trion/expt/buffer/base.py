@@ -19,14 +19,18 @@ class AbstractBuffer(ABC):
         Parameters
         ----------
         vars : iterable of Signals
-
+            Variables contained in databuffer
+        overfill : Overfill enum
+            Behavior on overfill.
 
         Attributes
         ----------
-        i : int
+        i : int, property
             Index of next value to be written
-        size : int, read-only
-            Current size of buffer.
+        size : int, read-only, property
+            Number of valid data points
+        buf_size : int, read-only property
+            Size of current buffer.
         """
         super().__init__(*a, **kw)
         self.i = 0
