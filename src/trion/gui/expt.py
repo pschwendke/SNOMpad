@@ -23,8 +23,8 @@ class ExpPanel(QDockWidget):
         self.acquisition_type = enum_to_combo(Acquisition, ValuedComboBox)
         self.detector_type = enum_to_combo(Detector, ValuedComboBox)
 
-        self.nreps = IntEdit(1, bottom=1)
-        self.nreps.setStatusTip(
+        self.frame_reps = IntEdit(1, bottom=1)
+        self.frame_reps.setStatusTip(
             "Number of repetitions")
         self.buffer_type_combo = ValuedComboBox()
         self.npts = IntEdit(200_000, bottom=10)
@@ -47,7 +47,7 @@ class ExpPanel(QDockWidget):
             ["Detector:", self.detector_type],
             ["Buffer:", self.buffer_type_combo],
             ["Filename:", file_edit],
-            ["N reps:", self.nreps],
+            ["N reps:", self.frame_reps],
             ["N pts:", self.npts],
             ["Continuous?", self.continuous],
         ]
@@ -64,7 +64,7 @@ class ExpPanel(QDockWidget):
         self.enabled_on_numpy = [
             (self.filename, False),
             (self.open_btn, False),
-            (self.nreps, False),
+            (self.frame_reps, False),
             (self.continuous, True),
         ]
         # finalize layout
