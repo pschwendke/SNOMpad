@@ -68,3 +68,18 @@ class Experiment:
     def to_dict(self):
         return attr.asdict(self)
 
+    @classmethod
+    def from_dict(cls, **cfg):
+        cfg = cfg.copy()
+        for key, enum in [("scan", Scan),
+                          ("acquisition", Acquisition),
+                          ("detector", Detector),
+                          ]:
+            v = cfg["key"]
+            if isinstance(v, str):
+                cfg[key] = enum[cfg[key]]
+        return cls(**cfg)
+
+
+
+

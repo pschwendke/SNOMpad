@@ -29,15 +29,19 @@ Start with a flat thing...
 """
 import logging
 import os.path as pth
+from enum import Enum
 
 import numpy as np
 import h5py
 
+import attr
+
 from .base import AbstractBuffer, Overfill
+from ...analysis.experiment import Experiment
 
 logger = logging.getLogger(__name__)
 
-h5py.get_config().track_order = True
+h5py.get_config().track_order = False
 
 
 # How do we handle the different frames?
@@ -47,7 +51,7 @@ h5py.get_config().track_order = True
 # we need to abstract out the scan!
 
 class H5Buffer(AbstractBuffer):
-    raw_fmt = "raw/frame{self.frame_idx:06d}"
+    raw_fmt = "raw/frame{idx:06d}"
 
     def __init__(self, *,
                  fname=None,
@@ -57,6 +61,7 @@ class H5Buffer(AbstractBuffer):
                  dtype: type = np.float,
                  max_size: int = 2_000_000,
                  h5_kw: dict = None,
+                 experiment: Experiment = None,
                  **kw):
         """
         Buffer backed by an H5Py file.
@@ -89,20 +94,31 @@ class H5Buffer(AbstractBuffer):
         h5_kw = {} if h5_kw is None else h5_kw
         self.h5f = h5py.File(fname, mode, **h5_kw)
         self.h5f.attrs["version"] = "0.1"
-        self.h5f.attrs["scan_type"] = "single_point"
-        self.h5f.attrs["frame_idx"] = frame_idx
+        self.frame_idx = frame_idx
+        self.buf = None
+        self.dtype = dtype
+        self.max_size = max_size
+
+        self.experiment = experiment
 
         self.chunk_size = size
         self.raw = self.h5f.create_group("/raw", track_order=True)
         self.raw.attrs["vars"] = [v.value for v in self._vrs]
-        self.buf = self.h5f.create_dataset(
-            self.raw_fmt.format(**locals()),
-            shape=(size, len(self.vars)),
-            dtype=dtype,
-            fillvalue=np.nan,
-            chunks=(self.chunk_size, len(self.vars)),
-            maxshape=(max_size, len(self.vars)),
-        )
+        self.prepare_frame(self.frame_idx)
+
+
+    @property
+    def experiment(self):  # TODO: add to test suite
+        cfg = {n: self.h5f.attrs.get(n, None)
+               for n in attr.fields(Experiment)}
+        return Experiment.from_dict(**cfg)
+
+    @experiment.setter
+    def experiment(self, exp):
+        for k, v in exp.to_dict().items():
+            if isinstance(v, Enum):
+                v = v.name
+            self.h5f.attrs[k] = v
 
     @property
     def size(self):
@@ -111,10 +127,6 @@ class H5Buffer(AbstractBuffer):
     @property
     def buf_size(self) -> int:
         return self.buf.shape[0]
-
-    @property
-    def max_size(self) -> int:
-        return self.buf.maxshape[0]
 
     def put(self, data) -> int:
         n = np.asarray(data).shape[0]
@@ -180,15 +192,26 @@ class H5Buffer(AbstractBuffer):
     def frame_idx(self, value):
         self.h5f.attrs["frame_idx"] = value
 
-    def set_frame(self, idx) -> "H5Buffer":
-        # good candidate for an ABC MultiFrameBuffer
-        raise NotImplementedError()
+    def prepare_frame(self, idx: int) -> "H5Buffer":
+        # should we determine the metadata from self.experiment?
+        # I don't think so, I think we should supply the metadata.
+        logger.debug(f"Creating frame: {idx}")
+        self.buf = self.h5f.create_dataset(
+            self.raw_fmt.format(idx=idx),
+            shape=(self.chunk_size, len(self.vars)),
+            dtype=self.dtype,
+            fillvalue=np.nan,
+            chunks=(self.chunk_size, len(self.vars)),
+            maxshape=(self.max_size, len(self.vars)),
+        )
+        self.i = 0
+        self.frame_idx = idx
+        return self
 
-    def prepare_frame(self, idx) -> "H5Buffer":
-        raise NotImplementedError()
 
-    def next_frame(self):
-        #
-        raise NotImplementedError()
+    def next_frame(self) -> "H5Buffer":
+        next_frame_idx = self.frame_idx + 1
+        self.prepare_frame(next_frame_idx)
+        return self
 
 

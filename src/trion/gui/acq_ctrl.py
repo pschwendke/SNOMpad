@@ -1,9 +1,11 @@
 import logging
+import time
 from types import SimpleNamespace
 import os.path as pth
 
 from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
 from PySide2.QtWidgets import QFileDialog
+from nidaqmx import DaqError
 from qtlets.qtlets import HasQtlets
 
 from trion.analysis.experiment import Experiment as OriginalExperiment
@@ -61,7 +63,7 @@ class AcquisitionController(QObject):
         self.exp = Experiment()
         self.current_exp = None
         self.act = self.parent().act
-        self.n_acquired = 0
+        self.n_acquired = 0  # we should instead use buffer.n_written. (or written_current_frame ? vs written_total?)
 
         # setup state machine
         self.statemachine = QStateMachine()
@@ -188,15 +190,32 @@ class AcquisitionController(QObject):
         # A lot is going on here...
         try:
             n = self.daq.reader.read()
-        except Exception:
-            # stop otherwise we go will raise this infinitely
+
+        except (Exception, DaqError):
+            # stop otherwise we will raise this infinitely
             self.act.stop.trigger()
             raise
         else:
             self.n_acquired += n
-
+        # i think we should replace this by a `something.is_frame_done()`
         if not self.current_exp.continuous and self.n_acquired >= self.current_exp.npts:
-            self.act.stop.trigger()
+            # this frame is complete
+            # i think we should replace this by a `something.is_acquisition_complete()`
+            if (self.current_exp.frame_reps > 1 and
+                self.buffer.frame_idx < self.current_exp.frame_reps):
+                logger.info("Preparing next frame.")
+                self.prepare_next_frame()
+            else:
+                # we're done
+                self.act.stop.trigger()
+                logger.info("Acquisition complete.")
+
+    def prepare_next_frame(self):
+        self.read_timer.stop()
+        # it works as long as we're just incrementing a frame_idx
+        self.buffer.next_frame()
+        self.n_acquired = 0
+        self.read_timer.start()
 
     def set_device(self, name):
         self.daq.dev = name

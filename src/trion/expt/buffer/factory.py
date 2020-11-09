@@ -15,10 +15,11 @@ class BackendType(Enum):
 @attr.s(order=False)
 class BufferConfig:
     """Holds the configuration of the buffer."""
+    # TODO Potential conflicts between "BufferConfig" and "Experiment"
+    #   BufferConfig.size vs Experiment.npts
     fname: str = attr.ib(default="")
     backend: BackendType = attr.ib(default=BackendType.numpy)
     size: int = attr.ib(default=200_000)
-    continuous: bool = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         super().__init__()  # tsk tsk tsk...
@@ -64,8 +65,9 @@ def possible_kws(cls):
 def prepare_buffer(exp_config, buffer_config):
     cfg = buffer_config.config()
     cls = buffer_class(**cfg)
+    cfg["vars"] = exp_config.signals()
+    cfg["experiment"] = exp_config
     kws = dict()
-    kws["vars"] = exp_config.signals()
     kws |= {k: v for k, v in cfg.items() if k in possible_kws(cls)}
     return cls(**kws)
 
