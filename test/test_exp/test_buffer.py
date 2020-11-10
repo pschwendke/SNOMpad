@@ -32,11 +32,13 @@ def buffer(request, exp, npts, tmp_path):
     sigs = exp.signals()
     kwargs = dict(
         vars=sigs,
-        size=npts+10
+        size=npts+10,
     )
     cls = request.param
+    assert exp is not None
     if cls == H5Buffer:
         kwargs["fname"] = tmp_path / "test_buffer.h5"
+        kwargs["experiment"] = exp
     buf = cls(**kwargs)
     return buf
 
@@ -147,6 +149,7 @@ def test_overfill(cls, exp, npts, bufsize, data, tmp_path, overfill):
     )
     if cls == H5Buffer:
         kwargs["fname"] = tmp_path / "test_buffer.h5"
+        kwargs["experiment"] = exp
     buf = cls(**kwargs)
     assert buf.i == 0
     assert buf.buf_size == initsize
