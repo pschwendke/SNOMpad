@@ -67,7 +67,7 @@ def prepare_buffer(exp_config, buffer_config):
     cls = buffer_class(**cfg)
     cfg["vars"] = exp_config.signals()
     cfg["experiment"] = exp_config
-    kws = dict()
-    kws |= {k: v for k, v in cfg.items() if k in possible_kws(cls)}
+    #kws = dict()
+    kws = {k: v for k, v in cfg.items() if k in possible_kws(cls)}
     return cls(**kws)
 
