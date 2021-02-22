@@ -7,36 +7,82 @@ neaspec_folder = '//nea-server/updates/SDK'
 import sys
 import clr
 import time
+import matplotlib.pyplot as plt
+from collections import defaultdict
+import numpy as np
+import logging
+from pprint import pprint
+logging.basicConfig(format="[%(asctime)s] %(levelname)-5s : %(message)s", level=logging.DEBUG)
 
 setpoint = 0.8
 
+channels_list = ['Z', 'M1A', 'M1P', 'O0A', 'O2A', 'O2P']
+
 sys.path.append(neaspec_folder)
-clr.addReference("Nea.Client.Hardware")
+clr.AddReference("Nea.Client.Hardware")
 import Nea.Client.Hardware.SDK as neaSDK  # check what's in there...
 
+logging.info("Connecting...")
 neaClient = neaSDK.Connection("nea-server")
 neaMic = neaClient.Connect()
 time.sleep(0.1)  # ... argh, smells bad already
 
 # cancel if there is something
+logging.info("Going to contact")
 neaMic.CancelCurrentProcedure()  # can we check what's going on? already
 neaMic.RegulatorOff()  # retract. Is this a blocking call? we should time it.
-if not neaMic.IsInContact:  # time this one too, while we're at it...
-    neaMic.AutoApproach(setpoint)  # and time this one too!
+try:
+    if not neaMic.IsInContact:  # time this one too, while we're at it...
+        neaMic.AutoApproach(setpoint)  # and time this one too!
 
-time.sleep(5)  # let system settle a bit, for piezo creep I guess?!
+    logging.info("Waiting a bit")
+    time.sleep(5)  # let system settle a bit, for piezo creep I guess?!
 
-# we need to prepare an approach curve scan, such as:
-#  scan =  neaMic.prepareApproachSomething...
-# parametrize scan
+    # we need to prepare an approach curve scan, such as:
+    # parametrize scan
+    logging.info("Preparing scan")
+    scan = neaMic.PrepareApproachCurveAfm()
+    scan.set_ApproachCurveHeight(0.1)
+    scan.set_ApproachCurveResolution(100)
+    scan.set_SamplingTime(100)
+    
+    tracked = {n: neaMic.GetChannel(n) for n in ["Z", "M1A"]}
+    
+    hb_curve = defaultdict(list) # homebrew
+    logging.info("Starting scan")
+    image = scan.Start()  # can I pause?!
 
-image = scan.Start()  # can I pause?!
-while not scan.isCompleted:
-    time.sleep(0.1)
+    while not scan.IsCompleted:
+        logging.info(f"scan.Progress: {scan.Progress}")
+        for n, c in tracked.items():
+            v = c.CurrentValue
+            hb_curve[n].append(v)
+            logging.info(f"current {n}: {v:.06f}")
+        time.sleep(0.1)
+    logging.info("Done")
 
-# do something with the data.
+finally:
+# carefull! enclose this in a try..finally block!
+    neaMic.CancelCurrentProcedure()
+    neaMic.RegulatorOff()
+    neaClient.Disconnect()
 
-neaMic.RegulatorOff()
-neaClient.Disconnect()
+data_np = {}
+
+# somehow full of nans...
+
+# for channel in channels_list:
+#     nea_channel = image.GetChannel(channel)
+#     nea_ap_data = nea_channel.GetData()
+#     #assert nea_ap_data.Rank == 1
+#     shape = [nea_ap_data.GetUpperBound(i) for i in range(nea_ap_data.Rank)]
+#     tmp = np.zeros(shape)
+#     for i in range(len(shape)):
+#         tmp[i] = nea_ap_data[i]
+#     data_np[channel] = tmp
+#     break
+    
+#np.savez("approach.npy", **data_np)
+
 
 # maybe show the plot
