@@ -145,3 +145,15 @@ dmypy.json
 /scratch/ni/*.npz
 *.h5
 *.vi
+scratch/neaspec/data/M1A.gsf
+scratch/neaspec/data/M1A.txt
+scratch/neaspec/data/M1P.gsf
+scratch/neaspec/data/M1P.txt
+scratch/neaspec/data/O0A.gsf
+scratch/neaspec/data/O0A.txt
+scratch/neaspec/data/O2A.gsf
+scratch/neaspec/data/O2A.txt
+scratch/neaspec/data/O2P.gsf
+scratch/neaspec/data/O2P.txt
+scratch/neaspec/data/Z.gsf
+scratch/neaspec/data/Z.txt

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.Cooler</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Cooler">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Cooler">Cooler  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Cooler:Summary">
+            Gets the Cooler sample and magnet temperature and if the sample temperature is in the right range
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Cooler:Signature">public class  <b>Cooler</b></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Cooler:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
+							</p>
+        <h2 class="Section">Public Constructors</h2>
+        <div class="SectionBox" id="Public Constructors">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <div>
+                    <b>
+                      <a href="#C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean)">Cooler</a>
+                    </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>)</div>
+                </td>
+                <td>
+            Cooler  constructor with its corresonding properties
+             </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether if sample temperature is in the right range.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+             Gets the magnet temperature in Kelvin
+             </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+             sample temperature in Kelvin
+             </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.Cooler:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean)">Cooler Constructor</h3>
+        <blockquote id="C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean):member">
+          <div class="msummary">
+            Cooler  constructor with its corresonding properties
+             </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public  <b>Cooler</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> sample, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> magnet, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> iscool)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean):Parameters">
+            <dl>
+              <dt>
+                <i>sample</i>
+              </dt>
+              <dd>current temperature of sample in Kelvin </dd>
+              <dt>
+                <i>magnet</i>
+              </dt>
+              <dd>current temperature of teh magnet in Kelvin </dd>
+              <dt>
+                <i>iscool</i>
+              </dt>
+              <dd>informs wether the sample temperature is in the right range </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="C:Nea.Client.Hardware.SDK.Cooler(System.Double,System.Double,System.Boolean):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:member">
+          <div class="msummary">
+            Gets a value indicating whether if sample temperature is in the right range.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsCool</b>  { get; set; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:member">
+          <div class="msummary">
+             Gets the magnet temperature in Kelvin
+             </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MagnetTemperature</b>  { get; set; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:member">
+          <div class="msummary">
+             sample temperature in Kelvin
+             </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>SampleTemperature</b>  { get; set; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

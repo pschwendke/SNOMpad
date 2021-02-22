@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.BottomIllumionationStage</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.BottomIllumionationStage">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage">BottomIllumionationStage  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Summary">
+            Represents a special stage class for synchronazing the Bottom Illumination.
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Signature">public class  <b>BottomIllumionationStage</b> : <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.
+							</p>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors">HasPositionSensors</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the stage has position sensors.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled">IsSynchronizationEnabled</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            gets if synchronisation for Bottom Illumination is enabled
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#P:Nea.Client.Hardware.SDK.Stage.PositionX">PositionX</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis X.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#P:Nea.Client.Hardware.SDK.Stage.PositionY">PositionY</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis Y.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#P:Nea.Client.Hardware.SDK.Stage.PositionZ">PositionZ</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis Z.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.Deactivate()">Deactivate</a>
+                  </b>()<blockquote>
+            Deactivates the stage and allows others stages to be activated.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@)">FindAbsoluteMotorPosition</a>
+                  </b>(<i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Finds the absolute coordinates of the current position. 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled()">GetSynchronizationEnabled</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a></nobr><blockquote>
+            Gets if Bottom  Illumination synchronization  is enabled.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double)">GotoAbsolutePosition</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Moves all axes to absolute positions. 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double)">GotoRelativePosition</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            A change in position that is based on the current position. 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">MoveX</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Moves axis X continously with constant velocity for a period of time.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">MoveY</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>. (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">MoveZ</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>. (<i>Inherited from <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean)">SetSynchronizationEnabled</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>)<blockquote>
+            Enables synchronisation for Bottom Illumination
+            </blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.BottomIllumionationStage:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled()">GetSynchronizationEnabled Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled():member">
+          <div class="msummary">
+            Gets if Bottom  Illumination synchronization  is enabled.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>GetSynchronizationEnabled</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled():Returns">
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled">IsSynchronizationEnabled Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled:member">
+          <div class="msummary">
+            gets if synchronisation for Bottom Illumination is enabled
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsSynchronizationEnabled</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean)">SetSynchronizationEnabled Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean):member">
+          <div class="msummary">
+            Enables synchronisation for Bottom Illumination
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetSynchronizationEnabled</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> enabled)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean):Parameters">
+            <dl>
+              <dt>
+                <i>enabled</i>
+              </dt>
+              <dd>
+                <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>
