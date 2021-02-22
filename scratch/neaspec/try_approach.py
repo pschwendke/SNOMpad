@@ -2,7 +2,6 @@
 
 # I should probably try to list the components somewhere...
 
-neaspec_folder = '//nea-server/updates/SDK'
 
 import sys
 import clr
@@ -42,9 +41,9 @@ try:
     # parametrize scan
     logging.info("Preparing scan")
     scan = neaMic.PrepareApproachCurveAfm()
-    scan.set_ApproachCurveHeight(0.1)
-    scan.set_ApproachCurveResolution(100)
-    scan.set_SamplingTime(100)
+    scan.set_ApproachCurveHeight(0.2)
+    scan.set_ApproachCurveResolution(200)
+    scan.set_SamplingTime(50)
     
     tracked = {n: neaMic.GetChannel(n) for n in ["Z", "M1A"]}
     
@@ -52,13 +51,21 @@ try:
     logging.info("Starting scan")
     image = scan.Start()  # can I pause?!
 
+    t0 = time.time()
+    step_period = 0.5
+    duty_cycle = 0.25
     while not scan.IsCompleted:
-        logging.info(f"scan.Progress: {scan.Progress}")
+        #logging.info(f"scan.Progress: {scan.Progress}")
+        dt = time.time()-t0
+        if scan.IsSuspended and (dt % step_period < step_period*duty_cycle):
+            scan.Resume()
+        elif not scan.IsSuspended and (dt % step_period > step_period*duty_cycle):
+            scan.Suspend()
         for n, c in tracked.items():
             v = c.CurrentValue
             hb_curve[n].append(v)
-            logging.info(f"current {n}: {v:.06f}")
-        time.sleep(0.1)
+            #logging.info(f"current {n}: {v:.06f}")
+        time.sleep(0.01)
     logging.info("Done")
 
 finally:
@@ -67,8 +74,9 @@ finally:
     neaMic.RegulatorOff()
     neaClient.Disconnect()
 
-data_np = {}
-
+z = np.array(hb_curve["Z"])
+a = np.array(hb_curve["M1A"])
+np.savez("stepped_approach.npz", a=a, z=z)
 # somehow full of nans...
 
 # for channel in channels_list:

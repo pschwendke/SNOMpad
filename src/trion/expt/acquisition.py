@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from trion.analysis.signals import Signals
 from trion.expt.buffer import ExtendingArrayBuffer
+from trion.expt.buffer.base import Overfill
 from trion.expt.daq import DaqController
 
 import nidaqmx
@@ -36,7 +37,7 @@ def single_point(device: str, signals: Iterable[Signals], n_samples: int,
     if n_samples < 0:
         n_samples = np.inf
     ctrl = DaqController(device, clock_channel=clock_channel)
-    buffer = ExtendingArrayBuffer(vars=signals, max_size=n_samples)
+    buffer = ExtendingArrayBuffer(vars=signals, max_size=n_samples, overfill=Overfill.clip)
     n_read = 0
 
     ctrl.setup(buffer=buffer)
