@@ -14,6 +14,8 @@ import nidaqmx
 from nidaqmx.constants import (
     Edge, TaskMode)
 
+logger = logging.getLogger(__name__)
+
 def single_point(device: str, signals: Iterable[Signals], n_samples: int,
                  clock_channel: str="", truncate: bool=False, pbar=None, ):
     """
@@ -53,12 +55,12 @@ def single_point(device: str, signals: Iterable[Signals], n_samples: int,
                     pbar.update(n)
                 n_read += n
             except KeyboardInterrupt:
-                logging.warning("Acquisition interrupted by user.")
+                logger.warning("Acquisition interrupted by user.")
                 break
     finally:
         ctrl.stop()
         ctrl.close()
-        logging.info("Acquisition finished.")
+        logger.info("Acquisition finished.")
     data = buffer.buf
     if truncate and np.isfinite(n_samples):
         data = data[:n_samples,:]
