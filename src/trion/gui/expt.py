@@ -3,7 +3,7 @@ from PySide2.QtWidgets import QDockWidget, QWidget, QGridLayout, QCheckBox, \
     QHBoxLayout, QPushButton
 from qtlets.widgets import IntEdit, ValuedComboBox, StrEdit
 
-from trion.analysis.signals import Scan, Acquisition, Detector
+from trion.analysis.signals import Scan, Demodulation, Detector
 from trion.analysis.experiment import Experiment
 from trion.expt.buffer.factory import BackendType
 from trion.gui.qdaq import logger
@@ -21,7 +21,7 @@ class ExpPanel(QDockWidget):
         back_panel.setLayout(QGridLayout())
 
         self.scan_type = enum_to_combo(Scan, ValuedComboBox)
-        self.acquisition_type = enum_to_combo(Acquisition, ValuedComboBox)
+        self.acquisition_type = enum_to_combo(Demodulation, ValuedComboBox)
         self.detector_type = enum_to_combo(Detector, ValuedComboBox)
 
         self.frame_reps = IntEdit(1, bottom=1)
@@ -44,7 +44,7 @@ class ExpPanel(QDockWidget):
         file_edit.layout().addWidget(self.open_btn)
         grid = [
             ["Scan type:", self.scan_type],
-            ["Acquisition:", self.acquisition_type],
+            ["Demodulation:", self.acquisition_type],
             ["Detector:", self.detector_type],
             ["Buffer:", self.buffer_type_combo],
             ["Filename:", file_edit],

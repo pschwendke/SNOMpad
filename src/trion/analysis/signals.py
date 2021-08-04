@@ -64,7 +64,7 @@ class Scan(NamedEnum):
     # image scan, or AFM, or SNOM?
 
 
-class Acquisition(NamedEnum):
+class Demodulation(NamedEnum):
     shd = auto()  # self-homodyne
     # pshet = auto()
     # nanospectroscopy
@@ -84,7 +84,7 @@ detection_signals = bidict({
 all_detector_signals = frozenset(chain(*detection_signals.values()))
 
 acquisition_signals = bidict({
-    Acquisition.shd: frozenset([Signals.tap_x, Signals.tap_y]),
+    Demodulation.shd: frozenset([Signals.tap_x, Signals.tap_y]),
 })
 
 all_acquisition_signals = frozenset(chain(*acquisition_signals.values()))
