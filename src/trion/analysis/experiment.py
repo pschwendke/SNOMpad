@@ -3,11 +3,14 @@ from typing import Iterable
 
 import attr
 
-from trion.analysis.signals import Scan, Acquisition, Detector, Signals, \
+from trion.analysis.signals import Scan, Demodulation, Detector, Signals, \
     detection_signals, acquisition_signals, all_acquisition_signals, \
     all_detector_signals
 
-
+# TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
+#   and one to specify the analysis (ie: so we can acquire pshet channels, but analyze only the sHD part...
+#   The channel map is enough only for single pixels. For scans, we need to add more info. The detector bit is also part
+#   of the channel map...
 @attr.s(order=False)
 class Experiment:
     """
@@ -17,7 +20,7 @@ class Experiment:
     ----------
     scan: Scan
         AFM scan protocol, such as single-point, approach curve or AFM
-    acquisition: Acquisition
+    acquisition: Demodulation
         Interferometric Near field acquisition modes: self-homodyne, pshet, etc.
     detector: Detector
         Optical detector configuration
@@ -29,7 +32,7 @@ class Experiment:
         Continous acquisition. Default True.
     """
     scan: Scan = attr.ib(default=Scan.point)
-    acquisition: Acquisition = attr.ib(default=Acquisition.shd)
+    acquisition: Demodulation = attr.ib(default=Demodulation.shd)
     detector: Detector = attr.ib(default=Detector.single)
     frame_reps: int = attr.ib(default=1)
     npts: int = attr.ib(default=200_000)
@@ -53,9 +56,9 @@ class Experiment:
         """
         # Currently this is a bit basic, but this will get more complicated
         return (
-            type(self.scan) is Scan and
-            type(self.acquisition) is Acquisition and
-            type(self.detector) is Detector
+                type(self.scan) is Scan and
+                type(self.acquisition) is Demodulation and
+                type(self.detector) is Detector
         )
 
     def axes(self) -> list:
@@ -72,7 +75,7 @@ class Experiment:
     def from_dict(cls, **cfg):
         cfg = cfg.copy()
         for key, enum in [("scan", Scan),
-                          ("acquisition", Acquisition),
+                          ("demodulation", Demodulation),
                           ("detector", Detector),
                           ]:
             v = cfg["key"]

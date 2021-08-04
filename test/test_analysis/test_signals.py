@@ -1,5 +1,5 @@
 from trion.analysis.signals import (
-    Signals, Scan, Acquisition, Detector
+    Signals, Scan, Demodulation, Detector
 )
 from trion.analysis.experiment import Experiment
 import pytest
@@ -14,11 +14,11 @@ def test_sortable():
 
 exp_configs = {
     "shd single": (
-        Experiment(Scan.point, Acquisition.shd, Detector.single),
+        Experiment(Scan.point, Demodulation.shd, Detector.single),
         {Signals.sig_A, Signals.tap_x, Signals.tap_y}
     ),
     "shd dual": (
-        Experiment(Scan.point, Acquisition.shd, Detector.dual),
+        Experiment(Scan.point, Demodulation.shd, Detector.dual),
         {Signals.sig_A, Signals.sig_B, Signals.tap_x, Signals.tap_y}
     )
 }

@@ -1,9 +1,9 @@
-from trion.analysis.signals import Scan, Acquisition, Detector
+from trion.analysis.signals import Scan, Demodulation, Detector
 from trion.analysis.experiment import Experiment
 
 exp_configs = (
-    Experiment(Scan.point, Acquisition.shd, Detector.single),
-    Experiment(Scan.point, Acquisition.shd, Detector.dual),
+    Experiment(Scan.point, Demodulation.shd, Detector.single),
+    Experiment(Scan.point, Demodulation.shd, Detector.dual),
 )
 
 n_samples = [
