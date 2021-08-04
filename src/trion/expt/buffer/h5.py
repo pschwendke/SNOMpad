@@ -58,7 +58,7 @@ class H5Buffer(AbstractBuffer):
                  mode: str = "x",
                  frame_idx: int = 0,
                  size: int = 20_000,
-                 dtype: type = np.float,
+                 dtype: type = float,
                  max_size: int = 2_000_000,
                  h5_kw: dict = None,
                  experiment: Experiment = None,

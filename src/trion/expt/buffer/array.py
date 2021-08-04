@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class ArrayBuffer(AbstractBuffer):
-    def __init__(self, *, size, dtype=np.float, **kw):
+    def __init__(self, *, size, dtype=float, **kw):
         """
         Base class for buffers based on numpy arrays.
 

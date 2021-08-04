@@ -93,7 +93,7 @@ with ni.Task("signals") as task:
     reader = TAMR(task.in_stream)
     read_buffer = np.memmap(
         "test.tmp",
-        dtype=np.float,
+        dtype=float,
         mode="w+",
         shape=(n_tot, n_channels))
     read_buffer[:] = -1000 # impossible output

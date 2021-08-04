@@ -144,3 +144,4 @@ dmypy.json
 /scratch/io/test.csv
 /scratch/ni/*.npz
 *.h5
+*.vi
