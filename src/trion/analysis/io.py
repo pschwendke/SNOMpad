@@ -5,6 +5,10 @@ import numpy as np
 import pandas as pd
 from .signals import Signals
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def export_npz(filename, data, header, compress=True):
     """
@@ -24,6 +28,22 @@ def export_npz(filename, data, header, compress=True):
         np.savez_compressed(filename, **payload)
     else:
         np.savez(filename, **payload)
+
+
+def export_npy(filename, data, header=None):
+    """
+    Export a single point data table as an npy file.
+
+    Parameters
+    ----------
+    filename: str
+        Output file name
+    data: np.ndarray of shape (N, M)
+        Experimental data, containing N data points in M columns.
+    """
+    if header is not None:
+        logger.warning("The '.npy' format cannot save header information.")
+    np.save(filename, data, allow_pickle=False)
 
 
 def export_csv(filename, data, header):
@@ -49,6 +69,7 @@ def export_csv(filename, data, header):
 writers = {
     ".npz": export_npz,
     ".csv": export_csv,
+    ".npy": export_npy,
 }
 
 

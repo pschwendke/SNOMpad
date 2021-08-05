@@ -9,6 +9,7 @@ import numpy as np
 import tqdm
 
 from trion.analysis.signals import Signals
+from trion.analysis.io import export_data
 from trion.expt.acquisition import single_point
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
@@ -87,4 +88,4 @@ with pbar:
 
 logging.info(f"Saving data to: {args.filename}")
 logging.debug(f"Data shape: {data.shape}")
-np.save(args.filename, data, allow_pickle=False)
+export_data(args.filename, data, header=[s for s in args.signals])
