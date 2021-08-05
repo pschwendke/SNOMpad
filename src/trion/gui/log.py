@@ -4,7 +4,7 @@ from string import capwords
 
 from PySide2 import QtGui
 from PySide2.QtCore import QObject, Signal
-from PySide2.QtWidgets import QMessageBox
+from PySide2.QtWidgets import QMessageBox, QSpacerItem, QSizePolicy
 
 
 class BriefFormatter(logging.Formatter):
@@ -102,9 +102,9 @@ class QPopupLogDlg(QMessageBox):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         lyout = self.layout()
-        spacer = QtGui.QSpacerItem(400, 0,
-                                   hPolicy=QtGui.QSizePolicy.Minimum,
-                                   vPolicy=QtGui.QSizePolicy.MinimumExpanding)
+        spacer = QSpacerItem(400, 0,
+                                   hPolicy=QSizePolicy.Minimum,
+                                   vPolicy=QSizePolicy.MinimumExpanding)
         lyout.addItem(spacer, lyout.rowCount(), 0, 1, lyout.columnCount())
 
     def showLog(self, msg, record):
