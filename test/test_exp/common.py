@@ -1,4 +1,4 @@
-from trion.analysis.signals import Scan, Demodulation, Detector
+from trion.analysis.signals import Scan, Acquisition, Detector
 from trion.analysis.experiment import Experiment
 
 exp_configs = (
