@@ -6,6 +6,7 @@ from PySide2 import QtGui
 from PySide2.QtCore import QObject, Signal
 from PySide2.QtWidgets import QMessageBox, QSpacerItem, QSizePolicy
 
+logger = logging.getLogger(__name__)
 
 class BriefFormatter(logging.Formatter):
     """Brief formatter that shortens traceback info."""

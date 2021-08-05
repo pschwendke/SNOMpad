@@ -7,11 +7,14 @@ from tqdm import tqdm
 
 from trion.analysis.signals import Signals
 from trion.expt.buffer import ExtendingArrayBuffer
+from trion.expt.buffer.base import Overfill
 from trion.expt.daq import DaqController
 
 import nidaqmx
 from nidaqmx.constants import (
     Edge, TaskMode)
+
+logger = logging.getLogger(__name__)
 
 def single_point(device: str, signals: Iterable[Signals], n_samples: int,
                  clock_channel: str="", truncate: bool=False, pbar=None, ):
@@ -36,7 +39,7 @@ def single_point(device: str, signals: Iterable[Signals], n_samples: int,
     if n_samples < 0:
         n_samples = np.inf
     ctrl = DaqController(device, clock_channel=clock_channel)
-    buffer = ExtendingArrayBuffer(vars=signals, max_size=n_samples)
+    buffer = ExtendingArrayBuffer(vars=signals, max_size=n_samples, overfill=Overfill.clip)
     n_read = 0
 
     ctrl.setup(buffer=buffer)
@@ -46,18 +49,18 @@ def single_point(device: str, signals: Iterable[Signals], n_samples: int,
             try:
                 if ctrl.is_done() or n_read >= n_samples:
                     break
-                sleep(0.01)
+                sleep(0.001)
                 n = ctrl.reader.read()
                 if pbar is not None:
                     pbar.update(n)
                 n_read += n
             except KeyboardInterrupt:
-                logging.warning("Acquisition interrupted by user.")
+                logger.warning("Acquisition interrupted by user.")
                 break
     finally:
         ctrl.stop()
         ctrl.close()
-        logging.info("Acquisition finished.")
+        logger.info("Acquisition finished.")
     data = buffer.buf
     if truncate and np.isfinite(n_samples):
         data = data[:n_samples,:]

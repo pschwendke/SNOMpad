@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.Images.Images&lt;TScan,TImage&gt;</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK.Images Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Images.Images`2">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Images.Images`2:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Images.Images`2:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Images.Images`2:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Images.Images`2">Images&lt;TScan,TImage&gt; Generic Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Summary">
+            Represents a collection of channels with scanned data.
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Signature">public abstract class  <b>Images&lt;TScan, TImage&gt;</b><br /> where TScan : <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">Nea.Client.Hardware.SDK.Scan.BasicScan</a><br /> where TImage : <a href="../Nea.Client.Hardware.SDK.Images/RawData.html">Nea.Client.Hardware.SDK.Images.RawData</a></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Docs">
+      <h4 class="Subsection">See Also</h4>
+      <blockquote class="SubsectionBox" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Docs:See Also">
+        <div>
+          <a href="../Nea.Client.Hardware.SDK.Images/Images2D.html">Images2D</a>
+        </div>
+        <div>
+          <a href="../Nea.Client.Hardware.SDK.Images/Images3D.html">Images3D</a>
+        </div>
+        <div>
+          <a href="../Nea.Client.Hardware.SDK.Images/Interferograms.html">Interferograms</a>
+        </div>
+      </blockquote>
+      <h4 class="Subsection">Type Parameters</h4>
+      <blockquote class="SubsectionBox" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Docs:Type Parameters">
+        <dl>
+          <dt>
+            <i>TScan</i>
+          </dt>
+          <dd>The <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">Nea.Client.Hardware.SDK.Scan.BasicScan</a>-based element type that depends on the scan mode.</dd>
+          <dt>
+            <i>TImage</i>
+          </dt>
+          <dd>The <a href="../Nea.Client.Hardware.SDK.Images/RawData.html">Nea.Client.Hardware.SDK.Images.RawData</a>-based element type that depends on the scan mode.</dd>
+        </dl>
+      </blockquote>
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK.Images<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
+							</p>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String)">GetChannel</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>)<nobr> : <i title="The -based element type that depends on the scan mode.">TImage</i></nobr><blockquote>
+            Gets the channel.
+            </blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.Images.Images`2:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String)">GetChannel Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String):member">
+          <div class="msummary">
+            Gets the channel.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <i title="The -based element type that depends on the scan mode.">TImage</i> <b>GetChannel</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a> acronym)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String):Parameters">
+            <dl>
+              <dt>
+                <i>acronym</i>
+              </dt>
+              <dd>Acronym that specifies the channel e.g. "M1A", "O0A" or "Z".</dd>
+            </dl>
+          </blockquote>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String):Returns">Image data for specified channel or <tt>null</tt> if the channel does not exist.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String):Remarks">
+            <ul>
+              <li>This method can be called after the scan ended as well as when still in progress.</li>
+              <li>Data for the specified channel is loaded in the background, but not before you call this method.</li>
+            </ul>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Images<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

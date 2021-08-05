@@ -1,0 +1,1291 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Nea.Client.Hardware</name>
+    </assembly>
+    <members>
+        <member name="T:Nea.Client.SharedDefinitions.Channel">
+            <summary>
+            Channel ist eine Kombination aus LineScan, Signal, Harmonic und SignalComponent
+            </summary>
+        </member>
+        <member name="T:Nea.Client.SharedDefinitions.ChannelTypeConverter">
+            <summary>
+            Channel in XAML 
+            </summary>
+        </member>
+        <member name="T:Nea.Client.SharedDefinitions.ChannelTranslation">
+            <summary>
+            Gibt Channel.Acronym zurück für alle Channels, für welche hier kein anderer String im Dictionary ist. 
+            </summary>
+        </member>
+        <member name="T:Nea.Client.Hardware.Sphere">
+            <summary>
+            Interessenbereich
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.IHardware.SamplingTime">
+            Sampling Time in Millisekunden
+        </member>
+        <member name="P:Nea.Client.Hardware.IHardware.ScanProgress">
+            Scan Image Fortschritt 0 ... 1.0 = 100% = Ende
+        </member>
+        <member name="T:Nea.Client.Hardware.Microscope.Request">
+            <summary>
+            Subclasses extending Request must use Sequential Layout, 
+            because Visual Studio and Mono develop [FieldOffset] in subclasses differently: 
+            Visual Studio needs (0), but Monodevelop needs (8)
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Decode``1(System.Byte[])">
+            <summary>
+            Konvertiert die empfangenen Bytes in den gewünschten Datentyp.
+            </summary>
+            <param name="received">Response Bytes.</param>
+            <typeparam name="T">Datentyp.</typeparam>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.#ctor(System.String,System.String,System.Int32,System.Func{System.Int64,System.Int64})">
+            <summary>
+            Rpc Client
+            </summary>
+            <param name="name">Bezeichnung, nur für Logfiles</param>
+            <param name="hostname">Addresse des Servers</param>
+            <param name="port">Port des Servers</param>
+            <param name="encrypt">Funktion die Challange-Response implementiert</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.ReceiveBytes(System.UInt32,System.Boolean)">
+            <summary>
+            Liest genau die angebene Anzahl von Bytes aus dem Socket, 
+            oder null wenn Dispose() aufgerufen wurde.
+            </summary>
+            <returns>Empfangenen Bytes</returns>
+            <param name="count">Anzahl der Bytes.</param>
+            <param name = "doInterruptOnDispose">Nach Dispose warten abbrechen und null zurückgeben.</param>
+        </member>
+        <member name="T:Nea.Client.Hardware.Microscope.RpcClient.ResponseQueueItem">
+            Empfangene Daten, die eine Antwort auf einen Request sind,
+            werden in die Response Queue eingereiht.
+        </member>
+        <member name="E:Nea.Client.Hardware.Microscope.RpcClient.UnsolicitedDataReceived">
+            Empfangene Daten, die unangefordert ankommen,
+            werden als Event durchgereicht.
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.ReceiveThread">
+            <summary>
+            Thread Endlosschleife, die immer in der Reihenfolge:
+            Size, MessageType, Data, Size, MessageType ... empfängt.
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest)">
+            <summary>
+            Stellt einen Requests ohne Antwort, asynchron
+            </summary>
+            <param name="m">Request.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
+            <summary>
+            Stellt einen Requests ohne Antwort, asynchron
+            </summary>
+            <param name="m">Request.</param>
+            <param name="cancellationToken"></param>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue``1(Nea.Client.Hardware.Microscope.IRequest)">
+            <summary>
+            Asynchroner Request mit Antwort vom Typ T
+            </summary>
+            <param name="m">Request.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue``1(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
+            <summary>
+            Asynchroner Request mit Antwort vom Typ T
+            </summary>
+            <param name="m">Request.</param>
+            <param name="cancellationToken"></param>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.EnqueueAndWait``1(Nea.Client.Hardware.Microscope.IRequest)">
+            <summary>
+            Synchroner Request mit Antwort vom Typ T
+            </summary>
+            <returns>Response konvertiert nach T.</returns>
+            <param name="m">Message.</param>
+            <typeparam name="TResponse">Datentyp der erwarteten Antwort.</typeparam>
+        </member>
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.EnqueueAndWait(Nea.Client.Hardware.Microscope.IRequest)">
+            <summary>
+            Synchroner Request ohne Antwort
+            </summary>
+            <param name="m">Mesage.</param>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Channel">
+            <summary>
+            Represents a channel with live data.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Channel.CurrentValue">
+            <summary>
+            Gets current value from channel.
+            </summary>
+            <remarks></remarks>
+            <returns>Latest value from channel.</returns>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Image3D">
+            <summary>
+            Represents a 3D image.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.RawData" />
+        </member>
+        <member name="F:Nea.Client.Hardware.SDK.Images.Image3D.RawData">
+            
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Image3D.GetData">
+            <summary>
+            Gets the data.
+            </summary>
+            <remarks></remarks>
+            <returns>Four-dimensional array containing the rows, columns, depth re-runs for averaging, and depths of pixel values.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Image3D.Feed(System.Single[],System.UInt32,System.UInt32)">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Interferogram">
+            <summary>
+            Represents Interferogramms.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Image3D" />
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Interferogram.GetDataFromRowColumnAveraging(System.UInt32,System.UInt32,System.UInt32)">
+            <summary>
+            Gets the interferogram data from row, column and averaging index.
+            </summary>
+            <param name="rowIndex">Index of the row.</param>
+            <param name="columnIndex">Index of the column.</param>
+            <param name="averagingIndex">Index of the averaging.</param>
+            <remarks>All indices start with <c>0</c>.</remarks>
+            <returns>Array of floats with interferogram data.</returns>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.ApproachCurve">
+            <summary>
+            Represents Approach curves for Afm and PsHet scan modes and a particular channel.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Image3D" />
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.ApproachCurve.GetDataApproachCurve">
+            <summary>
+            Gets the approach curve data 
+            </summary>
+            <returns>Array of floats with approach curve data.</returns>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Image2D">
+            <summary>
+            Represents a 2D image.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.RawData" />
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Image2D.GetData">
+            <summary>
+            Gets the data.
+            </summary>
+            <remarks></remarks>
+            <returns>Two-dimensional array containing the rows and columns of pixel values.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Image2D.Feed(System.Single[],System.UInt32,System.UInt32)">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Images`2">
+            <summary>
+            Represents a collection of channels with scanned data.
+            </summary>
+            <remarks></remarks>
+            <typeparam name="TScan">The <see cref="T:Nea.Client.Hardware.SDK.Scan.BasicScan"/>-based element type that depends on the scan mode.</typeparam>
+            <typeparam name="TImage">The <see cref="T:Nea.Client.Hardware.SDK.Images.RawData"/>-based element type that depends on the scan mode.</typeparam>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Images2D" />
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Images3D" />
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Interferograms" />
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.Images`2.GetChannel(System.String)">
+            <summary>
+            Gets the channel.
+            </summary>
+            <param name="acronym">Acronym that specifies the channel e.g. "M1A", "O0A" or "Z".</param>
+            <returns>Image data for specified channel or <c>null</c> if the channel does not exist.</returns>
+            <remarks>
+              <list type="bullet">
+                <item>
+                   <term>This method can be called after the scan ended as well as when still in progress.</term>
+                </item>
+                <item>
+                   <term>Data for the specified channel is loaded in the background, but not before you call this method.</term>
+                </item>
+              </list>
+            </remarks>
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Interferograms">
+            <summary>
+            Represents a collection of interferograms.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Interferogram" />
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.ApproachCurves">
+            <summary>
+            Represents a collection of approach curves.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Images.Interferogram" />
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Images2D">
+            <summary>
+            Represents a collection of 2D images.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.Images3D">
+            <summary>
+            Represents a collection of 3D images.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Images.RawData">
+            <summary>
+            Represents a channel with scanned data.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.RawData.#ctor(Nea.Client.Hardware.SDK.Scan.BasicScan,Nea.Client.SharedDefinitions.Channel)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Nea.Client.Hardware.SDK.Images.RawData"/> class.
+            </summary>
+            <param name="scan">The scan.</param>
+            <param name="channel">The channel.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Images.RawData.Feed(System.Single[],System.UInt32,System.UInt32)">
+            <summary>
+            Feeds the specified data.
+            </summary>
+            <param name="data">The data to be fed into the target.</param>
+            <param name="skipped">The count of pixels to be skipped in the target.</param>
+            <param name="got">The count of pixel to be fed into the target.</param>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Images.RawData.IsCompleted">
+            <summary>
+            Gets a value indicating whether this image is completed.
+            </summary>
+            <value>
+              <c>true</c> if downloading the scanned data for this image is completed; otherwise, <c>false</c>.
+            </value>
+            <remarks>
+            The value is also <c>true</c> if the scan was stopped and cancelled. 
+            Through stopping and cancelling the scan is only resized from intended resolution to what has been scanned by then.
+            </remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress"/>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Microscope">
+            <summary>
+            Represents a remote microscope.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.ClientVersion">
+            <summary>
+            Gets the client version.
+            </summary>
+            <value>Version of this library.</value>
+            <remarks>The version in the string is in format "<c>[major].[minor].[revision]</c>".</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Microscope.ServerVersion"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.ServerVersion">
+            <summary>
+            Gets the server version.
+            </summary>
+            <value>Version of system software installed on the neaSNOM.</value>
+            <remarks>The version in the string is in format "<c>[major].[minor].[revision]</c>".</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Microscope.ClientVersion"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.RegulatorOn">
+            <summary>
+            Engages the regulator for Z.
+            </summary>
+            <remarks>Uses the last setpoint.</remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.RegulatorOff">
+            <summary>
+            Disengages the regulator for Z.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.IsInContact">
+            <summary>
+            Indicates whether the tip is in contact with the sample.
+            </summary>
+            <returns>
+            Returns <c>true</c> if the tip is in contact, otherwise <c>false</c>.
+            </returns>
+            <remarks>The tip is considered "in contact", if the last auto approach was successful 
+            and the regulator has not beed disengaged since.</remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.AutoApproach(System.Double)">
+            <summary>
+            Approaches the tip to the sample automatically. 
+            </summary>
+            <remarks>This method will block until the automatic approach ends 
+            or a time-out occurs after one minute.</remarks>
+            <example>
+            This example shows how to auto-approach with 80% setpoint.
+            <code>
+            var client = new Connection("nea-server");
+            var microscope = client.Connect();
+            microscope.AutoApproach(0.80); // Auto-Approach with 80%
+            </code>
+            </example>
+            <param name="relativeSetpoint">Setpointrelative to maximum value. <para>(0.0 &lt; relativeSetpoint &lt; 1.0)</para></param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.CancelCurrentProcedure">
+            <summary>
+            Stopps any pending operation (auto-approach, scan, auto-alignment, ...)
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetChannel(System.String)">
+            <summary>
+            Gets the channel. 
+            </summary>
+            <param name="acronym">Acronym that specifies the channel e.g. "M1A", "O0A" or "Z".</param>#
+            <remarks></remarks>
+            <returns>An object that represents the specified channel.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareAfmScan">
+            <summary>
+            Prepares an AFM scan.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start"></see> 
+            on the returned object.</remarks>
+            <returns>An object that represents an AFM scan.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareCfmScan">
+            <summary>
+            Prepares an CFM scan.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start"></see> 
+            on the returned object.</remarks>
+            <returns>An object that represents an CFM scan.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PreparePsHetScan">
+            <summary>
+            Prepares a PsHet scan.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start"></see> 
+            on the returned object.</remarks>
+            <returns>An object that represents an PsHet scan.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareWhitelightScan">
+            <summary>
+            Prepares an Whitelight scan.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start"></see> 
+            on the returned object.</remarks>
+            <returns>An object that represents a Whitelight scan.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareFourierScan">
+            <summary>
+            Prepares a Fourier scan.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start"></see> 
+            on the returned object.</remarks>
+            <returns>An object that represents an Fourier scan.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareApproachCurveAfm">
+            <summary>
+            Prepares Afm approach curve.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.Start"></see> 
+            on the returned object.</remarks>
+            /// <seealso cref="T:Nea.Client.Hardware.SDK.Scan.Scan3D"/>
+             <returns>Data approach curve .</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareApproachCurvePsHet">
+            <summary>
+            Prepares PsHet approach curve.
+            </summary>
+            <remarks>In order to start the scan you need to call <see cref="M:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.Start"></see> 
+            on the returned object.</remarks>
+            /// <seealso cref="T:Nea.Client.Hardware.SDK.Scan.Scan3D"/>
+             <returns>Data approach curve .</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateSampleStage">
+            <summary>
+            Activates the sample stage.
+            </summary>
+            <remarks>Only one stage can be active at a time. Before activating another stage, 
+            you need to call <see cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/> on the returned object.</remarks>
+            <returns>An object that represents a stage.</returns>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateParabolicMirrorStage">
+            <summary>
+            Activates the parabolic mirror stage.
+            </summary>
+            <remarks>Only one stage can be active at a time. Before activating another stage, 
+            you need to call <see cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/> on the returned object.</remarks>
+            <returns>An object that represents a stage.</returns>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage">
+            <summary>
+            Activates the bottom parabolic mirror stage.
+            </summary>
+            <remarks>Only one stage can be active at a time. Before activating another stage, 
+            you need to call <see cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/> on the returned object.</remarks>
+            <returns>An object that represents a stage.</returns>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GotoTipPosition(System.Double,System.Double,System.Double)">
+            <summary>
+            Move the tip to XY coordinates.
+            </summary>
+            <param name="physicalPositionX">x position in µm (columns, horizontally, fast axis)</param>
+            <param name="physicalPositionY">y position in µm (rows, vertically, slow axis)</param>
+            <param name="micrometersPerSecond">Velocity limit for movement in µm/s.</param>
+            <remarks>Velocity must fall within range 0.5-10.0µm/s.</remarks>
+            <returns><c>true</c> if tip reached target position, otherwise <c>false</c>.</returns>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.TipPositionX">
+            <summary>
+            Gets the current tip position from axis X.
+            </summary>
+            <value>Position in micrometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.TipPositionY">
+            <summary>
+            Gets the current tip position from axis Y.
+            </summary>
+            <value>Position in micrometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.TipPositionZ">
+            <summary>
+            Gets the current tip position from axis Z.
+            </summary>
+            <value>Position in micrometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.InterferometerPosition">
+            <summary>
+            Gets the current interferometer position.
+            </summary>
+            <value>Position in micrometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateRightDetector">
+            <summary>
+            Activates the detector on right side.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateLeftDetectorForVisible">
+            <summary>
+            Activates the detector on left side for visible light.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateLeftDetectorForMidInfrared">
+            <summary>
+            Activates the detector on left side for mid infrared light.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.ActivateLeftDetectorForNearInfrared">
+            <summary>
+            Activates the detector on left side for near infrared light.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.DeactivateDetector">
+            <summary>
+            Deactivates the detector.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.Dispose">
+            <summary>
+            Performs tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GotoInterferometerPosition(System.Double)">
+            <summary>
+            Move the interfernometer coordinate.
+            </summary>
+            <param name="offset">current sample x and y position in µm </param>
+            <param name="interferometerPosition">set interferometer position in µm.</param>
+            <remarks>Velocity must fall within range 0.5-10.0µm/s.</remarks>
+            <returns><c>true</c> if interferometer reached target position, otherwise <c>false</c>.</returns>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.ActiveCooler">
+             <summary>
+             Gets sample and magnet temperatures of the active cooler.
+             </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Cooler">
+            <summary>
+            Gets the Cooler sample and magnet temperature and if the sample temperature is in the right range
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Cooler.#ctor(System.Double,System.Double,System.Boolean)">
+             <summary>
+            Cooler  constructor with its corresonding properties
+             </summary>
+             <param name="sample">current temperature of sample in Kelvin </param>
+             <param name="magnet">current temperature of teh magnet in Kelvin </param>
+             <param name="iscool">informs wether the sample temperature is in the right range </param>
+             <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">
+            <summary>
+             sample temperature in Kelvin
+             </summary>
+             <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">
+             <summary>
+             Gets the magnet temperature in Kelvin
+             </summary>            
+            <remarks></remarks> 
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Cooler.IsCool">
+            <summary>
+            Gets a value indicating whether if sample temperature is in the right range.
+            </summary>
+            <remarks></remarks>>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.FourierScan">
+            <summary>
+            Represents a scan with Fourier parameters.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.Scan3D" />
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferogramResolution">
+            <summary>
+            Gets or sets the interferogram resolution.
+            </summary>
+            <value>
+            Number of pixels to be scanned with the interferometer.
+            </value>
+            <remarks>The minimum value is 32.</remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferogramResolution(System.UInt32)">
+            <summary>
+            Sets the interferogram resolution.
+            </summary>
+            <remarks>The minimum value is 32.</remarks>
+            <param name="pixelsCount">The pixels count.</param>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferogramResolution"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.FourierScan.Averaging">
+            <summary>
+            Gets or sets the averaging.
+            </summary>
+            <value>
+            Number of interferograms that will be recorded for each position.
+            </value>
+            <remarks>The minimum value is 1.</remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetAveraging(System.UInt32)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetAveraging(System.UInt32)">
+            <summary>
+            Sets the averaging.
+            </summary>
+            <param name="count">Number of interferograms that will be recorded for each position.</param>
+            <remarks>The minimum value is 1.</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.Averaging"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerOffset">
+            <summary>
+            Gets or sets the interferometer offset.
+            </summary>
+            <value>
+            Start position for interferometer in micrometers.
+            </value>
+            <remarks></remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerOffset(System.Double)"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerDistance"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerDistance(System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerOffset(System.Double)">
+            <summary>
+            Sets the interferometer offset.
+            </summary>
+            <remarks></remarks>
+            <param name="physicalOffset">The physical offset in micrometers.</param>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerOffset"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerDistance"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerDistance(System.Double)"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerDistance">
+            <summary>
+            Gets or sets the interferometer distance.
+            </summary>
+            <value>
+            Travel distance for interferometer in micrometers.
+            </value>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerDistance(System.Double)">
+            <summary>
+            Sets the interferometer distance.
+            </summary>
+            <param name="distance">Travel distance for interferometer in micrometers.</param>>
+            <remarks></remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerDistance"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.FourierScan.InterferometerOffset"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.FourierScan.SetInterferometerOffset(System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.Start">
+            <summary>
+            Starts to scan.
+            </summary>
+            <remarks>This method does neither block nor wait until the scan ended. 
+            If you want to keep track of the scan progress, you can poll <see cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted"/> or <see cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress"/>.</remarks>
+            <returns>
+              An object that represents the scanned images if the scan was successfully started; otherwise, <c>null</c>.
+            </returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.FourierScan.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan">
+            <summary>
+            Represents an Approach curve for Afm or PsHet scan.
+            </summary>
+            <remarks></remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.Scan3D" />
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.ApproachCurveHeight">
+            <summary>
+            Sets the physical size z in µm.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.ApproachCurveResolution">
+            <summary>
+            Sets the resolution in pixels .
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.Start">
+            <summary>
+            Starts to scan.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.ApproachCurveScan.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.Scan3D">
+            <summary>
+            Represents a scan with 3D parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.Scan3D.ResolutionDepths">
+            <summary>
+            Gets or sets the depth resolution. 
+            </summary>
+            <remarks>Minimum value is 1.</remarks>
+            <value>Number of pixels to be scanned in depth (Z axis, normal [geometry], i.e. length of approach curves or interferograms)</value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.Scan3D.DepthRuns"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.Scan3D.DepthRuns">
+            <summary>
+            Gets or sets the depth runs. 
+            </summary>
+            <remarks>Minimum value is 1.</remarks>
+            <value>Number of how many times the depth pixels will be rescanned (i.e. for averaging).</value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.Scan3D.ResolutionDepths"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.Scan3D.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.AfmScan">
+            <summary>
+            Represents a scan with AFM parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.PsHetScan">
+            <summary>
+            Represents a scan with PsHet parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.#ctor(Nea.Client.Hardware.IHardware)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Nea.Client.Hardware.SDK.Scan.PsHetScan" /> class.
+            </summary>
+            <param name="h">The h.</param>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.PsHetScan.MirrorAmplitudeAndOffsetScalingInPsHet">
+             <summary>
+             Gets the mirror amplitude and offset scaling fo PsHet.
+             </summary>   
+            <remarks></remarks> 
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.SetMirrorOffset(System.Double)">
+            <summary>
+            Sets the refference mirror offset position in z direction.
+            </summary>
+            <param name="volts">voltage in V.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.GetMirrorOffset">
+            <summary>
+            Gets the refference mirror offset position in z direction
+            </summary>
+            <remarks></remarks>
+            <returns>voltage in V</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.SetMirrorAmplitude(System.Double)">
+            <summary>
+            Sets the mirror voltage amplitud, Vpp in V.
+            </summary>
+            <param name="volts">The volts.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.GetMirrorAmplitude">
+            <summary>
+            Gets the mirror voltage amplitude, Vpp in V.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.WhitelightScan">
+            <summary>
+            Represents a scan with Whitelight parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.CfmScan">
+            <summary>
+            Represents a scan with CFM parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.Scan2D">
+            <summary>
+            Represents a scan with 2D parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start">
+            <summary>
+            Starts to scan.
+            </summary>
+            <remarks>This method does neither block nor wait until the scan ended. 
+            If you want to keep track of the scan progress, you can poll <see cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted"/> or <see cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress"/>.</remarks>
+            <returns>
+              An object that represents the scanned images if the scan was successfully started; otherwise, <c>null</c>.
+            </returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.Scan2D.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D">
+            <summary>
+            Represents a scan with basic parameters and optional serpent mode.
+            </summary>
+            <remarks>In serpent mode rows will be scanned and skipped alternately.</remarks>
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.AfmScan" />
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.PsHetScan" />
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.WhitelightScan" />
+            <seealso cref="T:Nea.Client.Hardware.SDK.Scan.CfmScan" />
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows">
+            <summary>
+            Gets or sets the number of rows to be taken.
+            </summary>
+            <value>
+            The number of consecutive rows that will be scanned.
+            </value>
+            <remarks>The minimum value is 1.</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">
+            <summary>
+            Sets the scan as serpent.
+            </summary>
+            <remarks>Consecutive rows will alternately be taken and skipped in this scan.</remarks>
+            <param name="take">The number scanned rows.</param>
+            <param name="skip">The number skipped rows.</param>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Scan.BasicScan">
+            <summary>
+            Represents a scan with basic parameters.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle">
+            <summary>
+            Gets or sets then scan angle. 
+            </summary>
+            <remarks></remarks>
+            <value>Rotation around center in degrees.</value>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)">
+            <summary>
+            Sets the scan angle.
+            </summary>
+            <remarks></remarks>
+            <param name="angle">Rotation around center in degrees.</param>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">
+            <summary>
+            Gets or sets the X value of the center
+            </summary>
+            <remarks></remarks>
+            <value>X position of scan area center in µm (columns, horizontally, fast axis)</value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">
+            <summary>
+            Gets or sets the Y value of the center
+            </summary>
+            <remarks></remarks>
+            <value>Y position of scan area center in µm (rows, vertically, slow axis)</value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">
+            <summary>
+            Set center position of scan.
+            </summary>
+            <param name="physicalPositionX">x position in µm (columns, horizontally, fast axis)</param>
+            <param name="physicalPositionY">y position in µm (rows, vertically, slow axis)</param>
+            <remarks>Without specifying the center position, the scan will be started at the current tip position.</remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth">
+            <summary>
+            Width of scan area.
+            </summary>
+            <remarks></remarks>
+            <value>
+            Physical width in µm (horizontally, pixel columns, fast axis)
+            </value>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight">
+            <summary>
+            Height of scan area.
+            </summary>
+            <remarks></remarks>
+            <value>
+            Physical height in µm (vertically, pixel rows, slow axis)
+            </value>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">
+            <summary>
+            Sets the scan area.
+            </summary>
+            <remarks></remarks>
+            <param name="physicalSizeWidth">Width (pixel columns, horizontal or fast axis) of scan area in micrometers.</param>
+            <param name="physicalSizeHeight">Height (pixel rows, vertical or slow axis) of scan area in micrometers.</param>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns">
+            <summary>
+            Gets or sets the column resolution.
+            </summary>
+            <remarks>Minimum value is 1.</remarks>
+            <value>Number of pixels columns to be scanned in each row (horizontally, X, fast axis)</value>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">
+            <summary>
+            Gets or sets the row resolution. 
+            </summary>
+            <remarks>Minimum value is 1.</remarks>
+            <value>Number of pixel rows to be scanned (vertically, Y, slow axis)</value>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)"/>
+        </member>
+        <member name="F:Nea.Client.Hardware.SDK.Scan.BasicScan._depthRuns">
+            
+        </member>
+        <member name="F:Nea.Client.Hardware.SDK.Scan.BasicScan._resolutionDepths">
+            
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">
+            <summary>
+            Sets the resolution.
+            </summary>
+            <param name="columns">Columns, number of pixels in each row (horizontal resolution on fast axis).</param>
+            <param name="rows">Rows, number of rows (vertical resolution on slow axis).</param>
+            <remarks></remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime">
+            <summary>
+            Gets or sets the sampling time.
+            </summary>
+            <value>Sampling time in milliseconds</value>
+            <remarks>Sampling time will be rounded to multiples of 0.4096 milliseconds.</remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)">
+            <summary>
+            Set Sampling time in Milliseconds
+            </summary>
+            <param name="milliseconds"></param>
+            <remarks></remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted">
+            <summary>
+            Gets a value indicating whether the scan is started.
+            </summary>
+            <remarks>You can start a scan only once.</remarks>
+            <value>
+              <c>true</c> if this scan is started; otherwise, <c>false</c>.
+            </value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted">
+            <summary>
+            Gets a value indicating whether the scan is completed.
+            </summary>
+            <remarks>The scan is completed either after all pixels were scanned or <see cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel"/> was called.</remarks>
+            <value>
+              <c>true</c> if the scan is completed; otherwise, <c>false</c>.
+            </value>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">
+            <summary>
+            SkipRows is the number skipped rows in a serpent scan 
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">
+            <summary>
+            Gets the progress.
+            </summary>
+            <remarks>
+            <list type="table">
+              <listheader>
+                <term>Value</term>
+                <description>Progress</description>
+              </listheader>
+              <item>
+                <term>0.0</term>
+                <description>Not started.</description>
+              </item>
+              <item>
+                <term>1.0</term>
+                <description>Completed.</description>
+              </item>
+            </list>          
+            </remarks>
+            <value>
+            The progress of the current scan. 
+            <para>0.0 ≤ <c>progress</c> ≤ 1.0</para>
+            </value>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted"/>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted"/>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">
+            <summary>
+            Gets a value indicating whether the scan is suspended.
+            </summary>
+            <value>
+              <c>true</c> if the scan is currently suspended; otherwise, <c>false</c>.
+            </value>
+            <remarks></remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">
+            <summary>
+            Suspends a scan after it was started.
+            </summary>
+            <remarks>Calling this method has no effect when no scan was started.</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume">
+            <summary>
+            Resumes to scan after suspending with <see cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend"/>.
+            </summary>
+            <remarks>Calling this method has no effect when no scan is suspended.</remarks>
+            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel">
+            <summary>
+            Stopps and cancels the scan in progress.
+            </summary>
+            <remarks>
+              <list type="bullet">
+                <item>
+                  <term>
+                    Through stopping and cancelling the scan is only resized from intended resolution to what has been scanned by then.
+                  </term>
+                </item>
+                <item>
+                  <term>
+                    Calling this method has no effect without scanning.
+                  </term>
+                </item>
+              </list>
+            </remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.TryStart">
+            
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Scan.BasicScan.DoStart">
+            
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Stage">
+            <summary>
+            Represents a stage with motors on three axes.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors">
+            <summary>
+            Gets a value indicating whether the stage has position sensors.
+            </summary>
+            <remarks></remarks>
+            <value><c>true</c> if the stage supports position sensors, <c>false</c> otherwise.</value>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.Deactivate">
+            <summary>
+            Deactivates the stage and allows others stages to be activated.
+            </summary>
+            <remarks>This stage cannot be used any more after deactivation. 
+            In order to reuse the stage, you need to activate a new stage instance, e.g. by calling <see cref="M:Nea.Client.Hardware.SDK.Microscope.ActivateSampleStage"/>.</remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Stage.PositionX">
+            <summary>
+            Gets the current position from axis X.
+            </summary>
+            <value>Position in nanometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Stage.PositionY">
+            <summary>
+            Gets the current position from axis Y.
+            </summary>
+            <value>Position in nanometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Stage.PositionZ">
+            <summary>
+            Gets the current position from axis Z.
+            </summary>
+            <value>Position in nanometers.</value>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Finds the absolute coordinates of the current position. 
+            </summary>
+            <remarks>Stage is moved first in order to find the reference mark (origin) and moved back to current position.</remarks>
+            <param name="nanometersX">Position in nanometers on axis X.</param>
+            <param name="nanometersY">Position in nanometers on axis Y.</param>
+            <param name="nanometersZ">Position in nanometers on axis Z.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">
+            <summary>
+            Moves axis X continously with constant velocity for a period of time.
+            </summary>
+            <remarks>
+            This method will block and wait until the specified period of time elapsed.
+            </remarks>
+            <param name="velocity">Velocity of movement with 
+            <para>0.0 ≤ <c>velocity</c> ≤ 1.0</para>
+            <list type="table">
+              <listheader>
+                <term>Value</term>
+                <description>Velocity</description>
+              </listheader>
+              <item>
+                <term>0.0</term>
+                <description>No movement, or stopps the motor.</description>
+              </item>
+              <item>
+                <term>1.0</term>
+                <description>Maximum velocity of motor.</description>
+              </item>
+            </list>          
+            </param>
+            <param name="seconds">Period of time in seconds until motor movement stops.</param>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">
+            <summary>
+            Moves axis Y continously with constant velocity for a period of time.
+            <para>For details see <see cref="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)"/>.</para>
+            </summary>
+            <param name="velocity">Velocity of movement.</param>
+            <param name="seconds">Period of time in seconds until motor movement stops.</param>
+            <remarks></remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">
+            <summary>
+            Moves axis Z continously with constant velocity for a period of time.
+            <para>For details see <see cref="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)"/>.</para>
+            </summary>
+            <param name="velocity">Velocity of movement.</param>
+            <param name="seconds">Period of time in seconds until motor movement stops.</param>
+            <remarks></remarks>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)"/>
+            <seealso cref="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)"/>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double)">
+            <summary>
+            Moves all axes to absolute positions. 
+            </summary>
+            <remarks>Waits until new position is reached or a time-out occurs.</remarks>
+            <param name="x">New position in nanometers to move on axis X.</param>
+            <param name="y">New position in nanometers to move on axis Y.</param>
+            <param name="z">New position in nanometers to move on axis Z.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double)">
+            <summary>
+            A change in position that is based on the current position. 
+            </summary>
+            <remarks>Waits until new position is reached or a time-out occurs.</remarks>
+            <param name="x">Distance in nanometers to move on axis X.</param>
+            <param name="y">Distance in nanometers to move on axis Y.</param>
+            <param name="z">Distance in nanometers to move on axis Z.</param>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.BottomIllumionationStage">
+            <summary>
+            Represents a special stage class for synchronazing the Bottom Illumination.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.SetSynchronizationEnabled(System.Boolean)">
+            <summary>
+            Enables synchronisation for Bottom Illumination
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.BottomIllumionationStage.IsSynchronizationEnabled">
+            <summary>
+            gets if synchronisation for Bottom Illumination is enabled
+            </summary>
+            <remarks></remarks>s
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.BottomIllumionationStage.GetSynchronizationEnabled">
+            <summary>
+            Gets if Bottom  Illumination synchronization  is enabled.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.Connection">
+            <summary>
+            Provides a connection to remote neaSNOM controller.
+            </summary>
+            <remarks>Make sure your local client PC is configured to reach and establish a TCP/IP connection to port 12982.</remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Connection.#ctor(System.String)">
+            <summary>
+            Initializes a new connection. 
+            </summary>
+            <remarks>Does not connect until you call <see cref="M:Nea.Client.Hardware.SDK.Connection.Connect"></see>.</remarks>
+            <example>
+            This example shows how to connect from the neaSNOM's client PC to the neaSNOM controller.
+            <code language="csharp">
+            var client = new Connection("nea-server");
+            var microscope = client.Connect();
+            </code>
+            </example>
+            <param name="hostname">Hostname or IP Address of remote neaSNOM controller.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Connection.Connect">
+            <summary>
+            Connects to neaSNOM micrscope.
+            </summary>
+            <remarks></remarks>
+            <returns>An object that represents the remote microscope.</returns>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Connection.Logfile">
+            <summary>
+            Gets the logfile.
+            </summary>
+            <value>The name and full path to the logfile currently written for this connection.</value>
+            <remarks>This logfile contains only information from connections you made with this library.
+            It does not reflect any activities from the neaSNOM controller or neaSNOM client application.</remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Connection.Disconnect">
+            <summary>
+            Disconnects this instance from remote neaSNOM.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Connection.Dispose">
+            <summary>
+            Performs tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:Nea.Client.Hardware.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.Properties.Resources.log4net_xml">
+            <summary>
+              Looks up a localized string similar to &lt;log4net&gt;
+            &lt;appender name=&quot;FileAppender&quot; type=&quot;log4net.Appender.RollingFileAppender&quot;&gt;
+            	&lt;param name=&quot;File&quot; value=&quot;Nea.Client.Hardware.log&quot; /&gt;
+            	&lt;appendToFile value=&quot;true&quot; /&gt;
+            	&lt;rollingStyle value=&quot;Size&quot; /&gt;
+            	&lt;maxSizeRollBackups value=&quot;9&quot; /&gt;
+            	&lt;maximumFileSize value=&quot;10MB&quot; /&gt;
+            	&lt;staticLogFileName value=&quot;true&quot; /&gt;
+            	&lt;layout type=&quot;log4net.Layout.PatternLayout&quot;&gt;
+            	&lt;conversionPattern value=&quot;%date [%thread] %-5level %logger - %message%newline&quot; /&gt;
+            	&lt;/layout&gt;
+            &lt;/appender&gt;
+            &lt;appender name=&quot;ConsoleAppende [rest of string was truncated]&quot;;.
+            </summary>
+        </member>
+    </members>
+</doc>
