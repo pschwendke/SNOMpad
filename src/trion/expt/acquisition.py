@@ -49,7 +49,7 @@ def single_point(device: str, signals: Iterable[Signals], n_samples: int,
             try:
                 if ctrl.is_done() or n_read >= n_samples:
                     break
-                sleep(0.01)
+                sleep(0.001)
                 n = ctrl.reader.read()
                 if pbar is not None:
                     pbar.update(n)

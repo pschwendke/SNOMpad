@@ -157,7 +157,7 @@ class ExtendingArrayBuffer(ArrayBuffer):
         chunk_size : int
             Default size of expansion. D
         """
-        defaults = dict(size=20_000)
+        defaults = dict(size=min(20_000, max_size))
         kw = {**defaults, **kw}
         super().__init__(**kw)
         self.chunk_size = kw["size"]
@@ -237,4 +237,4 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return self
 
     def expand_max(self):
-        return self.expand(by=self.max_size - self.buf_size)
+        return self.expand(by=max(self.max_size - self.buf_size, 0))
