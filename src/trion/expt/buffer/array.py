@@ -157,7 +157,7 @@ class ExtendingArrayBuffer(ArrayBuffer):
         chunk_size : int
             Default size of expansion. D
         """
-        defaults = dict(size=20_000)
+        defaults = dict(size=min(20_000, max_size))
         kw = {**defaults, **kw}
         super().__init__(**kw)
         self.chunk_size = kw["size"]
@@ -178,7 +178,8 @@ class ExtendingArrayBuffer(ArrayBuffer):
                     raise
                 # we are overfilling
                 if self.overfill is Overfill.clip:
-                    r = self.expand_max().fillup(data)
+                    #breakpoint()
+                    r = self.expand_max().fill(data)
                 elif self.overfill is Overfill.ignore:
                     return 0
                 else:
@@ -191,11 +192,11 @@ class ExtendingArrayBuffer(ArrayBuffer):
             r = n
         return r
 
-    def fillup(self, data):
+    def fill(self, data):
         """Fill with as much as possible"""
         logger.debug("Filling array.")
-        avail = self.buf_size-self.i
-        self.buf[self.i:,:] = data[:avail,:]
+        avail = min(self.buf_size-self.i, data.shape[0])
+        self.buf[self.i:self.i+avail,:] = data[:avail,:]
         self.i += avail
         return avail
 
@@ -236,4 +237,4 @@ class ExtendingArrayBuffer(ArrayBuffer):
         return self
 
     def expand_max(self):
-        return self.expand(by=self.max_size - self.buf_size)
+        return self.expand(by=max(self.max_size - self.buf_size, 0))

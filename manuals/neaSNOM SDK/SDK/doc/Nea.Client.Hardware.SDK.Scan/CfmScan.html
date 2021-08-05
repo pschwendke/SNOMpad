@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.Scan.CfmScan</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK.Scan Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.CfmScan">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.CfmScan:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.CfmScan:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.CfmScan:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan">CfmScan  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Summary">
+            Represents a scan with CFM parameters.
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Signature">public class  <b>CfmScan</b> : <a href="../Nea.Client.Hardware.SDK.Scan/Scan2D.html">Scan2D</a></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="../Nea.Client.Hardware.SDK.Scan/Scan2D.html">Scan2D</a>.
+							</p>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">CenterX</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the X value of the center
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">CenterY</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the Y value of the center
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted">IsCompleted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is completed.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted">IsStarted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is started.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">IsSuspended</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is suspended.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">Progress</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the progress.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns">ResolutionColumns</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            Gets or sets the column resolution.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">ResolutionRows</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            Gets or sets the row resolution. 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime">SamplingTime</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the sampling time.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle">ScanAngle</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets then scan angle. 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight">ScanAreaHeight</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Height of scan area.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth">ScanAreaWidth</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Width of scan area.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">SkipRows</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            SkipRows is the number skipped rows in a serpent scan 
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel()">Cancel</a>
+                  </b>()<blockquote>
+            Stopps and cancels the scan in progress.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume()">Resume</a>
+                  </b>()<blockquote>
+            Resumes to scan after suspending with <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">BasicScan.Suspend</a>.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">SetCenter</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set center position of scan.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">SetResolution</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>)<blockquote>
+            Sets the resolution.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)">SetSamplingTime</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set Sampling time in Milliseconds
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)">SetScanAngle</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets the scan angle.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">SetScanArea</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets the scan area.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/Scan2D.html#M:Nea.Client.Hardware.SDK.Scan.Scan2D.Start()">Start</a>
+                  </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK.Images/Images2D.html">Nea.Client.Hardware.SDK.Images.Images2D</a></nobr><blockquote>
+            Starts to scan.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/Scan2D.html">Scan2D</a>.</i>)</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend()">Suspend</a>
+                  </b>()<blockquote>
+            Suspends a scan after it was started.
+             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.Scan.CfmScan:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

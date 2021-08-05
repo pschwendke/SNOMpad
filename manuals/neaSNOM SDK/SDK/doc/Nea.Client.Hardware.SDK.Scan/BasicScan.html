@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.Scan.BasicScan</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK.Scan Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.BasicScan">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.BasicScan:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.BasicScan:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Scan.BasicScan:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan">BasicScan  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Summary">
+            Represents a scan with basic parameters.
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Signature">public abstract class  <b>BasicScan</b></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
+							</p>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">CenterX</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the X value of the center
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">CenterY</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the Y value of the center
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted">IsCompleted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is completed.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted">IsStarted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is started.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">IsSuspended</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the scan is suspended.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">Progress</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the progress.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns">ResolutionColumns</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            Gets or sets the column resolution.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">ResolutionRows</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            Gets or sets the row resolution. 
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime">SamplingTime</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets the sampling time.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle">ScanAngle</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets or sets then scan angle. 
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight">ScanAreaHeight</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Height of scan area.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth">ScanAreaWidth</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Width of scan area.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">SkipRows</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
+                  </i>. 
+            SkipRows is the number skipped rows in a serpent scan 
+            </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel()">Cancel</a>
+                  </b>()<blockquote>
+            Stopps and cancels the scan in progress.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume()">Resume</a>
+                  </b>()<blockquote>
+            Resumes to scan after suspending with <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">BasicScan.Suspend</a>.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">SetCenter</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set center position of scan.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">SetResolution</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>)<blockquote>
+            Sets the resolution.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)">SetSamplingTime</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set Sampling time in Milliseconds
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)">SetScanAngle</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets the scan angle.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">SetScanArea</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets the scan area.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend()">Suspend</a>
+                  </b>()<blockquote>
+            Suspends a scan after it was started.
+            </blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.Scan.BasicScan:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel()">Cancel Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel():member">
+          <div class="msummary">
+            Stopps and cancels the scan in progress.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Cancel</b> ()</div>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel():Remarks">
+            <ul>
+              <li>
+                    Through stopping and cancelling the scan is only resized from intended resolution to what has been scanned by then.
+                  </li>
+              <li>
+                    Calling this method has no effect without scanning.
+                  </li>
+            </ul>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">CenterX Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX:member">
+          <div class="msummary">
+            Gets or sets the X value of the center
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>CenterX</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">BasicScan.CenterY</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">BasicScan.SetCenter(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX:Value">X position of scan area center in µm (columns, horizontally, fast axis)</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">CenterY Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY:member">
+          <div class="msummary">
+            Gets or sets the Y value of the center
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>CenterY</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">BasicScan.CenterX</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">BasicScan.SetCenter(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY:Value">Y position of scan area center in µm (rows, vertically, slow axis)</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted">IsCompleted Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted:member">
+          <div class="msummary">
+            Gets a value indicating whether the scan is completed.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsCompleted</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted:Value">
+            <tt>true</tt> if the scan is completed; otherwise, <tt>false</tt>.
+            </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted:Remarks">The scan is completed either after all pixels were scanned or <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Cancel">BasicScan.Cancel</a> was called.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted">IsStarted Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted:member">
+          <div class="msummary">
+            Gets a value indicating whether the scan is started.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsStarted</b>  { get; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">BasicScan.Progress</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted:Value">
+            <tt>true</tt> if this scan is started; otherwise, <tt>false</tt>.
+            </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted:Remarks">You can start a scan only once.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">IsSuspended Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended:member">
+          <div class="msummary">
+            Gets a value indicating whether the scan is suspended.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsSuspended</b>  { get; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">BasicScan.Suspend</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume">BasicScan.Resume</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended:Value">
+            <tt>true</tt> if the scan is currently suspended; otherwise, <tt>false</tt>.
+            </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">Progress Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress:member">
+          <div class="msummary">
+            Gets the progress.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>Progress</b>  { get; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted">BasicScan.IsCompleted</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsStarted">BasicScan.IsStarted</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress:Value">0.0 ≤ <tt>progress</tt> ≤ 1.0</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress:Remarks">
+            <table class="Documentation">
+              <tr>
+                <th>Value</th>
+                <th>Progress</th>
+              </tr>
+              <tr valign="top">
+                <td>0.0</td>
+                <td>Not started.</td>
+              </tr>
+              <tr valign="top">
+                <td>1.0</td>
+                <td>Completed.</td>
+              </tr>
+            </table>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns">ResolutionColumns Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns:member">
+          <div class="msummary">
+            Gets or sets the column resolution.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> <b>ResolutionColumns</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">BasicScan.SetResolution(uint, uint)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns:Value">Number of pixels columns to be scanned in each row (horizontally, X, fast axis)</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns:Remarks">Minimum value is 1.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">ResolutionRows Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows:member">
+          <div class="msummary">
+            Gets or sets the row resolution. 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> <b>ResolutionRows</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">BasicScan.SetResolution(uint, uint)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows:Value">Number of pixel rows to be scanned (vertically, Y, slow axis)</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows:Remarks">Minimum value is 1.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume()">Resume Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume():member">
+          <div class="msummary">
+            Resumes to scan after suspending with <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">BasicScan.Suspend</a>.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Resume</b> ()</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume():See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">BasicScan.IsSuspended</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend">BasicScan.Suspend</a>
+            </div>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume():Remarks">Calling this method has no effect when no scan is suspended.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime">SamplingTime Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime:member">
+          <div class="msummary">
+            Gets or sets the sampling time.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>SamplingTime</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)">BasicScan.SetSamplingTime(double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime:Value">Sampling time in milliseconds</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime:Remarks">Sampling time will be rounded to multiples of 0.4096 milliseconds.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle">ScanAngle Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle:member">
+          <div class="msummary">
+            Gets or sets then scan angle. 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>ScanAngle</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">BasicScan.CenterX</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">BasicScan.CenterY</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">BasicScan.SetCenter(double, double)</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)">BasicScan.SetScanAngle(double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle:Value">Rotation around center in degrees.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight">ScanAreaHeight Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight:member">
+          <div class="msummary">
+            Height of scan area.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>ScanAreaHeight</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">BasicScan.SetScanArea(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight:Value">
+            Physical height in µm (vertically, pixel rows, slow axis)
+            </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth">ScanAreaWidth Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth:member">
+          <div class="msummary">
+            Width of scan area.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>ScanAreaWidth</b>  { get; set; }</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth:See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">BasicScan.SetScanArea(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth:Value">
+            Physical width in µm (horizontally, pixel columns, fast axis)
+            </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">SetCenter Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double):member">
+          <div class="msummary">
+            Set center position of scan.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetCenter</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionX, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionY)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>physicalPositionX</i>
+              </dt>
+              <dd>x position in µm (columns, horizontally, fast axis)</dd>
+              <dt>
+                <i>physicalPositionY</i>
+              </dt>
+              <dd>y position in µm (rows, vertically, slow axis)</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double):Remarks">Without specifying the center position, the scan will be started at the current tip position.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32)">SetResolution Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32):member">
+          <div class="msummary">
+            Sets the resolution.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetResolution</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> columns, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> rows)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">BasicScan.ResolutionRows</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionColumns">BasicScan.ResolutionColumns</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32):Parameters">
+            <dl>
+              <dt>
+                <i>columns</i>
+              </dt>
+              <dd>Columns, number of pixels in each row (horizontal resolution on fast axis).</dd>
+              <dt>
+                <i>rows</i>
+              </dt>
+              <dd>Rows, number of rows (vertical resolution on slow axis).</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetResolution(System.UInt32,System.UInt32):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double)">SetSamplingTime Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double):member">
+          <div class="msummary">
+            Set Sampling time in Milliseconds
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetSamplingTime</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> milliseconds)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SamplingTime">BasicScan.SamplingTime</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>milliseconds</i>
+              </dt>
+              <dd>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetSamplingTime(System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double)">SetScanAngle Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double):member">
+          <div class="msummary">
+            Sets the scan angle.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetScanAngle</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> angle)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAngle">BasicScan.ScanAngle</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterX">BasicScan.CenterX</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.CenterY">BasicScan.CenterY</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetCenter(System.Double,System.Double)">BasicScan.SetCenter(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>angle</i>
+              </dt>
+              <dd>Rotation around center in degrees.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanAngle(System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double)">SetScanArea Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double):member">
+          <div class="msummary">
+            Sets the scan area.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetScanArea</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalSizeWidth, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalSizeHeight)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaWidth">BasicScan.ScanAreaWidth</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ScanAreaHeight">BasicScan.ScanAreaHeight</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>physicalSizeWidth</i>
+              </dt>
+              <dd>Width (pixel columns, horizontal or fast axis) of scan area in micrometers.</dd>
+              <dt>
+                <i>physicalSizeHeight</i>
+              </dt>
+              <dd>Height (pixel rows, vertical or slow axis) of scan area in micrometers.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.SetScanArea(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">SkipRows Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows:member">
+          <div class="msummary">
+            SkipRows is the number skipped rows in a serpent scan 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> <b>SkipRows</b>  { get; set; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend()">Suspend Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend():member">
+          <div class="msummary">
+            Suspends a scan after it was started.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Suspend</b> ()</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend():See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsSuspended">BasicScan.IsSuspended</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#M:Nea.Client.Hardware.SDK.Scan.BasicScan.Resume">BasicScan.Resume</a>
+            </div>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend():Remarks">Calling this method has no effect when no scan was started.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.BasicScan.Suspend():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

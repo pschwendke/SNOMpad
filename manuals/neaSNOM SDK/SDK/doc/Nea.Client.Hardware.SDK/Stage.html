@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.Stage</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Stage">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Stage:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Stage:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.Stage:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Stage">Stage  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Stage:Summary">
+            Represents a stage with motors on three axes.
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Stage:Signature">public class  <b>Stage</b></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Stage:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Stage:Docs:Remarks">
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Stage:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
+							</p>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors">HasPositionSensors</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Gets a value indicating whether the stage has position sensors.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Stage.PositionX">PositionX</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis X.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Stage.PositionY">PositionY</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis Y.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Stage.PositionZ">PositionZ</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current position from axis Z.
+            </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.Deactivate()">Deactivate</a>
+                  </b>()<blockquote>
+            Deactivates the stage and allows others stages to be activated.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@)">FindAbsoluteMotorPosition</a>
+                  </b>(<i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Finds the absolute coordinates of the current position. 
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double)">GotoAbsolutePosition</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Moves all axes to absolute positions. 
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double)">GotoRelativePosition</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            A change in position that is based on the current position. 
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">MoveX</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Moves axis X continously with constant velocity for a period of time.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">MoveY</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>.</blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">MoveZ</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>.</blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.Stage:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.Deactivate()">Deactivate Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.Deactivate():member">
+          <div class="msummary">
+            Deactivates the stage and allows others stages to be activated.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Deactivate</b> ()</div>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.Deactivate():Remarks">This stage cannot be used any more after deactivation. 
+            In order to reuse the stage, you need to activate a new stage instance, e.g. by calling <a href="../Nea.Client.Hardware.SDK/Microscope.html#M:Nea.Client.Hardware.SDK.Microscope.ActivateSampleStage">Microscope.ActivateSampleStage</a>.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.Deactivate():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@)">FindAbsoluteMotorPosition Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@):member">
+          <div class="msummary">
+            Finds the absolute coordinates of the current position. 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>FindAbsoluteMotorPosition</b> (<i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> nanometersX, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> nanometersY, <i>out</i> <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> nanometersZ)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@):Parameters">
+            <dl>
+              <dt>
+                <i>nanometersX</i>
+              </dt>
+              <dd>Position in nanometers on axis X.</dd>
+              <dt>
+                <i>nanometersY</i>
+              </dt>
+              <dd>Position in nanometers on axis Y.</dd>
+              <dt>
+                <i>nanometersZ</i>
+              </dt>
+              <dd>Position in nanometers on axis Z.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@):Remarks">Stage is moved first in order to find the reference mark (origin) and moved back to current position.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.FindAbsoluteMotorPosition(System.Double@,System.Double@,System.Double@):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double)">GotoAbsolutePosition Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double):member">
+          <div class="msummary">
+            Moves all axes to absolute positions. 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>GotoAbsolutePosition</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> x, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> y, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> z)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>x</i>
+              </dt>
+              <dd>New position in nanometers to move on axis X.</dd>
+              <dt>
+                <i>y</i>
+              </dt>
+              <dd>New position in nanometers to move on axis Y.</dd>
+              <dt>
+                <i>z</i>
+              </dt>
+              <dd>New position in nanometers to move on axis Z.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double):Remarks">Waits until new position is reached or a time-out occurs.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoAbsolutePosition(System.Double,System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double)">GotoRelativePosition Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double):member">
+          <div class="msummary">
+            A change in position that is based on the current position. 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>GotoRelativePosition</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> x, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> y, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> z)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>x</i>
+              </dt>
+              <dd>Distance in nanometers to move on axis X.</dd>
+              <dt>
+                <i>y</i>
+              </dt>
+              <dd>Distance in nanometers to move on axis Y.</dd>
+              <dt>
+                <i>z</i>
+              </dt>
+              <dd>Distance in nanometers to move on axis Z.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double):Remarks">Waits until new position is reached or a time-out occurs.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.GotoRelativePosition(System.Double,System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors">HasPositionSensors Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors:member">
+          <div class="msummary">
+            Gets a value indicating whether the stage has position sensors.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>HasPositionSensors</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors:Value">
+            <tt>true</tt> if the stage supports position sensors, <tt>false</tt> otherwise.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.HasPositionSensors:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">MoveX Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double):member">
+          <div class="msummary">
+            Moves axis X continously with constant velocity for a period of time.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>MoveX</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> velocity, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> seconds)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">Stage.MoveY(double, double)</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">Stage.MoveZ(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>velocity</i>
+              </dt>
+              <dd>Velocity of movement with 
+            <p>0.0 ≤ <tt>velocity</tt> ≤ 1.0</p><table class="Documentation"><tr><th>Value</th><th>Velocity</th></tr><tr valign="top"><td>0.0</td><td>No movement, or stopps the motor.</td></tr><tr valign="top"><td>1.0</td><td>Maximum velocity of motor.</td></tr></table></dd>
+              <dt>
+                <i>seconds</i>
+              </dt>
+              <dd>Period of time in seconds until motor movement stops.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double):Remarks">
+            This method will block and wait until the specified period of time elapsed.
+            </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">MoveY Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double):member">
+          <div class="msummary">For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>.</div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>MoveY</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> velocity, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> seconds)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">Stage.MoveY(double, double)</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">Stage.MoveZ(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>velocity</i>
+              </dt>
+              <dd>Velocity of movement.</dd>
+              <dt>
+                <i>seconds</i>
+              </dt>
+              <dd>Period of time in seconds until motor movement stops.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double)">MoveZ Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double):member">
+          <div class="msummary">For details see <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>.</div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>MoveZ</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> velocity, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> seconds)</div>
+          <h4 class="Subsection">See Also</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double):See Also">
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveX(System.Double,System.Double)">Stage.MoveX(double, double)</a>
+            </div>
+            <div>
+              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.MoveY(System.Double,System.Double)">Stage.MoveY(double, double)</a>
+            </div>
+          </blockquote>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>velocity</i>
+              </dt>
+              <dd>Velocity of movement.</dd>
+              <dt>
+                <i>seconds</i>
+              </dt>
+              <dd>Period of time in seconds until motor movement stops.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Stage.MoveZ(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Stage.PositionX">PositionX Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Stage.PositionX:member">
+          <div class="msummary">
+            Gets the current position from axis X.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>PositionX</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionX:Value">Position in nanometers.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionX:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionX:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Stage.PositionY">PositionY Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Stage.PositionY:member">
+          <div class="msummary">
+            Gets the current position from axis Y.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>PositionY</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionY:Value">Position in nanometers.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionY:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionY:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Stage.PositionZ">PositionZ Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Stage.PositionZ:member">
+          <div class="msummary">
+            Gets the current position from axis Z.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>PositionZ</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionZ:Value">Position in nanometers.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionZ:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Stage.PositionZ:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

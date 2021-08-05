@@ -3,6 +3,7 @@ from os.path import splitext
 
 import numpy as np
 import pandas as pd
+from copy import copy
 from .signals import Signals
 
 import logging
@@ -85,6 +86,7 @@ def export_data(filename, data, header):
         raise ValueError(f"Can only save 2d arrays as .npz, but shape is {data.shape}")
     if len(header) != data.shape[1]:
         raise ValueError(f"Mismatched header and data. header: {len(header)}, data: {data.shape[1]}")
+    header = copy(header)
     for i, v in enumerate(header):
         if isinstance(v, Signals):
             header[i] = v.value
