@@ -145,3 +145,4 @@ dmypy.json
 /scratch/ni/*.npz
 *.h5
 *.vi
+/test/test_exp/*.npy

@@ -47,13 +47,13 @@ default_channel_map = {
     Signals.sig_s: "ai1",
     Signals.tap_x: "ai2",
     Signals.tap_y: "ai3",
-    # Signals.ref_x: "ai4",
-    # Signals.ref_y: "ai5",
+    Signals.ref_x: "ai4",
+    Signals.ref_y: "ai5",
     # chop is to be determined
 }
 
 
-class TAMR(AnalogMultiChannelReader): # TAMR est une sous-classe
+class TAMR(AnalogMultiChannelReader):  # TAMR est une sous-classe
     """
     Transposed Analog Multichannel Reader
 
@@ -226,7 +226,7 @@ class DaqController:
         self.reader = TrionsAnalogReader(buffer=buffer)
         # add the analog channels
         logger.info(f"Acquiring signals: {', '.join([v.name for v in self.reader.vars])}")
-        for var in self.reader.vars:
+        for var in self.reader.vars:  # TODO: is this really a good idea to bury this here?
             c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range
             logger.debug(f"Adding variable: {var}, channel {c}, lim: {lim}")

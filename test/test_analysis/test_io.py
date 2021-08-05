@@ -7,6 +7,7 @@ import pandas as pd
 
 
 def test_csv(tmp_path):
+    """Test save and load as csv."""
     pth = tmp_path / "test.csv"
     data = np.random.randn(100, 3)
     header = ["tap_x", "tap_y", "sig_A"]
@@ -19,6 +20,7 @@ def test_csv(tmp_path):
 
 
 def test_npz(tmp_path):
+    """Test save and load as npz."""
     pth = tmp_path / "test.npz"
     data = np.random.randn(100, 3)
     header = ["tap_x", "tap_y", "sig_A"]

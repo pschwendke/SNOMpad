@@ -16,6 +16,7 @@ def make_refs(exp, n):
     fn = make_fname(exp, n)
     np.save(fn, data, allow_pickle=False)
 
+
 if __name__ == "__main__":
     for e, n in product(exp_configs, n_samples):
         make_refs(e, n)

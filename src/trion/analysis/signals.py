@@ -46,8 +46,8 @@ class Signals(SortableEnum, NamedEnum):
     sig_s = auto()
     tap_x = auto()
     tap_y = auto()
-    #ref_x = auto()
-    #ref_y = auto()
+    ref_x = auto()
+    ref_y = auto()
     #chop = auto()
     tap_p = auto()
 
@@ -66,7 +66,7 @@ class Scan(NamedEnum):
 
 class Demodulation(NamedEnum):
     shd = auto()  # self-homodyne
-    # pshet = auto()
+    pshet = auto()
     # nanospectroscopy
 
 
@@ -85,6 +85,7 @@ all_detector_signals = frozenset(chain(*detection_signals.values()))
 
 acquisition_signals = bidict({
     Demodulation.shd: frozenset([Signals.tap_x, Signals.tap_y]),
+    Demodulation.pshet: frozenset([Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y])
 })
 
 all_acquisition_signals = frozenset(chain(*acquisition_signals.values()))
