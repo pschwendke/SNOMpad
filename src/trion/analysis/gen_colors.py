@@ -17,6 +17,9 @@ map = {
     Signals.tap_x: tab20[4],
     Signals.tap_y: tab20[5],
     Signals.tap_p: tab20[4],
+    Signals.ref_x: tab20[6],
+    Signals.ref_y: tab20[7],
+    Signals.ref_p: tab20[6],
 }
 
 map = {k.name: v for k, v in map.items()}

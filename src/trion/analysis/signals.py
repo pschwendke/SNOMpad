@@ -46,17 +46,20 @@ class Signals(SortableEnum, NamedEnum):
     sig_s = auto()
     tap_x = auto()
     tap_y = auto()
+    tap_p = auto()
     ref_x = auto()
     ref_y = auto()
+    ref_p = auto()
     #chop = auto()
-    tap_p = auto()
 
 
 def signal_colormap(filename=None):
     filename = filename or pth.join(pth.dirname(pth.abspath(__file__)), "signal_colors.toml")
     with open(filename, "r") as f:
         cmap = toml.load(f)
-    return {Signals[k]: v for k, v in cmap.items()}
+    cmap.update({Signals[k]: v for k, v in cmap.items()})
+    return cmap
+
 
 class Scan(NamedEnum):
     point = auto()
