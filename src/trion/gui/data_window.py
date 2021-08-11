@@ -136,7 +136,6 @@ class BaseView(pg.GraphicsLayoutWidget):
         super().__init__(*a, **kw)
         self.cmap = signal_colormap()
 
-
     def clear_plots(self):
         """Clear the contents of all plots"""
         for i, item in enumerate(self.ci.items):
@@ -163,12 +162,15 @@ class RawView(BaseView):
         Signals.sig_d: 0,
         Signals.tap_x: 1,
         Signals.tap_y: 1,
+        Signals.ref_x: 2,
+        Signals.ref_y: 2,
     }
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         # start with a single window
         p0 = self.addPlot(row=0, col=0, name="Optical")
         self.addPlot(row=1, col=0, name="Tapping")
+        self.addPlot(row=2, col=0, name="PsHet")
 
         self.curves = {}
         for plot in self.ci.items:
@@ -401,7 +403,7 @@ class DisplayController(QObject):
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
         self.data_view.currentChanged.connect(self.view_panel.onTabIndexChanged)
         self._frame_log = deque([], 10)  # record of recent frames, to compute average framerate.
-        self.fps_updt_timer = QTimer()
+        self.fps_updt_timer = QTimer()  # For fps display in the statusbar
         self.fps_updt_timer.setInterval(500)
         self.display_timer = QTimer()
         self.display_timer.setInterval(display_dt * 1000)

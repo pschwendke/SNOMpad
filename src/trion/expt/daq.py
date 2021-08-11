@@ -137,7 +137,7 @@ class TrionsAnalogReader(): # for not pump-probe
             r = self.buffer.put(tmp)
         except ValueError:
             raise
-            r = self.buffer.fill(tmp)
+            r = self.buffer.fill(tmp)  # todo: cleanup
         return r # arg
     
     def stop(self):
