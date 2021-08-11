@@ -47,7 +47,7 @@ def calc_phase(df, in_place=False):
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     return df
 
-
+# TODO: deprecate, bin_index is better
 def bin_no(df, n_bins, in_place=False):
     "Computes bin_no"
     if not in_place:
@@ -56,6 +56,16 @@ def bin_no(df, n_bins, in_place=False):
     step = 2*np.pi/n_bins
     df["bin_no"] = (df["tap_p"] - lo)//step
     return df
+
+
+def bin_index(phi, n_bins: int):
+    """
+    Compute the phase bin index.
+    """
+    # TODO: check if we have to add to tests
+    lo = -np.pi
+    step = 2*np.pi/n_bins
+    return (phi - lo)//step
 
 
 def binned_average(df, n_bins, compute_counts=True):

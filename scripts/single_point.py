@@ -41,7 +41,7 @@ parser.add_argument(
     type=Signals,
     choices=[s for s in Signals],
     metavar="sig",
-    help="Signals to acquire. Default to 'sig_A tap_x tap_y'"
+    help="Signals to acquire. Default to 'sig_a tap_x tap_y'"
 )
 parser.add_argument(
     "-c", "--clock", default="", help="Sample clock channel. Defaults to software triggering ('')"
@@ -68,7 +68,7 @@ log_cfg = {
 logging.basicConfig(handlers=[TqdmLoggingHandler()], **log_cfg)
 
 if not args.signals:
-    args.signals=[Signals.sig_A, Signals.tap_x, Signals.tap_y]
+    args.signals=[Signals.sig_a, Signals.tap_x, Signals.tap_y]
 if args.n_samples < 0:
     # infinite acquisition
     pbar_lim = np.inf#

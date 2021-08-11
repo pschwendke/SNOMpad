@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 
 # please don't change this...
 default_channel_map = {
-    Signals.sig_A: "ai0",
-    Signals.sig_B: "ai1",
+    Signals.sig_a: "ai0",
+    Signals.sig_b: "ai1",
     Signals.sig_d: "ai0",
     Signals.sig_s: "ai1",
     Signals.tap_x: "ai2",

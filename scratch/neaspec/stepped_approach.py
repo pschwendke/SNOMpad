@@ -44,7 +44,7 @@ targets = np.linspace(0, height, npix, endpoint=True)[:-1]
 afm_sampling_time = 50
 npts_daq = 100_000
 daq_name = "Dev1"
-signals = [Signals.sig_A, Signals.tap_x, Signals.tap_y]
+signals = [Signals.sig_a, Signals.tap_x, Signals.tap_y]
 clock_chan = "pfi0"
 truncate=True
 

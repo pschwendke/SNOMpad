@@ -15,7 +15,7 @@ logging.basicConfig(
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 n_tot = 150_000
-variables = ["sig_A", "tap_x", "tap_y"]
+variables = ["sig_a", "tap_x", "tap_y"]
 
 ctrl = DaqController("DevT", clock_channel="")
 

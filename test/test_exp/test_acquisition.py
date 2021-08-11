@@ -10,7 +10,7 @@ from gen_ref_single_point import make_fname
 
 @pytest.mark.parametrize("n", n_samples)
 def test_truncate(n):
-    sigs = [Signals.sig_A, Signals.sig_B]
+    sigs = [Signals.sig_a, Signals.sig_b]
     ret = single_point("DevT", sigs, n, truncate=True)
     assert ret.shape == (n, len(sigs))
 

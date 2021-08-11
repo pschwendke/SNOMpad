@@ -3,6 +3,7 @@ import os.path as pth
 from enum import Enum, auto
 from bidict import bidict
 from functools import total_ordering, singledispatch
+import numpy as np
 import toml
 
 
@@ -19,6 +20,7 @@ also defines the following enumeration types:
 - `Signals`: the possible experimental signal types.
 """
 # How to handle pump probe? We will add a boolean value to the experiment..
+
 
 class NamedEnum(Enum):
     def _generate_next_value_(name, start, count, last_values):
@@ -40,8 +42,8 @@ class SortableEnum(Enum):
 
 
 class Signals(SortableEnum, NamedEnum):
-    sig_A = auto()
-    sig_B = auto()
+    sig_a = auto()
+    sig_b = auto()
     sig_d = auto()
     sig_s = auto()
     tap_x = auto()
@@ -50,14 +52,36 @@ class Signals(SortableEnum, NamedEnum):
     ref_x = auto()
     ref_y = auto()
     ref_p = auto()
-    #chop = auto()
+    # chop = auto()
 
 
-def signal_colormap(filename=None):
+def signal_colormap(filename=None, scale=255) -> dict:
+    """
+    Obtain the standard colormap.
+
+    By default, the colormap is in a format compatible with pyqtgraph and Qt,
+    where RGB values range from 0-255. In order to use the colors in matplotlib,
+    they must be rescaled to 0-1. This is done by passing "scale=1".
+
+    Parameters
+    ----------
+    filename : path-like
+        Name of the 'toml' file containing the color map.
+    scale : int
+        Scale of the output colors (ie: 0-255 or 0-1). Defaults to 255
+
+    Returns
+    -------
+    cmap : dict
+        signal -> color mapping.
+    """
     filename = filename or pth.join(pth.dirname(pth.abspath(__file__)), "signal_colors.toml")
+    scale = 255/scale  # 256 <-> 1
     with open(filename, "r") as f:
         cmap = toml.load(f)
+    cmap = {k: np.array(v)/scale for k, v in cmap.items()}
     cmap.update({Signals[k]: v for k, v in cmap.items()})
+    cmap.update({k.lower(): v for k, v in cmap.items() if isinstance(k, str)})
     return cmap
 
 
@@ -80,8 +104,8 @@ class Detector(NamedEnum):
 
 
 detection_signals = bidict({
-    Detector.single: frozenset([Signals.sig_A]),
-    Detector.dual: frozenset([Signals.sig_A, Signals.sig_B]),
+    Detector.single: frozenset([Signals.sig_a]),
+    Detector.dual: frozenset([Signals.sig_a, Signals.sig_b]),
     Detector.balanced: frozenset([Signals.sig_d, Signals.sig_s]),
 })
 all_detector_signals = frozenset(chain(*detection_signals.values()))

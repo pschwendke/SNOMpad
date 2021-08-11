@@ -15,19 +15,19 @@ def test_sortable():
 exp_configs = {
     "shd single": (
         Experiment(Scan.point, Demodulation.shd, Detector.single),
-        {Signals.sig_A, Signals.tap_x, Signals.tap_y}
+        {Signals.sig_a, Signals.tap_x, Signals.tap_y}
     ),
     "shd dual": (
         Experiment(Scan.point, Demodulation.shd, Detector.dual),
-        {Signals.sig_A, Signals.sig_B, Signals.tap_x, Signals.tap_y}
+        {Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y}
     ),
     "pshet single": (
         Experiment(Scan.point, Demodulation.pshet, Detector.single),
-        {Signals.sig_A, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y}
+        {Signals.sig_a, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y}
     ),
     "pshet dual": (
         Experiment(Scan.point, Demodulation.pshet, Detector.dual),
-        {Signals.sig_A, Signals.sig_B, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y}
+        {Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y}
     ),
 
 }

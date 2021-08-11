@@ -157,8 +157,8 @@ class RawView(BaseView):
     - (future) chopping
     """
     plot_indices = {
-        Signals.sig_A: 0,
-        Signals.sig_B: 0,
+        Signals.sig_a: 0,
+        Signals.sig_b: 0,
         Signals.sig_s: 0,
         Signals.sig_d: 0,
         Signals.tap_x: 1,

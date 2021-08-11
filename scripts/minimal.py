@@ -3,7 +3,7 @@ import numpy as np
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
-signals = ["sig_A", "tap_x", "tap_y"]
+signals = ["sig_a", "tap_x", "tap_y"]
 n_samples = 100_000
 
 ctrl = DaqController("DevT", clock_channel="")

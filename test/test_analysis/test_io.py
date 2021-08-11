@@ -10,7 +10,7 @@ def test_csv(tmp_path):
     """Test save and load as csv."""
     pth = tmp_path / "test.csv"
     data = np.random.randn(100, 3)
-    header = ["tap_x", "tap_y", "sig_A"]
+    header = ["tap_x", "tap_y", "sig_a"]
     export_csv(pth, data, header)
     loaded = pd.read_csv(pth)
     loaded_data = loaded.to_numpy()
@@ -23,7 +23,7 @@ def test_npz(tmp_path):
     """Test save and load as npz."""
     pth = tmp_path / "test.npz"
     data = np.random.randn(100, 3)
-    header = ["tap_x", "tap_y", "sig_A"]
+    header = ["tap_x", "tap_y", "sig_a"]
     export_npz(pth, data, header)
     loaded = np.load(pth)
     loaded_cols = list(loaded.keys())

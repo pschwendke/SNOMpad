@@ -10,8 +10,8 @@ import toml
 tab20 = np.array(np.array(get_cmap("tab20").colors)*255, dtype=int).tolist()
 
 map = {
-    Signals.sig_A: tab20[0],
-    Signals.sig_B: tab20[1],
+    Signals.sig_a: tab20[0],
+    Signals.sig_b: tab20[1],
     Signals.sig_d: tab20[2],
     Signals.sig_s: tab20[3],
     Signals.tap_x: tab20[4],
