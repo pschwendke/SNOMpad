@@ -1,3 +1,4 @@
+import logging
 from enum import Enum, auto
 from inspect import Signature, Parameter, signature
 from typing import Iterable
@@ -6,6 +7,7 @@ import attr
 
 from ..buffer import CircularArrayBuffer, ExtendingArrayBuffer, H5Buffer
 
+logger = logging.getLogger(__name__)
 
 class BackendType(Enum):
     numpy = auto()
@@ -65,6 +67,7 @@ def possible_kws(cls):
 def prepare_buffer(exp_config, buffer_config):
     cfg = buffer_config.config()
     cls = buffer_class(**cfg)
+    logger.debug("Logger class: %s", cls.__name__)
     cfg["vars"] = exp_config.signals()
     cfg["experiment"] = exp_config
     #kws = dict()

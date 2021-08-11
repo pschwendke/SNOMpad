@@ -81,12 +81,20 @@ def test_buffers(buffer, npts, data):
 
 
 @pytest.mark.parametrize("nchunks", [3,5,20,1])
-def test_tail(buffer, npts, data, nchunks):
+@pytest.mark.parametrize("nget", [2,7,100])
+def test_tail(buffer, nget, data, nchunks):
+    m = 0  # manually keep an index to our position in data.
     for chunk in np.array_split(data, nchunks, axis=0):
         buffer.put(chunk)
-        ret = buffer.tail(npts)
+        m += chunk.shape[0]
+        ret = buffer.tail(nget)
         assert ret.shape[0] >= 1
+        assert ret.shape[1] == data.shape[1]
+        assert ret.shape[0] <= nget
+        assert buffer.size < nget or ret.shape[0] == nget
         assert np.count_nonzero(np.isnan(ret)) == 0
+        # check we actually have the tail...
+        assert np.all(ret == data[m-ret.shape[0]:m])
 
 
 def test_export(tmp_path, buffer, exp, data):
