@@ -74,7 +74,7 @@ def test_buffers(buffer, npts, data):
     buffer.put(data)
     buffer.finish()
     assert buffer.size == npts
-    assert np.allclose(buffer.get(len=buffer.size), data)
+    assert np.allclose(buffer.get(n=buffer.size), data)
     n = buffer.size//3
     assert np.allclose(buffer.head(n), data[:n,:])
     assert np.allclose(buffer.tail(n), data[-n:, :])
@@ -123,6 +123,7 @@ def test_export(tmp_path, buffer, exp, data):
 @pytest.mark.parametrize("bufsize", [10, 100])
 @pytest.mark.parametrize("nchunks", [3,5,20,1])
 def test_circ_buffer(exp, npts, nchunks, bufsize, data):
+    # Test getting entire buffer
     sigs = exp.signals()
     buf = CircularArrayBuffer(size=bufsize, vars=sigs)
     for chunk in np.array_split(data, nchunks, axis=0):

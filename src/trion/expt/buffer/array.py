@@ -86,44 +86,45 @@ class CircularArrayBuffer(ArrayBuffer):
     def size(self):
         return min(self.n_written, self.buf_size)
 
-    def put(self, data, overfill=Overfill.raise_) -> int:
-        if data.shape[0] <= self.buf_size:
-            n = self._put_single(data)
-        else:
-            n = 0
-            nchunks = ceil(data.shape[0]/self.buf_size)
-            for chunk in np.array_split(data, nchunks, axis=0):
-                n += self._put_single(chunk)
-        return n
+    def _flat_idx(self, row_idx):
+        """Generate a wrapping flat index from the row indices."""
+        assert np.asanyarray(row_idx).ndim == 1
+        arr_idx = np.array(
+            np.meshgrid(
+                row_idx,
+                np.arange(len(self.vars)),  # column indices
+                indexing="ij"
+            )
+        ).reshape((2,-1))
+        return np.ravel_multi_index(arr_idx, self.buf.shape, mode="wrap")
 
-    def _put_single(self, data):
-        n = np.asarray(data).shape[0]
-        j = self.i+n
-        if j <= self.buf_size:
-            self.buf[self.i:j,:] = data[:,:]
-        else: # rotate
-            # lengths of first and second segments (`pre` and `post`)
-            pre_len = self.buf_size - self.i
-            post_len = j - self.buf_size
-            self.buf[self.i:, :] = data[:pre_len, :]
-            self.buf[:post_len, :] = data[pre_len:, :]
-
+    def put(self, data, overfill=Overfill.ignore) -> int:
+        n = data.shape[0]
+        row_idx = self.i + np.arange(n)
+        idx = self._flat_idx(row_idx)
+        # data is larger than the entire buffer, we drop the unnecessary part
+        m = min(n, self.buf_size)
+        self.buf.flat[idx[-m*data.shape[1]:]] = data[-m:, :]
+        self.i += n
+        #self.i %= self.buf_size ?
         self._nwritten += n
-        self.i = j % self.buf_size
         return n
 
-    def get(self, len: int, offset=0):
+    def get(self, n: int, offset=0):
         # truncate to show only valid values
-        len = min(len, self.size)
-        # rotate to bring oldest value to the start of array.
-        return np.roll(self.buf, self.size-self.i-offset, axis=0)[:len,:]
+        start = self.i - self.size + offset
+        n = min(n, self.size-offset)  # if we don't include -offset, we can roll beyond the oldest value
+        stop = start + n
+        row_idx = np.arange(start, stop)
+        return self.buf.flat[self._flat_idx(row_idx)].reshape((n, len(self.vars)))
 
-    def tail(self, len):
+    def tail(self, n):
         """
         Get `len` last values from buffer.
         """
-        offset = min(self.size, self.i-len)
-        return self.get(min(len, self.size), offset)
+        n = min(n, self.size)
+        row_idx = np.arange(self.i-n, self.i)
+        return self.buf.flat[self._flat_idx(row_idx)].reshape((n, len(self.vars)))
 
     def close(self):
         pass
@@ -207,8 +208,8 @@ class ExtendingArrayBuffer(ArrayBuffer):
         self.i += avail
         return avail
 
-    def get(self, len, offset=0):
-        end = min(self.i, offset+len)
+    def get(self, n, offset=0):
+        end = min(self.i, offset+n)
         return self.buf[offset:end,:]
 
     def finish(self):

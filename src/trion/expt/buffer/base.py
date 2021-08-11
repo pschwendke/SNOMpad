@@ -85,7 +85,7 @@ class AbstractBuffer(ABC):
         pass
 
     @abstractmethod
-    def get(self, len: int, offset: int=0):
+    def get(self, n: int, offset: int=0):
         """
         Get valid values from buffer.
 
@@ -106,12 +106,12 @@ class AbstractBuffer(ABC):
         """
         pass
 
-    def tail(self, len):
+    def tail(self, n):
         """
         Get `len` last values from buffer.
         """
-        offset = max(0, self.i-len)
-        return self.get(len, offset)
+        offset = max(0, self.i - n)
+        return self.get(n, offset)
 
     def head(self, len):
         """

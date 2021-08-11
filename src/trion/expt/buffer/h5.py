@@ -167,8 +167,8 @@ class H5Buffer(AbstractBuffer):
         avail = self.max_size - self.i
         return self.put(data[:avail])
 
-    def get(self, len, offset=0):
-        end = min(self.i, offset + len)
+    def get(self, n, offset=0):
+        end = min(self.i, offset + n)
         return self.buf[offset:end,:]
 
     def finish(self) -> AbstractBuffer:

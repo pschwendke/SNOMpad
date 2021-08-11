@@ -40,7 +40,7 @@ logging.info(f"Final array position: {buffer.i}")
 assert not np.any(np.isnan(buffer.buf))
 
 import matplotlib.pyplot as plt
-data = buffer.get(len=n_tot)
+data = buffer.get(n=n_tot)
 x = np.arange(n_tot)
 for i, curve in enumerate(data.T):
     plt.plot(curve, label=variables[i])
