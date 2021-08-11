@@ -118,6 +118,13 @@ class CircularArrayBuffer(ArrayBuffer):
         # rotate to bring oldest value to the start of array.
         return np.roll(self.buf, self.size-self.i-offset, axis=0)[:len,:]
 
+    def tail(self, len):
+        """
+        Get `len` last values from buffer.
+        """
+        offset = min(self.size, self.i-len)
+        return self.get(min(len, self.size), offset)
+
     def close(self):
         pass
 

@@ -79,10 +79,9 @@ def test_buffers(buffer, npts, data):
     assert np.allclose(buffer.head(n), data[:n,:])
     assert np.allclose(buffer.tail(n), data[-n:, :])
 
-
-@pytest.mark.parametrize("nchunks", [3,5,20,1])
 @pytest.mark.parametrize("nget", [2,7,100])
-def test_tail(buffer, nget, data, nchunks):
+@pytest.mark.parametrize("nchunks", [3,5,20,1])
+def test_tail(buffer, data, nget, nchunks):
     m = 0  # manually keep an index to our position in data.
     for chunk in np.array_split(data, nchunks, axis=0):
         buffer.put(chunk)
@@ -95,6 +94,17 @@ def test_tail(buffer, nget, data, nchunks):
         assert np.count_nonzero(np.isnan(ret)) == 0
         # check we actually have the tail...
         assert np.all(ret == data[m-ret.shape[0]:m])
+
+
+def test_rotating_tail():
+    sigs = [Signals.sig_a, Signals.tap_x]
+    npts = 1000
+    nget = 10
+    buf = CircularArrayBuffer(vars=sigs, size=npts)
+    data = np.arange(len(sigs)*npts).reshape((-1, len(sigs)))
+    buf.put(data)
+    ret = buf.tail(nget)
+    assert np.all(ret == data[-nget:])
 
 
 def test_export(tmp_path, buffer, exp, data):
