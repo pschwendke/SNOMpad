@@ -55,7 +55,7 @@ class Signals(SortableEnum, NamedEnum):
     # chop = auto()
 
 
-def signal_colormap(filename=None, scale=255) -> dict:
+def signal_colormap(scale=255, filename=None) -> dict:
     """
     Obtain the standard colormap.
 
@@ -65,10 +65,11 @@ def signal_colormap(filename=None, scale=255) -> dict:
 
     Parameters
     ----------
-    filename : path-like
-        Name of the 'toml' file containing the color map.
     scale : int
         Scale of the output colors (ie: 0-255 or 0-1). Defaults to 255
+    filename : path-like
+        Name of the 'toml' file containing the color map.
+
 
     Returns
     -------

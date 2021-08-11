@@ -1,5 +1,5 @@
 from trion.analysis.signals import (
-    Signals, Scan, Demodulation, Detector
+    Signals, Scan, Demodulation, Detector, signal_colormap
 )
 from trion.analysis.experiment import Experiment
 import pytest
@@ -44,3 +44,13 @@ def test_expt_configs(exp, signals):
     res = exp.signals()
     assert sorted(res) == res
     assert set(res) == signals
+
+@pytest.mark.parametrize(
+    "scale", [255, 1], ids=["qt", "mpl"]
+)
+def test_cmap(scale):
+    cmap = signal_colormap(scale=scale)
+    assert all(s in cmap for s in Signals)
+    assert all(s.name in cmap for s in Signals)
+    assert all(all(cmap[s] == cmap[s.name]) for s in Signals)
+    assert all(all(v <= scale) for v in cmap.values())
