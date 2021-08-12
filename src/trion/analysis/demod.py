@@ -1,4 +1,5 @@
 # demod.py: functions for demodulations
+from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -26,7 +27,6 @@ def dft_naive(phi, y, orders):
     amp : (M,) np.ndarray
         Complex amplitude for the given orders.
     """
-    # TODO: check how to handle multiple y values...
     assert phi.ndim == 1
     if y.ndim == 1:
         y = y[np.newaxis,:]
@@ -42,19 +42,10 @@ def dft_naive(phi, y, orders):
 
 def calc_phase(df, in_place=False):
     "Computes tap_p"
+    # todo: deprecate
     if not in_place:
         df = df.copy()
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
-    return df
-
-# TODO: deprecate, bin_index is better
-def bin_no(df, n_bins, in_place=False):
-    "Computes bin_no"
-    if not in_place:
-        df = df.copy()
-    lo = -np.pi
-    step = 2*np.pi/n_bins
-    df["bin_no"] = (df["tap_p"] - lo)//step
     return df
 
 
@@ -62,13 +53,114 @@ def bin_index(phi, n_bins: int):
     """
     Compute the phase bin index.
     """
-    # TODO: check if we have to add to tests
     lo = -np.pi
     step = 2*np.pi/n_bins
     return (phi - lo)//step
 
 
+def bin_midpoints(n_bins, lo=-np.pi, hi = np.pi):
+    """Compute the midpoints of phase bins"""
+    # TODO: test
+    span = hi - lo
+    step = span/n_bins
+    return (np.arange(n_bins)+0.5) * step + lo
+
+
+_avg_drop_cols = set(  # tap_x, tap_y, tap_p...
+    map("_".join,
+        product(["tap", "ref"], ["x", "y", "p"])
+        )
+)
+
+
+def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
+    # TODO test
+    # compute phases
+    df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
+    # compute indices
+    df["tap_n"] = bin_index(df["tap_p"], tap_nbins)
+    # compute histogram
+    avg = df.drop(columns=_avg_drop_cols & set(df.columns)
+                  ).groupby(["tap_n"]).mean()
+    return avg
+
+
+def shd_ft(avg: pd.DataFrame):
+    # todo: I'm pretty sure we can use an `apply` per column
+    # Todo: test
+    # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
+    return {k: np.fft.rfft(avg[k].to_numpy(), axis=0)/len(avg)
+            for k in avg.columns
+            }
+
+def shd(df: pd.DataFrame, tap_nbins: int = 32):
+    """
+    Perform sHD demodulation by binning and FT.
+    """
+    # todo: test
+    avg = shd_binning(df, tap_nbins)
+    return shd_ft(avg)
+
+
+def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
+    """Perform pshet binning on `df`.
+
+    Partition the data points in a 2d histogram, and compute the average per
+    bin. The function performs some operations in-place, therefore affecting the
+    contents of `df`. To avoid this, pass a copy, ex: `pshet_binning(df.copy())`
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe containing the data from many samples. The different signals
+        must be in different columns.
+    tap_nbins : int
+        Number of bins for tapping modulation. Default: 32
+    ref_nbins : int
+        Number of bins for reference arm phase modulation. Default: 16
+
+    Returns
+    -------
+    avg : pd.DataFrame
+        Dataframe containing the average per bins. Row index contains the bin
+        number for tapping. The column index is a `Multindex` where level 0 is
+        the signal name as a string (ex: `"sig_a"`), and level 1 is the
+        reference bin number. Therefore, the histogram for `sig_a` can be
+        accessed via `avg["sig_a"]`.
+    """
+    # TODO test
+    # compute phases
+    df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
+    df["ref_p"] = np.arctan2(df["ref_y"], df["ref_x"])
+    # compute indices
+    df["tap_n"] = bin_index(df["tap_p"], tap_nbins)
+    df["ref_n"] = bin_index(df["ref_p"], ref_nbins)
+    # compute histogram
+    avg = df.drop(columns=_avg_drop_cols & set(df.columns)
+                  ).groupby(["tap_n", "ref_n"]).mean()
+    return avg.unstack()
+
+
+def pshet_ft(avg: pd.DataFrame):
+    """Fourier transform an averaged pshet dataframe."""
+    # TODO: check if we can use a form of `pd.Dataframe.apply`
+    # TODO: test
+    return {k: np.abs(np.fft.rfft2(avg[k].to_numpy()))
+            for k in avg.columns.get_level_values(0).drop_duplicates()
+            }
+
+
+def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
+    """
+    Perform pshet demodulation by binning and FT.
+    """
+    # todo: test
+    avg = pshet_binning(df, tap_nbins, ref_nbins)
+    return pshet_ft(avg)
+
+
 def binned_average(df, n_bins, compute_counts=True):
+    # todo: deprecate
     df = df.copy()
     if not "tap_p" in df.columns:
         calc_phase(df, in_place=True)
@@ -88,6 +180,7 @@ def binned_average(df, n_bins, compute_counts=True):
 
 
 def binned_ft(avg):  # todo: these names suck
+    # todo: deprecate
     step = np.diff(avg["phi"].iloc[:2])[0] # argh...
     sigs = avg.drop(columns="phi")
     return pd.DataFrame(np.fft.rfft(sigs, axis=0)*step/2/np.pi, columns=sigs.columns)
