@@ -75,6 +75,7 @@ _avg_drop_cols = set(  # tap_x, tap_y, tap_p...
 
 def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
     # TODO test
+    #  smoke test passed
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     # compute indices
@@ -86,18 +87,19 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
 
 
 def shd_ft(avg: pd.DataFrame):
-    # todo: I'm pretty sure we can use an `apply` per column
+    """Perform Fourier analysis """
     # Todo: test
+    #  smoke test passed
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
-    return {k: np.fft.rfft(avg[k].to_numpy(), axis=0)/len(avg)
-            for k in avg.columns
-            }
+    return avg.apply(np.fft.rfft, axis=0)/len(avg)
+
 
 def shd(df: pd.DataFrame, tap_nbins: int = 32):
     """
     Perform sHD demodulation by binning and FT.
     """
     # todo: test
+    #  smoke test passed
     avg = shd_binning(df, tap_nbins)
     return shd_ft(avg)
 
@@ -129,6 +131,8 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
         accessed via `avg["sig_a"]`.
     """
     # TODO test
+    #  smoke test passed
+    #  should be added to test suite before modification...
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     df["ref_p"] = np.arctan2(df["ref_y"], df["ref_x"])
@@ -145,7 +149,7 @@ def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     # TODO: test
-    return {k: np.abs(np.fft.rfft2(avg[k].to_numpy()))
+    return {k: np.abs(np.fft.rfft2(avg[k].to_numpy()))  # scale is missing...
             for k in avg.columns.get_level_values(0).drop_duplicates()
             }
 
