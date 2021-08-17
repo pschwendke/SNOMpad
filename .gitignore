@@ -131,6 +131,9 @@ dmypy.json
 # VSCode
 .vscode/settings.json
 
+# PyCharm files
+.idea
+
 # specific files
 /scratch/test.tmp
 /launcher/log/*
