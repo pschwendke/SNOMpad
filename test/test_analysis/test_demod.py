@@ -37,25 +37,25 @@ def test_shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
         Dataframe containing the average per bins. Row index contains the bin
         number for tapping. Columns indicate the signal type.
     """
-    # simply comparison of return to sample data
+    # simple comparison of return to sample data:
     assert shd_binning(df).equals(test_data_shd_binned)
 
 
-@pytest.mark.parametrize('avg', [test_data_shd.copy()])
-def shd_ft(avg: pd.DataFrame):
+@pytest.mark.parametrize('avg', [test_data_shd_binned.copy()])
+def test_shd_ft(avg: pd.DataFrame):
     """Perform Fourier analysis for sHD demodulation.
     Returns
     -------
         Fourier components. Rows indicate tapping order `n`, columns indicate
         signal type.
     """
-    # simply comparison of return to sample data
+    # simple comparison of return to sample data:
     assert shd_ft(avg).equals(test_data_shd_ft)
 
 
 @pytest.mark.parametrize('df', [test_data.copy()])
-def shd(df: pd.DataFrame, tap_nbins: int = 32):
-    # simply comparison of return to sample data
+def test_shd(df: pd.DataFrame, tap_nbins: int = 32):
+    # simple comparison of return to sample data:
     assert shd(df).equals(test_data_shd)
 
 
@@ -70,14 +70,14 @@ def test_pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 1
         reference bin number. Therefore, the histogram for `sig_a` can be
         accessed via `avg["sig_a"]`.
     """
-    # simply comparison of return to sample data
+    # simple comparison of return to sample data:
     assert pshet_binning(df).equals(test_data_pshet_binned)
 
 
 @pytest.mark.parametrize('avg', [test_data_pshet_binned.copy()])
 def test_pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
-    # simply comparison of return to sample data
+    # simple comparison of return to sample data:
     assert type(pshet_ft(avg)) == type(test_data_pshet_ft)
     assert False not in [np.array_equal(pshet_ft(avg)[k], test_data_pshet_ft[k]) for k in test_data_pshet_ft.keys()]
 
@@ -87,6 +87,6 @@ def test_pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     """
     Perform pshet demodulation by binning and FT.
     """
-    # simply comparison of return to sample data
+    # simple comparison of return to sample data:
     assert type(pshet(df)) == type(test_data_pshet)
     assert False not in[np.array_equal(pshet(df)[k], test_data_pshet[k]) for k in test_data_pshet.keys()]
