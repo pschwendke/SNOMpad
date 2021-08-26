@@ -16,10 +16,10 @@ def test_bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     assert np.allclose(centers, ref)
 
 
-def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4,
+def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, tap_harm: int = 2, pshet_harm: int = 2,
                        zero_and_pi: bool = False, sparse: bool = False, shuffled: bool = False,
                        mod: str = 'shd', n_points: int = 0) -> pd.DataFrame:
-    """ Creates one data point per bin
+    """ Creates one data point per bin, or randomly sampled modulation phase space.
 
     Parameters
     ----------
@@ -27,8 +27,10 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
         number of bins for tapping modulation
     ref_nbins:
         number of bins for pshet modulation
-    n_harm:
-        number of harmonics of modulation in test signal, including DC as 0
+    tap_harm:
+        number of harmonics of tapping modulation in test signal, including DC as 0
+    pshet_harm:
+        number of harmonics of tapping modulation in test signal, including DC as 0
     zero_and_pi:
         if True, tap_phase = [0, -np.pi, np.pi] is included.
     sparse:
@@ -36,7 +38,7 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
     shuffled:
         mixes the order of data points
     mod:
-        'shd' returns one data points for every bin. 'pshet' returns one data point for every combination of
+        'shd' returns one data point for every tapping bin. 'pshet' returns one data point for every combination of
         tapping and pshet modulation bin.
     n_points:
         number of data points each for randomly sampling tapping and reference phase space.
@@ -47,11 +49,11 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
     data_shd or data_pshet:
         DataFrame containing all data points as rows and channels as columns.
     """
+    # TODO add specific phases for modulation
 
     # tap phase
     tap_phase = np.arange(-np.pi, np.pi, 2 * np.pi / tap_nbins)
-    # having the phase at bin edges can lead to incorrect binning, probably caused by limited machine precision
-    tap_phase += .01
+    tap_phase += 0.001   # having data points in the middle of bins is more complicated (when zero_and_pi)
     if n_points > 0:
         tap_phase = np.random.uniform(-np.pi, np.pi,  n_points)
     if zero_and_pi:
@@ -62,12 +64,13 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
     tap_y = np.sin(tap_phase)
 
     # to use n_harm as index:
-    n_harm += 1
+    tap_harm += 1
+    pshet_harm += 1
 
     if mod == 'shd':
         # tap modulated signal
         sig_shd = np.zeros(tap_phase.shape)
-        for n in range(n_harm):
+        for n in range(tap_harm):
             sig_shd += np.cos(n * tap_phase)
         data_shd = pd.DataFrame(np.array([sig_shd, tap_x, tap_y]).T, columns=['sig_a', 'tap_x', 'tap_y'])
 
@@ -81,7 +84,7 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
     elif mod == 'pshet':
         # ref phase
         ref_phase = np.arange(-np.pi, np.pi, 2 * np.pi / ref_nbins)
-        ref_phase += .01
+        ref_phase += 0.001
         if n_points > 0:
             ref_phase = np.random.uniform(-np.pi, np.pi, n_points)
         if zero_and_pi:
@@ -96,8 +99,8 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
         for i in range(len(tap_phase)):
             for j in range(len(ref_phase)):
                 row = i * len(ref_phase) + j
-                data_point_tap = sum(np.cos(n * tap_phase[i]) for n in range(n_harm))
-                data_point_ref = sum(np.cos(n * ref_phase[j]) for n in range(n_harm))
+                data_point_tap = sum(np.cos(n * tap_phase[i]) for n in range(tap_harm))
+                data_point_ref = sum(np.cos(n * ref_phase[j]) for n in range(pshet_harm))
                 data_point = data_point_tap * data_point_ref
                 sig_pshet[row] = [data_point, data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]    
         data_pshet = pd.DataFrame(sig_pshet, columns=['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y'])
@@ -114,25 +117,25 @@ def single_data_points(tap_nbins: int = 32, ref_nbins: int = 16, n_harm: int = 4
 
 
 # parameters for creating test data with function single_data_points
-shd_params = [(32, 16, 2, False, False, False, 'shd', 0),
-              (32, 16, 2, False, True, False, 'shd', 0),
-              (32, 16, 2, False, False, True, 'shd', 0),
-              (16, 16, 2, False, False, False, 'shd', 0),
-              (500, 16, 2, False, False, False, 'shd', 0),
-              (64, 16, 8, False, False, False, 'shd', 0),
-              (32, 16, 2, True, False, False, 'shd', 0),
-              (32, 16, 2, False, False, False, 'pshet', 0),
-              (32, 16, 2, False, False, False, 'shd', 200_000)]
+shd_params = [(32, 2, False, False, False, 'shd', 0),
+              (32, 2, False, True, False, 'shd', 0),
+              (32, 2, False, False, True, 'shd', 0),
+              (16, 2, False, False, False, 'shd', 0),
+              (500, 2, False, False, False, 'shd', 0),
+              (64, 8, False, False, False, 'shd', 0),
+              (32, 2, True, False, False, 'shd', 0),
+              (32, 2, False, False, False, 'pshet', 0),
+              (32, 2, False, False, False, 'shd', 200_000)]
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', shd_params)
-def test_shd_binning(tap, ref, harm, zpi, sp, sh, modulation, points):
+@pytest.mark.parametrize('tap, harm, zpi, sp, sh, modulation, points', shd_params)
+def test_shd_binning(tap, harm, zpi, sp, sh, modulation, points):
     """Perform sHD binned average on `df`.
     Returns
         Dataframe containing the average per bins. Row index contains the bin
         number for tapping. Columns indicate the signal type.
     """
-    df = single_data_points(tap_nbins=tap, n_harm=harm, zero_and_pi=zpi,
+    df = single_data_points(tap_nbins=tap, tap_harm=harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     binned_data = shd_binning(df.copy(), tap)
 
@@ -151,23 +154,29 @@ def test_shd_binning(tap, ref, harm, zpi, sp, sh, modulation, points):
     assert all('sig' in binned_data.columns[i] for i in range(binned_data.shape[1]))
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', shd_params)
-def test_shd_ft(tap, ref, harm, zpi, sp, sh, modulation, points):
+@pytest.mark.parametrize('tap, harm, zpi, sp, sh, modulation, points', shd_params)
+def test_shd_ft(tap, harm, zpi, sp, sh, modulation, points):
     """Perform Fourier analysis for sHD demodulation.
     Returns
-    -------
         Fourier components. Rows indicate tapping order `n`, columns indicate
         signal type.
     """
-    df = single_data_points(tap_nbins=tap, n_harm=harm, zero_and_pi=zpi,
+    df = single_data_points(tap_nbins=tap, tap_harm=harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = shd_ft(shd_binning(df.copy(), tap))
 
     # retrieved harmonics are rounded and compared
+    # TODO demodulate and compare phases as well
     if modulation == 'shd':
-        assert round(np.real(ft_data['sig_a'][0])) == 1
-        assert np.array_equal(abs(np.round(np.real(ft_data['sig_a'][1:harm+1]), 1)),
-                              np.ones(harm) * .5)  # real fft gives half the amp
+        # amplitude of harmonics
+        harm_amps = abs(np.real(ft_data['sig_a'][1:harm + 1]))
+        print(harm_amps)
+        # 0 order has roughly twice the amplitude (real fft)
+        assert round(np.real(ft_data['sig_a'][0]) / harm_amps.mean()) == 2
+        # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
+        assert (harm_amps.std() < harm_amps.mean() / 10)
+        # following amplitude is at least 1 order of magnitude smaller
+        assert ft_data['sig_a'][harm + 1] < harm_amps.mean() / 10
 
     # test shape of returned DataFrame
     if not sp:
@@ -175,41 +184,50 @@ def test_shd_ft(tap, ref, harm, zpi, sp, sh, modulation, points):
     assert all('sig' in ft_data.columns[i] for i in range(ft_data.shape[1]))
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', shd_params)
-def test_shd(tap, ref, harm, zpi, sp, sh, modulation, points):
+'''
+@pytest.mark.parametrize('tap, harm, zpi, sp, sh, modulation, points', shd_params)
+def test_shd(tap, harm, zpi, sp, sh, modulation, points):
     """ simple sequence of shd_binning and shd_ft.
     The difference to test_shd_ft is that ft_data is created with shd. """
-    df = single_data_points(tap_nbins=tap, n_harm=harm, zero_and_pi=zpi,
+    # TODO keep synchronized to test_shd_ft
+    df = single_data_points(tap_nbins=tap, tap_harm=harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = shd(df.copy(), tap)
 
     # retrieved harmonics are rounded and compared
+    # TODO demodulate and compare phases as well
     if modulation == 'shd':
-        assert round(np.real(ft_data['sig_a'][0])) == 1
-        assert np.array_equal(abs(np.round(np.real(ft_data['sig_a'][1:harm]), 1)),
-                              np.ones(harm - 1) * .5)  # real fft gives half the amp
+        # amplitude of harmonics
+        harm_amps = abs(np.real(ft_data['sig_a'][1:harm + 1]))
+        print(harm_amps)
+        # 0 order has roughly twice the amplitude (real fft)
+        assert round(np.real(ft_data['sig_a'][0]) / harm_amps.mean()) == 2
+        # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
+        assert (harm_amps.std() < harm_amps.mean() / 10)
+        # following amplitude is at least 1 order of magnitude smaller
+        assert ft_data['sig_a'][harm + 1] < harm_amps.mean() / 10
 
     # test shape of returned DataFrame
     if not sp:
         assert ft_data.shape[0] == tap // 2 + 1
     assert all('sig' in ft_data.columns[i] for i in range(ft_data.shape[1]))
-
+'''
 
 # parameters for creating test data with function single_data_points
-pshet_params = [(32, 16, 2, False, False, False, 'pshet', 0),
-                (32, 16, 2, False, True, False, 'pshet', 0),
-                (32, 16, 2, False, False, True, 'pshet', 0),
-                (11, 16, 2, False, False, False, 'pshet', 0),
-                (500, 16, 2, False, False, False, 'pshet', 0),
-                (32, 6, 2, False, False, False, 'pshet', 0),
-                (32, 500, 2, False, False, False, 'pshet', 0),
-                (64, 64, 8, False, False, False, 'pshet', 0),
-                (32, 16, 2, True, False, False, 'pshet', 0),
-                (32, 16, 2, False, False, False, 'pshet', 500)]
+pshet_params = [(32, 16, 3, 2, False, False, False, 'pshet', 0),
+                (32, 16, 3, 2, False, True, False, 'pshet', 0),
+                (32, 16, 3, 2, False, False, True, 'pshet', 0),
+                (11, 16, 3, 2, False, False, False, 'pshet', 0),
+                (500, 16, 3, 2, False, False, False, 'pshet', 0),
+                (32, 8, 3, 2, False, False, False, 'pshet', 0),
+                (32, 500, 3, 2, False, False, False, 'pshet', 0),
+                (64, 64, 5, 4, False, False, False, 'pshet', 0),
+                (32, 16, 3, 2, True, False, False, 'pshet', 0),
+                (32, 16, 3, 2, False, False, False, 'pshet', 500)]
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', pshet_params)
-def test_pshet_binning(tap, ref, harm, zpi, sp, sh, modulation, points):
+@pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
+def test_pshet_binning(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
     """Perform pshet binned average on `df`.
     Returns
     -------
@@ -219,7 +237,7 @@ def test_pshet_binning(tap, ref, harm, zpi, sp, sh, modulation, points):
         reference bin number. Therefore, the histogram for `sig_a` can be
         accessed via `avg["sig_a"]`.
     """
-    df = single_data_points(tap_nbins=tap, ref_nbins=ref, n_harm=harm, zero_and_pi=zpi,
+    df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     binned_data = pshet_binning(df.copy(), tap, ref)
 
@@ -255,24 +273,36 @@ def test_pshet_binning(tap, ref, harm, zpi, sp, sh, modulation, points):
     assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', pshet_params)
-def test_pshet_ft(tap, ref, harm, zpi, sp, sh, modulation, points):
+@pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
+def test_pshet_ft(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
     """Fourier transform an averaged pshet dataframe. Returns a dict with channel name as key ('sig_a' etc) and
     np.array as value containing tapping and pshet mod on axis 0 and 1 respectively."""
-    df = single_data_points(tap_nbins=tap, ref_nbins=ref, n_harm=harm, zero_and_pi=zpi,
+    df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = pshet_ft(pshet_binning(df.copy(), tap, ref))
 
-    # retrieved harmonics are rounded and compared
+    # TODO demodulate phases as well
+    # retrieved pshet harmonics are rounded and compared
     for key in ft_data.keys():
         # amplitude of harmonics
-        harm_amps = abs(np.round(np.real(ft_data[key][0][1:harm + 1])))
+        pshet_harm_amps = abs(np.real(ft_data[key][0][1:pshet_harm + 1]))
         # 0 order has roughly twice the amplitude (real fft)
-        assert round(np.real(ft_data[key][0, 0])) // harm_amps.mean() == 2
+        assert round(np.real(ft_data[key][0, 0]) / pshet_harm_amps.mean()) == 2
         # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
-        assert (harm_amps.std() < harm_amps.mean() / 10)
+        assert (pshet_harm_amps.std() < pshet_harm_amps.mean() / 10)
         # following amplitude is at least 1 order of magnitude smaller
-        assert ft_data[key][0, harm + 1] < harm_amps.mean() / 10
+        assert ft_data[key][0, pshet_harm + 1] < pshet_harm_amps.mean() / 10
+
+    # retrieved tapping harmonics are rounded and compared
+    for key in ft_data.keys():
+        # amplitude of harmonics
+        tap_harm_amps = abs(np.round(np.real(ft_data['sig_a'][1:tap_harm + 1, 0])))
+        # 0 order has roughly twice the amplitude (real fft)
+        assert round(np.real(ft_data[key][0, 0])) // tap_harm_amps.mean() == 2
+        # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
+        assert (tap_harm_amps.std() < tap_harm_amps.mean() / 10)
+        # following amplitude is at least 1 order of magnitude smaller
+        assert ft_data[key][0, tap_harm + 1] < tap_harm_amps.mean() / 10
 
     # test shape of returned arrays
     if not sp:
@@ -282,11 +312,13 @@ def test_pshet_ft(tap, ref, harm, zpi, sp, sh, modulation, points):
     assert all('sig' in key for key in ft_data.keys())
 
 
-@pytest.mark.parametrize('tap, ref, harm, zpi, sp, sh, modulation, points', pshet_params)
-def test_pshet(tap, ref, harm, zpi, sp, sh, modulation, points):
+'''
+@pytest.mark.parametrize('tap, ref, tapharm, pshetharm, zpi, sp, sh, modulation, points', pshet_params)
+def test_pshet(tap, ref, tapharm, pshetharm, zpi, sp, sh, modulation, points):
     """ simple sequence of pshet_binning and pshet_ft.
     The difference to test_pshet_ft is that ft_data is created with pshet. """
-    df = single_data_points(tap_nbins=tap, ref_nbins=ref, n_harm=harm, zero_and_pi=zpi,
+    # TODO keep synchronized to test_pshet_ft
+    df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tapharm, pshet_harm=pshetharm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = pshet(df.copy(), tap, ref)
 
@@ -295,7 +327,7 @@ def test_pshet(tap, ref, harm, zpi, sp, sh, modulation, points):
         # amplitude of harmonics
         harm_amps = abs(np.round(np.real(ft_data[key][0][1:harm + 1])))
         # 0 order has roughly twice the amplitude (real fft)
-        assert round(np.real(ft_data[key][0, 0])) // harm_amps.mean() == 2
+        assert round(np.real(ft_data[key][0, 0]) / harm_amps.mean()) == 2
         # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
         assert (harm_amps.std() < harm_amps.mean() / 10)
         # following amplitude is at least 1 order of magnitude smaller
@@ -307,3 +339,4 @@ def test_pshet(tap, ref, harm, zpi, sp, sh, modulation, points):
             assert array.shape[0] == tap
             assert array.shape[1] == ref / 2 + 1
     assert all('sig' in key for key in ft_data.keys())
+'''
