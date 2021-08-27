@@ -142,7 +142,7 @@ def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     # TODO: test
-    return {k: np.abs(np.fft.rfft2(avg[k].to_numpy()))  # scale is missing...
+    return {k: np.fft.rfft2(avg[k].to_numpy())  # scale is missing...
             for k in avg.columns.get_level_values(0).drop_duplicates()
             }
 
