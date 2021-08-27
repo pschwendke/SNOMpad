@@ -302,10 +302,9 @@ def test_pshet_ft(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, point
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = pshet_ft(pshet_binning(df.copy(), tap, ref))
 
-    # retrieved pshet harmonics are rounded and compared
     for key in ft_data.keys():
-        # amplitude of harmonics
-        pshet_harm_amps = abs(np.real(ft_data[key][0][1:pshet_harm + 1]))
+        # amplitude of pshet harmonics
+        pshet_harm_amps = np.abs(ft_data[key][0][1:pshet_harm + 1])
         # 0 order has roughly twice the amplitude (real fft)
         assert round(np.real(ft_data[key][0, 0]) / pshet_harm_amps.mean()) == 2
         # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
@@ -313,18 +312,36 @@ def test_pshet_ft(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, point
         # following amplitude is at least 1 order of magnitude smaller
         assert ft_data[key][0, pshet_harm + 1] < pshet_harm_amps.mean() / 10
 
-    # retrieved tapping harmonics are rounded and compared
-    for key in ft_data.keys():
-        # amplitude of harmonics
-        tap_harm_amps = abs(np.round(np.real(ft_data['sig_a'][1:tap_harm + 1, 0])))
+        # phase of pshet harmonics
+        if not sp:    # sparse data sets produce bigger errors. This shows more in the harmonics
+            for n in range(pshet_harm + 1):
+                phase = (np.arctan2(np.imag(ft_data[key][0][n]), np.real(ft_data[key][0][n])) + n * np.pi) % np.pi
+                # phase correction
+                if n > 0:
+                    phase -= n * phase_offset
+                    if points > 0:
+                        phase -= n * np.pi / ref
+                assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
+
+        # amplitude of tapping harmonics
+        tap_harm_amps = np.abs(ft_data['sig_a'][1:tap_harm + 1, 0])
         # 0 order has roughly twice the amplitude (real fft)
-        assert round(np.real(ft_data[key][0, 0])) // tap_harm_amps.mean() == 2
+        assert round(np.real(ft_data[key][0, 0]) / tap_harm_amps.mean()) == 2
         # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
         assert (tap_harm_amps.std() < tap_harm_amps.mean() / 10)
         # following amplitude is at least 1 order of magnitude smaller
         assert ft_data[key][0, tap_harm + 1] < tap_harm_amps.mean() / 10
 
-    # TODO test for phases
+        # phase of tapping harmonics
+        if not sp:  # sparse data sets produce bigger errors. This shows more in the harmonics
+            for n in range(tap_harm + 1):
+                phase = (np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0])) + n * np.pi) % np.pi
+                # phase correction
+                if n > 0:
+                    phase -= n * phase_offset
+                    if points > 0:
+                        phase -= n * np.pi / tap
+                assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
 
     # test shape of returned arrays
     if not sp:
@@ -334,26 +351,54 @@ def test_pshet_ft(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, point
     assert all('sig' in key for key in ft_data.keys())
 
 
-'''
-@pytest.mark.parametrize('tap, ref, tapharm, pshetharm, zpi, sp, sh, modulation, points', pshet_params)
-def test_pshet(tap, ref, tapharm, pshetharm, zpi, sp, sh, modulation, points):
+@pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
+def test_pshet(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
     """ simple sequence of pshet_binning and pshet_ft.
     The difference to test_pshet_ft is that ft_data is created with pshet. """
-    # TODO keep synchronized to test_pshet_ft
-    df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tapharm, pshet_harm=pshetharm, zero_and_pi=zpi,
+    df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
                             sparse=sp, shuffled=sh, mod=modulation, n_points=points)
     ft_data = pshet(df.copy(), tap, ref)
 
-    # retrieved harmonics are rounded and compared
     for key in ft_data.keys():
-        # amplitude of harmonics
-        harm_amps = abs(np.round(np.real(ft_data[key][0][1:harm + 1])))
+        # amplitude of pshet harmonics
+        pshet_harm_amps = np.abs(ft_data[key][0][1:pshet_harm + 1])
         # 0 order has roughly twice the amplitude (real fft)
-        assert round(np.real(ft_data[key][0, 0]) / harm_amps.mean()) == 2
+        assert round(np.real(ft_data[key][0, 0]) / pshet_harm_amps.mean()) == 2
         # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
-        assert (harm_amps.std() < harm_amps.mean() / 10)
+        assert (pshet_harm_amps.std() < pshet_harm_amps.mean() / 10)
         # following amplitude is at least 1 order of magnitude smaller
-        assert ft_data[key][0, harm + 1] < harm_amps.mean() / 10
+        assert ft_data[key][0, pshet_harm + 1] < pshet_harm_amps.mean() / 10
+
+        # phase of pshet harmonics
+        if not sp:    # sparse data sets produce bigger errors. This shows more in the harmonics
+            for n in range(pshet_harm + 1):
+                phase = (np.arctan2(np.imag(ft_data[key][0][n]), np.real(ft_data[key][0][n])) + n * np.pi) % np.pi
+                # phase correction
+                if n > 0:
+                    phase -= n * phase_offset
+                    if points > 0:
+                        phase -= n * np.pi / ref
+                assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
+
+        # amplitude of tapping harmonics
+        tap_harm_amps = np.abs(ft_data['sig_a'][1:tap_harm + 1, 0])
+        # 0 order has roughly twice the amplitude (real fft)
+        assert round(np.real(ft_data[key][0, 0]) / tap_harm_amps.mean()) == 2
+        # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
+        assert (tap_harm_amps.std() < tap_harm_amps.mean() / 10)
+        # following amplitude is at least 1 order of magnitude smaller
+        assert ft_data[key][0, tap_harm + 1] < tap_harm_amps.mean() / 10
+
+        # phase of tapping harmonics
+        if not sp:  # sparse data sets produce bigger errors. This shows more in the harmonics
+            for n in range(tap_harm + 1):
+                phase = (np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0])) + n * np.pi) % np.pi
+                # phase correction
+                if n > 0:
+                    phase -= n * phase_offset
+                    if points > 0:
+                        phase -= n * np.pi / tap
+                assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
 
     # test shape of returned arrays
     if not sp:
@@ -361,4 +406,3 @@ def test_pshet(tap, ref, tapharm, pshetharm, zpi, sp, sh, modulation, points):
             assert array.shape[0] == tap
             assert array.shape[1] == ref / 2 + 1
     assert all('sig' in key for key in ft_data.keys())
-'''
