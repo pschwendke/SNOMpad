@@ -195,14 +195,17 @@ def dft_naive(phi, y, orders):
     assert phi.ndim == 1
     if y.ndim == 1:
         y = y[np.newaxis,:]
+    # sort by phi
     idx = np.argsort(phi)
     y_s = y[:,idx]
     phi_s = phi[idx]
-    return np.trapz(
+    intgr = np.trapz(
         np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])*y_s,
         phi_s,
         axis=1
-    )/2/np.pi
+    )/np.pi
+    intgr[orders==0] *= 0.5
+    return intgr
 
 
 #####  older stuff, kept for compatibility
