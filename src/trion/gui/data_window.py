@@ -6,6 +6,7 @@ import logging
 from time import time
 
 import numpy as np
+import pandas as pd
 import pyqtgraph as pg
 from enum import IntEnum, auto
 from PySide2.QtCore import QSize, QObject, Signal, QTimer
@@ -21,7 +22,7 @@ from qtlets.widgets import IntEdit
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals
-from ..analysis.demod import dft_naive
+from ..analysis.demod import dft_naive, shd
 
 logger = logging.getLogger(__name__)
 
@@ -327,7 +328,7 @@ class FourierView(BaseView):
         win_len = kwargs["window_size"]
         phi = np.arctan2(data[-win_len:, self.y_idx],
                          data[-win_len:, self.x_idx])
-        data = data.take(self.input_indices, axis=1)
+        data = data.take(self.input_indices, axis=1)[:-win_len, :]
         # data has shape (N_pts, N_sig)
         # phi has shape (N_pts,)
         # orders has shape (N_orders,)

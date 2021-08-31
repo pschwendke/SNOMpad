@@ -108,8 +108,6 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         # Setup controllers
         # =================
         self.daq = daq or DaqController(dev=System().devices.device_names[0])
-
-
         self.display_cntrl = DisplayController(
             parent=self,
             data_window=self.data_view,
