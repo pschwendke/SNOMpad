@@ -196,9 +196,13 @@ def dft_naive(phi, y, orders):
     if y.ndim == 1:
         y = y[np.newaxis,:]
     # sort by phi
-    idx = np.argsort(phi)
-    y_s = y[:,idx]
-    phi_s = phi[idx]
+    idx = np.argsort(phi).tolist()
+    idx = idx + [idx[0]]  # append last element again
+    # we need to repeat the first elements at the end, so we integrate over the
+    # whole circle, without missing the seam.
+    y_s = y.take(idx, axis=1)
+    phi_s = phi.take(idx)
+    phi_s[-1] += 2 * np.pi
     intgr = np.trapz(
         np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])*y_s,
         phi_s,
