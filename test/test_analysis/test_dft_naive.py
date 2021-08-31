@@ -8,9 +8,11 @@ def randphi(npts):
 @pytest.fixture
 def samplesingle(npts, amps, phi_func):
     phi = phi_func(npts) # random numbers = bad
-    sig = amps[np.newaxis,:] * np.exp(-1j*np.arange(amps.size)[np.newaxis,:]*phi[:,np.newaxis])
-    assert sig.shape == (npts, amps.size)
-    sig = sig.real.sum(axis=1)
+    amps = np.atleast_2d(amps)
+    sig = amps * np.exp(-1j*np.arange(amps.shape[-1])[np.newaxis,np.newaxis,:]*phi[:,np.newaxis,np.newaxis])  # axis 0 is pts, axis 1? is signal axis -1 is order
+    assert sig.shape[0] == npts
+    assert sig.shape[1:] == (amps.shape)
+    sig = np.squeeze(sig.real.sum(axis=-1))
     return sig, phi
 
 randamp = (np.random.randn(8) + 1j * np.random.randn(8)) * np.exp(-np.arange(8) * 2)
@@ -23,6 +25,7 @@ cmplx_amps = [
     np.array([0, 0, 1j, 0, 0, 0, 0]),
     np.array([0, 1, 1j, 0, 0, 0, 0]),
     randamp,
+    np.array([[0, 1, 1j, 0, 0, 0, 0], [2, 0, 1, 1+1j, 0,0,0]]),
 ]
 
 @pytest.mark.parametrize("npts", [10, 1000, 10_000])
@@ -33,13 +36,17 @@ def test_1d_shape(samplesingle, amps, nmax):
     sig, phi = samplesingle
     orders = np.arange(0, nmax)
     coeff = dft_naive(phi, sig, orders)
-    assert coeff.shape == (nmax,)
+    if amps.ndim == 1:
+        assert coeff.shape == (nmax,)
+    else:
+        assert coeff.shape == (amps.shape[0], nmax)
 
-@pytest.mark.parametrize("npts", [1000, 10_000])
+@pytest.mark.parametrize("npts", [100, 1000, 10_000])
 @pytest.mark.parametrize("amps", cmplx_amps)
 @pytest.mark.parametrize("phi_func", [bin_midpoints, randphi])
-def test_single_amps(samplesingle, amps):
+def test_single_amps(samplesingle, amps, phi_func):
     sig, phi = samplesingle
-    orders = np.arange(0, len(amps))
+    orders = np.arange(0, amps.shape[-1])
     ret = dft_naive(phi, sig, orders)
-    assert np.allclose(ret, amps, atol=1/phi.size)
+    tol = 10/phi.size if phi_func is randphi else 1E-8
+    assert np.allclose(ret, amps, atol=tol)
