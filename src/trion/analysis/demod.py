@@ -176,30 +176,33 @@ def dft_naive(phi, y, orders):
     """
     Perform a naive fourier transform using trapezoidal integration.
 
-    The input arrays (phi) are sorted before integration.
+    The input arrays are reorganized such that `phi` is sorted. The first
+    element is "looped back" to integrate across the entire circle.
 
     Parameters
     ----------
     phi : (N,) np.ndarray
         Values of phi.
-    y : (N,) np.ndarray
-        Values of y.
+    y : (N,) or (N,K) np.ndarray
+        Values of y. If 2d, the DFT is performed for every column.
     orders : (M,) np.ndarray
         Demodulation orders
 
     Returns
     -------
-    amp : (M,) np.ndarray
+    amp : (M,) or (K,M) np.ndarray
         Complex amplitude for the given orders.
     """
     assert phi.ndim == 1
     if y.ndim == 1:
         y = y[:,np.newaxis]
+    else:
+        assert y.ndim == 2
     # sort by phi
     idx = np.argsort(phi).tolist()
-    idx = idx + [idx[0]]  # append last element again
     # we need to repeat the first elements at the end, so we integrate over the
-    # whole circle, without missing the seam.
+    # whole circle, without missing the seam where it rolls around
+    idx = idx + [idx[0]]  # append last element again
     y_s = y.take(idx, axis=0).T
     phi_s = phi.take(idx)
     phi_s[-1] += 2 * np.pi
