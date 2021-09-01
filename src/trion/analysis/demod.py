@@ -7,6 +7,27 @@ import pandas as pd
 from .signals import is_tap_modulation
 
 
+def empty_bins_in(df: pd.DataFrame) -> None:
+    """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
+    Returns True if empty bins are detected."""
+
+    # check for missing tap bins
+    for n in range(df.shape[0]):
+        if df.index[n] != n:
+            raise ValueError('The binned DataFrame has empty bins.')
+
+    # check for missing pshet bins
+    if isinstance(df.columns, pd.MultiIndex):
+        for channel in df.columns.get_level_values(0).drop_duplicates():
+            for m in range(df[channel].shape[1]):
+                if df[channel].columns[m] != m:
+                    raise ValueError('The binned DataFrame has empty bins.')
+
+    # check for empty (NAN) bins
+    if not all(df.notna()):
+        raise ValueError('The binned DataFrame has empty bins.')
+    return
+
 
 def bin_index(phi, n_bins: int):
     """
@@ -17,7 +38,7 @@ def bin_index(phi, n_bins: int):
     return (phi - lo)//step
 
 
-def bin_midpoints(n_bins, lo=-np.pi, hi = np.pi):
+def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     """Compute the midpoints of phase bins"""
     span = hi - lo
     step = span/n_bins
@@ -83,6 +104,11 @@ def shd_ft(avg: pd.DataFrame):
     """
     # todo: add to test suite before modifying
     #  smoke test passed
+    try:
+        empty_bins_in(avg)
+    except ValueError:
+        pass
+
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
     return avg.apply(np.fft.rfft, axis=0)/len(avg)
 
@@ -118,7 +144,7 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     -------
     avg : pd.DataFrame
         Dataframe containing the average per bins. Row index contains the bin
-        number for tapping. The column index is a `Multindex` where level 0 is
+        number for tapping. The column index is a `MultiIndex` where level 0 is
         the signal name as a string (ex: `"sig_a"`), and level 1 is the
         reference bin number. Therefore, the histogram for `sig_a` can be
         accessed via `avg["sig_a"]`.
@@ -142,6 +168,11 @@ def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     # TODO: test
+    try:
+        empty_bins_in(avg)
+    except ValueError:
+        pass
+
     return {k: np.fft.rfft2(avg[k].to_numpy())  # scale is missing...
             for k in avg.columns.get_level_values(0).drop_duplicates()
             }
@@ -161,13 +192,13 @@ def dft_lstsq(phi, sig, max_order: int):
     assert max_order > 1
     orders = np.arange(1, max_order+1)
     coeff = np.hstack([
-        np.ones_like(phi)[:,np.newaxis], # DC
-        np.cos(orders[np.newaxis,:] * phi[:,np.newaxis]), # cos
-        np.sin(orders[np.newaxis,:] * phi[:,np.newaxis])  # sin
+        np.ones_like(phi)[:, np.newaxis],  # DC
+        np.cos(orders[np.newaxis, :] * phi[:, np.newaxis]),  # cos
+        np.sin(orders[np.newaxis, :] * phi[:, np.newaxis])  # sin
     ])
     assert coeff.shape == (phi.size, 2*max_order+1)
     soln, _, _, _ = np.linalg.lstsq(coeff, sig, rcond=None)
-    ret = np.asarray(soln[:max_order+1], dtype=complex) # what happens if sig.ndim > 1?
+    ret = np.asarray(soln[:max_order+1], dtype=complex)  # what happens if sig.ndim > 1?
     ret[1:] += 1j*soln[max_order+1:]
     return ret
 
@@ -195,7 +226,7 @@ def dft_naive(phi, y, orders):
     """
     assert phi.ndim == 1
     if y.ndim == 1:
-        y = y[:,np.newaxis]
+        y = y[:, np.newaxis]
     else:
         assert y.ndim == 2
     # sort by phi
@@ -207,17 +238,18 @@ def dft_naive(phi, y, orders):
     phi_s = phi.take(idx)
     phi_s[-1] += 2 * np.pi
     intgr = np.trapz(
-        np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])[np.newaxis,:,:] * y_s[:,np.newaxis,:],
+        np.exp(1j*phi_s[np.newaxis, :]*orders[:, np.newaxis])[np.newaxis, :, :] * y_s[:, np.newaxis, :],
         phi_s,
         axis=-1
     )/np.pi
-    intgr[:,orders==0] *= 0.5
+    intgr[:, orders == 0] *= 0.5
     return np.squeeze(intgr)
 
 
 #####  older stuff, kept for compatibility
 
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
+
 
 def calc_phase(df, in_place=False):
     warn(_deprecation_warning)
@@ -252,17 +284,17 @@ def binned_average(df, n_bins, compute_counts=True):
     grpd = df.groupby("bin_no")
     avg = grpd.mean()
     if compute_counts:
-        avg["count"] = grpd.count().iloc[:,0]
+        avg["count"] = grpd.count().iloc[:, 0]
     step = 2*np.pi/n_bins
     lo = -np.pi
     avg["phi"] = avg.index * step + lo + step/2
-    #avg = avg.drop(columns="bin_no")
+    # avg = avg.drop(columns="bin_no")
     return avg
 
 
 def binned_ft(avg):  # these names suck
     warn(_deprecation_warning)
-    step = np.diff(avg["phi"].iloc[:2])[0] # argh...
+    step = np.diff(avg["phi"].iloc[:2])[0]  # argh...
     sigs = avg.drop(columns="phi")
     return pd.DataFrame(np.fft.rfft(sigs, axis=0)*step/2/np.pi, columns=sigs.columns)
 
