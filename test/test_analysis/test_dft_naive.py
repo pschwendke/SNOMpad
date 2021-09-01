@@ -50,7 +50,7 @@ def test_1d_shape(samplesingle, amps, nmax):
     if amps.ndim == 1:
         assert coeff.shape == (nmax,)
     else:
-        assert coeff.shape == (amps.shape[0], len(orders))
+        assert coeff.shape == (len(orders), amps.shape[0])
 
 
 @pytest.mark.parametrize("npts", [100, 1000, 10_000])
@@ -63,4 +63,4 @@ def test_single_amps(samplesingle, amps, phi_func):
     ret = dft_naive(phi, sig, orders)
     # use loose tolerance for random numbers, standard for midpoints
     tol = 10/phi.size if phi_func is randphi else 1E-8
-    assert np.allclose(ret, amps, atol=tol)
+    assert np.allclose(amps.T, ret, atol=tol)

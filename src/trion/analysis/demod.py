@@ -190,7 +190,7 @@ def dft_naive(phi, y, orders):
 
     Returns
     -------
-    amp : (M,) or (K,M) np.ndarray
+    amp : (M,) or (M, K) np.ndarray
         Complex amplitude for the given orders.
     """
     assert phi.ndim == 1
@@ -212,7 +212,7 @@ def dft_naive(phi, y, orders):
         axis=-1
     )/np.pi
     intgr[:,orders==0] *= 0.5
-    return np.squeeze(intgr)
+    return np.squeeze(intgr.T)
 
 
 #####  older stuff, kept for compatibility
