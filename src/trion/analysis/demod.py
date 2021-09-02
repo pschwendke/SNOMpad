@@ -215,6 +215,42 @@ def dft_naive(phi, y, orders):
     return np.squeeze(intgr.T)
 
 
+def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
+    """
+    Perform shd demodulation using naive discrete FT (DFT).
+
+    Compute the tapping phase from `tap_y` and `tap_x`, then extracts Fourier
+    coefficients of the signals using naive DFT.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe of sample points. The columns indicate the signal type.
+    max_order: int
+        Largest order.
+
+    Returns
+    -------
+    amps : pd.DataFrame
+        Dataframe containing the Fourier coefficients. Row indicate order,
+        columns indicate signal type.
+
+    See also
+    -------
+    dft_naive: DFT used by this function.
+    shd: Standard shd demodulation by binning and FT.
+
+    """
+    phi = np.arctan2(df["tap_y"], df["tap_x"])
+    data = df.drop(columns=["tap_x", "tap_y"])
+    cols = data.columns.copy()
+    assert data.ndim == 2
+    assert phi.ndim == 1
+    assert data.shape[0] == phi.size
+    assert data.shape[1] == len(cols)
+    amps = dft_naive(phi.to_numpy(), data.to_numpy(), np.arange(max_order))
+    return pd.DataFrame(amps, columns=cols)
+
 #####  older stuff, kept for compatibility
 
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")

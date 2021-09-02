@@ -1,11 +1,14 @@
 import numpy as np
+import pandas as pd
 import pytest
-from trion.analysis.demod import dft_naive, bin_midpoints
+from trion.analysis.demod import dft_naive, bin_midpoints, shd_naive
+from string import ascii_lowercase
 
 
 def randphi(npts):
     np.random.seed(2108312109)
     return np.random.uniform(-np.pi, np.pi, npts)
+
 
 @pytest.fixture
 def samplesingle(npts, amps, phi_func):
@@ -20,6 +23,7 @@ def samplesingle(npts, amps, phi_func):
     sig = np.squeeze(sig.real.sum(axis=-1))  # sum over orders
     return sig, phi
 
+
 # some random amplitudes
 randamp = (np.random.randn(8) + 1j * np.random.randn(8)) * np.exp(-np.arange(8) * 2)
 randamp[0] = randamp[0].real  # DC can't phase shift... oopsie
@@ -33,6 +37,7 @@ cmplx_amps = [
     np.array([0, 1, 1j, 0, 0, 0, 0]),
     np.array([1, 1, 1j, 0, 0, 0, 0]),
     randamp,
+    randamp[:-2],
     # two dimensional
     np.array([[0, 1, 1j, 0, 0, 0, 0], [2, 0, 1, 1+1j, 0,0,0]]),
 ]
@@ -64,3 +69,28 @@ def test_single_amps(samplesingle, amps, phi_func):
     # use loose tolerance for random numbers, standard for midpoints
     tol = 10/phi.size if phi_func is randphi else 1E-8
     assert np.allclose(amps.T, ret, atol=tol)
+
+
+@pytest.mark.parametrize("npts", [1000])
+@pytest.mark.parametrize("amps", cmplx_amps)
+@pytest.mark.parametrize("phi_func", [randphi])
+def test_shd_naive(samplesingle, amps, phi_func):
+    # shd_naive should get the same numbers out, but it a different format.
+    sig, phi = samplesingle
+    # prepare dataframe
+    if sig.ndim == 1:
+        cols = ["sig_a"]
+    else:
+        cols = [f"sig_{ascii_lowercase[i]}"
+                for i in range(sig.shape[1])]
+    cols.extend(["tap_x", "tap_y"])
+    df = pd.DataFrame(
+        data = np.vstack((
+            sig.T, np.cos(phi), np.sin(phi))).T,
+        columns=cols,
+    )
+    # get reference data
+    ref = dft_naive(phi, sig, np.arange(amps.shape[-1]))
+    # get data using shd_naive, compare with dft results.
+    ret = np.squeeze(shd_naive(df, amps.shape[-1]).to_numpy())
+    assert np.allclose(ret, ref)
