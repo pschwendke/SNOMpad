@@ -94,3 +94,14 @@ def test_shd_naive(samplesingle, amps, phi_func):
     # get data using shd_naive, compare with dft results.
     ret = np.squeeze(shd_naive(df, amps.shape[-1]).to_numpy())
     assert np.allclose(ret, ref)
+
+
+@pytest.mark.parametrize("npts", [1000, 10_000, 100_000])
+@pytest.mark.parametrize("amps", [randamp])
+@pytest.mark.parametrize("phi_func", [randphi])
+def test_naive_benchmark(benchmark, samplesingle, amps, phi_func):
+    sig, phi = samplesingle
+    orders = np.arange(0, amps.shape[-1])
+    ret = benchmark(dft_naive, phi, sig, orders)
+    tol = 10 / phi.size if phi_func is randphi else 1E-8
+    assert np.allclose(amps.T, ret, atol=tol)

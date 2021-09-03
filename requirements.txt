@@ -8,3 +8,5 @@ attrs
 bidict
 toml
 h5py
+pytest
+pytest-benchmark
