@@ -14,8 +14,6 @@ from trion.expt.acquisition import single_point
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.daq import DaqController
 
-# TODO: add support for csv export.
-
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
