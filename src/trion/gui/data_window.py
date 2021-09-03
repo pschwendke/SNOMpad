@@ -33,6 +33,23 @@ class DisplayMode(IntEnum):
     phase = 1
     fourier = 2
 
+
+class shd_algorithm(NamedEnum):
+    dft = auto()
+    bin = auto()
+
+
+@attr.s(auto_attribs=True)
+class DisplayConfig(HasQtlets):
+    display_size: int = 200_000
+    downsample: int = 200
+    window_size: int = 10_000
+    shd_algorithm: shd_algorithm = shd_algorithm.dft
+
+    def __attrs_post_init__(self):
+        super().__init__()
+
+
 class RawCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -187,7 +204,7 @@ class RawView(BaseView):
             if plot is not p0:
                 plot.setXLink(p0)
 
-    def prepare_plots(self, names):
+    def prepare_plots(self, names, display_cfg):
         """Prepares windows and pens for the different curves"""
         logger.debug("Raw plot names:" + repr(names))
         self.clear_plots()
@@ -229,7 +246,7 @@ class PhaseView(BaseView):
             plot.showAxis("top")
             plot.showAxis("right")
 
-    def prepare_plots(self, names):
+    def prepare_plots(self, names, display_cfg):
         """Prepares windows and pens for the different curves"""
         self.clear_plots()
 
@@ -307,54 +324,59 @@ class FourierView(BaseView):
 
         #self.ci.setBorder((50, 50, 100))
 
-    def prepare_plots(self, names):
+    def prepare_plots(self, names, display_cfg: DisplayConfig):
+        # TODO: handle max orders here...
         self.clear_plots()
 
+        # setup processing
+        # needed to compute phase for dft_naive
         self.x_idx = names.index(Signals.tap_x)
         self.y_idx = names.index(Signals.tap_y)
+        # prepare column lookup. Keep only signals (ref_x, y are not used)
         self.columns = {
             n: names.index(n) for n in names if n in signals.all_detector_signals
         }  # mapping for input data indices.
         self.input_indices = list(self.columns.values())
+        # setup processing method
+        if display_cfg.shd_algorithm == shd_algorithm.dft:
+            self.compute_components = self.compute_naive
+
+        # setup buffer
         self.buf = CircularArrayBuffer(
             size=self.bufsize,
             vars=list(product(self.orders, self.columns))
         )
         logger.debug(f"Fourier buffer vars: {self.buf.vars}")
+        # setup plots
         self.curves = {}
         for order, n in self.buf.vars:
             item = self.getItem(order, 0)
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[order, n] = pen
 
-    def compute_components(self, data, names, **kwargs):
+    def compute_naive(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        algo = kwargs["shd_algorithm"]
-        if algo is shd_algorithm.dft:
-            phi = np.arctan2(data[-win_len:, self.y_idx],
-                             data[-win_len:, self.x_idx])
-            data = data.take(self.input_indices, axis=1)[-win_len:, :]
-            # data has shape (N_pts, N_sig)
-            # phi has shape (N_pts,)
-            # orders has shape (N_orders,)
-            # final size should be (N_orders, N_sig)
-            try:
-                demod = dft_naive(phi, data, orders=self.orders)
-            except Exception:
-                logger.debug(f"data shape: {data.shape}")
-                logger.debug(f"phi shape: {phi.shape}")
-                logger.debug(f"name shape: {phi.shape}")
-                raise
-        # fourier buffer expects one row per tick.
+        phi = np.arctan2(data[-win_len:, self.y_idx],
+                         data[-win_len:, self.x_idx])
+        data = data.take(self.input_indices, axis=1)[-win_len:, :]
+        # data has shape (N_pts, N_sig)
+        # phi has shape (N_pts,)
+        # orders has shape (N_orders,)
+        # final size should be (N_orders, N_sig)
+        try:
+            demod = dft_naive(phi, data, orders=self.orders)
+        except Exception:
+            logger.debug(f"data shape: {data.shape}")
+            logger.debug(f"phi shape: {phi.shape}")
+            logger.debug(f"name shape: {phi.shape}")
+            raise
+    # fourier buffer expects one row per tick.
         # columns are signals, (order, signal). Signal is the fastest index.
-        self.buf.put(np.abs(demod).reshape(1, -1))
-
+        return np.abs(demod).reshape(1, -1)
 
     def plot(self, data, names, **kwargs):
-        # TODO: make multiple "compute_naive", "compute_bin"
-        #   set the correct method at  "prepare_plot"
-        #   also figure out a way to handle orders.
-        self.compute_components(data, names, **kwargs)
+        amps = self.compute_components(data, names, **kwargs)
+        self.buf.put(amps)
         y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
         x = np.arange(y.shape[0])
@@ -382,27 +404,12 @@ class DataWindow(QTabWidget):
         self.setTabPosition(QTabWidget.South)
 
 
-class shd_algorithm(NamedEnum):
-    dft = auto()
-    #bin = auto()
-
-
-@attr.s(auto_attribs=True)
-class DisplayConfig(HasQtlets):
-    display_size: int = 200_000
-    downsample: int = 200
-    window_size: int = 10_000
-    shd_algorithm: shd_algorithm = shd_algorithm.dft
-
-    def __attrs_post_init__(self):
-        super().__init__()
 
 
 class DisplayController(QObject):
     """
     Handles connection between the display windows and the other elements.
     """
-    # TODO: move display timer here, include an "on_start" and "on_stop" slot
     view_changed = Signal()
     update_fps = Signal(float)
 
@@ -462,7 +469,7 @@ class DisplayController(QObject):
     def prepare_plots(self, buf):
         self.buffer = buf
         for view in self.views:
-            view.prepare_plots(buf.vars)
+            view.prepare_plots(buf.vars, self.display_cfg)
 
     def refresh_display(self):
         "pass the data from the buffer to the display controller."
@@ -475,7 +482,8 @@ class DisplayController(QObject):
         else:
             try:
                 y = self.buffer.tail(self.display_cfg.display_size)
-                self.plot(y, names, **attr.asdict(self.display_cfg))
+                if len(y) > 0:  # don't plot until there is some data at least
+                    self.plot(y, names, **attr.asdict(self.display_cfg))
             except Exception:
                 if self.acquisition_controller is not None:
                     self.acquisition_controller.act.stop.trigger()
