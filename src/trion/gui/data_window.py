@@ -17,11 +17,11 @@ from pyqtgraph import mkPen, mkBrush
 from qtlets import HasQtlets
 import attr
 
-from .utils import add_grid
-from qtlets.widgets import IntEdit
+from .utils import add_grid, enum_to_combo
+from qtlets.widgets import IntEdit, ValuedComboBox
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
-from trion.analysis.signals import signal_colormap, Signals
+from trion.analysis.signals import signal_colormap, Signals, NamedEnum
 from ..analysis.demod import dft_naive, shd
 
 logger = logging.getLogger(__name__)
@@ -80,10 +80,12 @@ class FourierCntrl(QWidget):
         self.window_len = QSpinBox()
         self.window_len.setMinimum(10)
         self.window_len.setMaximum(2_000_000)
+        self.shd_algo = enum_to_combo(shd_algorithm, ValuedComboBox)
         lyt = QGridLayout()
         self.setLayout(lyt)
         grid = []
         grid.append(["Window size:", self.window_len])
+        grid.append(["SHD:", self.shd_algo])
 
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
@@ -312,12 +314,13 @@ class FourierView(BaseView):
         self.y_idx = names.index(Signals.tap_y)
         self.columns = {
             n: names.index(n) for n in names if n in signals.all_detector_signals
-        } # mapping for input data indices.
+        }  # mapping for input data indices.
         self.input_indices = list(self.columns.values())
         self.buf = CircularArrayBuffer(
             size=self.bufsize,
             vars=list(product(self.orders, self.columns))
         )
+        logger.debug(f"Fourier buffer vars: {self.buf.vars}")
         self.curves = {}
         for order, n in self.buf.vars:
             item = self.getItem(order, 0)
@@ -326,17 +329,31 @@ class FourierView(BaseView):
 
     def compute_components(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        phi = np.arctan2(data[-win_len:, self.y_idx],
-                         data[-win_len:, self.x_idx])
-        data = data.take(self.input_indices, axis=1)[:-win_len, :]
-        # data has shape (N_pts, N_sig)
-        # phi has shape (N_pts,)
-        # orders has shape (N_orders,)
-        # final size should be (N_orders, N_sig)
-        demod = dft_naive(phi, data.T, orders=self.orders)
+        algo = kwargs["shd_algorithm"]
+        if algo is shd_algorithm.dft:
+            phi = np.arctan2(data[-win_len:, self.y_idx],
+                             data[-win_len:, self.x_idx])
+            data = data.take(self.input_indices, axis=1)[-win_len:, :]
+            # data has shape (N_pts, N_sig)
+            # phi has shape (N_pts,)
+            # orders has shape (N_orders,)
+            # final size should be (N_orders, N_sig)
+            try:
+                demod = dft_naive(phi, data, orders=self.orders)
+            except Exception:
+                logger.debug(f"data shape: {data.shape}")
+                logger.debug(f"phi shape: {phi.shape}")
+                logger.debug(f"name shape: {phi.shape}")
+                raise
+        # fourier buffer expects one row per tick.
+        # columns are signals, (order, signal). Signal is the fastest index.
         self.buf.put(np.abs(demod).reshape(1, -1))
 
+
     def plot(self, data, names, **kwargs):
+        # TODO: make multiple "compute_naive", "compute_bin"
+        #   set the correct method at  "prepare_plot"
+        #   also figure out a way to handle orders.
         self.compute_components(data, names, **kwargs)
         y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
@@ -365,12 +382,17 @@ class DataWindow(QTabWidget):
         self.setTabPosition(QTabWidget.South)
 
 
+class shd_algorithm(NamedEnum):
+    dft = auto()
+    #bin = auto()
+
 
 @attr.s(auto_attribs=True)
 class DisplayConfig(HasQtlets):
     display_size: int = 200_000
     downsample: int = 200
-    window_size: int = 2000
+    window_size: int = 10_000
+    shd_algorithm: shd_algorithm = shd_algorithm.dft
 
     def __attrs_post_init__(self):
         super().__init__()
@@ -414,6 +436,8 @@ class DisplayController(QObject):
             self.display_cfg.link_widget(cntrl.display_size, "display_size")
         self.display_cfg.link_widget(self.view_panel.fourier_cntrl.window_len,
                                      "window_size")
+        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.shd_algo,
+                                     "shd_algorithm")
 
         self.fps_updt_timer.timeout.connect(self.on_update_fps)
         self.display_timer.timeout.connect(self.refresh_display)
