@@ -76,10 +76,10 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
     ref_y = np.sin(ref_phase)
 
     # data: DataFrame with one row for every point in phase space
-    signal = np.zeros((tap_nbins, ref_nbins, 6))
+    signal = np.zeros((tap_nbins * ref_nbins, 6))
     for i in range(tap_nbins):
         for j in range(ref_nbins):
-            row = i * ref_nharm + j
+            row = i * ref_nbins + j
             tap_sig = sum(np.abs(tap_harm_amps[n]) * np.cos(n * tap_phase[i] + np.angle(tap_harm_amps[n]))
                           for n in range(tap_nharm))
             ref_sig = sum(np.abs(ref_harm_amps[n]) * np.cos(n * ref_phase[j] + np.angle(ref_harm_amps[n]))
