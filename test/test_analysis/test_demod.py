@@ -1,11 +1,13 @@
 import pytest
 import numpy as np
-import pandas as pd
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
 
 # TODO: Do we need duplicate tests for shd_ft and shd?
+#  benchmarking for binning functions
+#  dealing with missing bins
 #  test passing pshet data to shd functions (which one?)
+#  check all tests are 'online'
 
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
@@ -204,8 +206,6 @@ def test_pshet_ft_shape(pshet_data_points):
 
 def test_pshet_ft_harmonics(pshet_data_points):
     """ Retrieve amplitudes and phases of harmonics with phset_ft"""
-    # TODO check implementation after adding scaling to pshet_ft
-
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
