@@ -14,14 +14,14 @@ def empty_bins_in(df: pd.DataFrame) -> None:
     # check for missing tap bins
     for n in range(df.shape[0]):
         if df.index[n] != n:
-            raise ValueError('The binned DataFrame has empty bins.')
+            raise ValueError('The binned DataFrame has missing bins.')
 
     # check for missing pshet bins
     if isinstance(df.columns, pd.MultiIndex):
         for channel in df.columns.get_level_values(0).drop_duplicates():
             for m in range(df[channel].shape[1]):
                 if df[channel].columns[m] != m:
-                    raise ValueError('The binned DataFrame has empty bins.')
+                    raise ValueError('The binned DataFrame has missing bins.')
 
     # check for empty (NAN) bins
     if not all(df.notna()):
@@ -77,6 +77,7 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
     """
     # TODO test
     #  smoke test passed
+    #  fill missing bins with nans
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     # compute indices
@@ -107,7 +108,7 @@ def shd_ft(avg: pd.DataFrame):
     try:
         empty_bins_in(avg)
     except ValueError:
-        pass  # Why?
+        raise NotImplementedError('Handling of missing bins')
 
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
     return avg.apply(np.fft.rfft, axis=0)/len(avg)
@@ -171,7 +172,7 @@ def pshet_ft(avg: pd.DataFrame):
     try:
         empty_bins_in(avg)
     except ValueError:
-        pass  # Why?
+        raise NotImplementedError('Handling of missing bins')
 
     return {k: np.fft.rfft2(avg[k].to_numpy())  # scale is missing...
             for k in avg.columns.get_level_values(0).drop_duplicates()
