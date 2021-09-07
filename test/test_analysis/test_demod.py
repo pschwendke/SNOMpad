@@ -4,6 +4,9 @@ import pandas as pd
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
 
+# TODO: Do we need duplicate tests for shd_ft and shd?
+#  test passing pshet data to shd functions (which one?)
+
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
 def test_bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
@@ -46,8 +49,8 @@ def test_shd_binning_shuffled(shd_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
-def test_shd_binning_empty(shd_data_points, drops):
-    """ Test the binning of data containing empty bins.
+def _shd_binning_empty(shd_data_points, drops):
+    """ Test the binning of data containing missing bins.
     """
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
@@ -57,7 +60,8 @@ def test_shd_binning_empty(shd_data_points, drops):
     # the shape should be unchanged
     assert perforated_data.shape[0] == tap_nbins
     # Nan should be inserted in missing bins
-    assert all(np.isnan(perforated_data[drops]))    # does this work ?
+    # TODO check for nans
+    # assert all(np.isnan(perforated_data[drops]))
 
 
 def test_shd_ft_shape(shd_data_points):
@@ -98,128 +102,156 @@ def test_shd_ft_harmonics(shd_data_points):
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
 def test_shd_ft_empty(shd_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by shd_ft.
+    """
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
 
     # TODO update handling of missing and nan filled bins
-    # passing missing or nan filled bins to _ft should DO SOMETHING SPECIFIC LATER
     with pytest.raises(NotImplementedError):
         shd_ft(shd_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins))
 
 
-# TODO: Do we need duplicate tests for shd_ft and shd?
+def test_pshet_binning(pshet_data_points):
+    """ Unit test for pshet_binning. Only sig_a is tested.
+    """
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    binned_data = pshet_binning(test_data.copy(), tap_nbins, ref_nbins)
 
+    # test shape of returned DataFrame
+    assert binned_data.shape[0] == tap_nbins
+    assert binned_data.shape[1] == 2 * ref_nbins
+    assert binned_data.index.name == 'tap_n'
+    assert binned_data.columns.names[1] == 'ref_n'
+    assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
 
-if False:
-    @pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
-    def asdf_pshet_binning(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
-        """Perform pshet binned average on `df`.
-        Returns
-            Dataframe containing the average per bins. Row index contains the bin
-            number for tapping. The column index is a `Multindex` where level 0 is
-            the signal name as a string (ex: `"sig_a"`), and level 1 is the
-            reference bin number. Therefore, the histogram for `sig_a` can be
-            accessed via `avg["sig_a"]`.
-        """
-        df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
-                                sparse=sp, shuffled=sh, mod=modulation, n_points=points)
-        binned_data = pshet_binning(df.copy(), tap, ref)
-
-        # test if every data point in df matches the value in its position in the binned_data DataFrame
-        if points == 0:
+    # test if every data point in test_data matches the value in its position in the binned_data DataFrame
+    all_true = False
+    for i in range(tap_nbins * ref_nbins):
+        tap_n = bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins)
+        ref_n = bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins)
+        if binned_data['sig_a', ref_n][tap_n] == test_data['sig_a'][i]:
+            all_true = True
+        else:
             all_true = False
-            for i in range(len(df)):
-                try:
-                    tap_n = bin_index(np.arctan2(df['tap_y'][i], df['tap_x'][i]), tap)
-                    ref_n = bin_index(np.arctan2(df['ref_y'][i], df['ref_x'][i]), ref)
-                    if binned_data['sig_a', ref_n][tap_n] == df['sig_a'][i]:
-                        all_true = True
-                    else:
-                        all_true = False
-                        break
-                except KeyError:    # in sparse sample data
-                    pass
-            assert all_true
-
-        #  mixed data should be ordered
-        assert binned_data.index.name == 'tap_n'
-        assert binned_data.columns.names[1] == 'ref_n'
-        assert all(binned_data.index[i] < binned_data.index[i + 1] for i in range(binned_data.shape[0] - 1))
-        channels = binned_data.columns.get_level_values(0).drop_duplicates()
-        for ch in channels:
-            assert all(binned_data[ch].columns[i] < binned_data[ch].columns[i + 1]
-                       for i in range(int(binned_data.shape[1] / len(channels) - 1)))
-
-        # test shape of returned DataFrame
-        if not sp:
-            assert binned_data.shape[0] == tap
-            assert binned_data.shape[1] == 2 * ref
-        assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
+            break
+    assert all_true
 
 
-    @pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
-    def asdf_pshet_ft(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
-        """Fourier transform an averaged pshet dataframe. Returns a dict with channel name as key ('sig_a' etc) and
-        np.array as value containing tapping and pshet mod on axis 0 and 1 respectively."""
-        df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
-                                sparse=sp, shuffled=sh, mod=modulation, n_points=points)
-        ft_data = pshet_ft(pshet_binning(df.copy(), tap, ref))
+def test_pshet_binning_shuffled(pshet_data_points):
+    """ Test that pshet_binning returns a DataFrame ordered with respect to tap_n and ref_n
+    """
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    shuffled_data = pshet_binning(test_data.sample(frac=1), tap_nbins, ref_nbins)
 
-        for key in ft_data.keys():
-            # amplitude of pshet harmonics
-            pshet_harm_amps = np.abs(ft_data[key][0][1:pshet_harm + 1])
-            # 0 order has roughly twice the amplitude (real fft)
-            assert round(np.real(ft_data[key][0, 0]) / pshet_harm_amps.mean()) == 2
-            # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
-            assert (pshet_harm_amps.std() < pshet_harm_amps.mean() / 10)
-            # following amplitude is at least 1 order of magnitude smaller
-            assert ft_data[key][0, pshet_harm + 1] < pshet_harm_amps.mean() / 10
+    # test shape of returned DataFrame
+    assert shuffled_data.shape[0] == tap_nbins
+    assert shuffled_data.shape[1] == 2 * ref_nbins
+    assert shuffled_data.index.name == 'tap_n'
+    assert shuffled_data.columns.names[1] == 'ref_n'
+    assert all('sig' in shuffled_data.columns[i][0] for i in range(shuffled_data.shape[1]))
 
-            # phase of pshet harmonics
-            if not sp:    # sparse data sets produce bigger errors. This shows more in the harmonics
-                for n in range(pshet_harm + 1):
-                    phase = (np.arctan2(np.imag(ft_data[key][0][n]), np.real(ft_data[key][0][n])) + n * np.pi) % np.pi
-                    # phase correction
-                    if n > 0:
-                        phase -= n * phase_offset
-                        if points > 0:
-                            phase -= n * np.pi / ref
-                    assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
-
-            # amplitude of tapping harmonics
-            tap_harm_amps = np.abs(ft_data['sig_a'][1:tap_harm + 1, 0])
-            # 0 order has roughly twice the amplitude (real fft)
-            assert round(np.real(ft_data[key][0, 0]) / tap_harm_amps.mean()) == 2
-            # amplitudes are roughly the same (standard deviation < 1/10 amplitude)
-            assert (tap_harm_amps.std() < tap_harm_amps.mean() / 10)
-            # following amplitude is at least 1 order of magnitude smaller
-            assert ft_data[key][0, tap_harm + 1] < tap_harm_amps.mean() / 10
-
-            # phase of tapping harmonics
-            if not sp:  # sparse data sets produce bigger errors. This shows more in the harmonics
-                for n in range(tap_harm + 1):
-                    phase = (np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0])) + n * np.pi) % np.pi
-                    # phase correction
-                    if n > 0:
-                        phase -= n * phase_offset
-                        if points > 0:
-                            phase -= n * np.pi / tap
-                    assert round(abs((n - phase) / np.pi), 1) % 1 == 0    # tolerating relatively big errors here ...
-
-        # test shape of returned arrays
-        if not sp:
-            for array in ft_data.values():
-                assert array.shape[0] == tap
-                assert array.shape[1] == ref / 2 + 1
-        assert all('sig' in key for key in ft_data.keys())
+    #  mixed data should be ordered with respect to tap_n and ref_n
+    assert all(shuffled_data.index[i] < shuffled_data.index[i + 1] for i in range(shuffled_data.shape[0] - 1))
+    channels = shuffled_data.columns.get_level_values(0).drop_duplicates()
+    for ch in channels:
+        assert all(shuffled_data[ch].columns[i] < shuffled_data[ch].columns[i + 1]
+                   for i in range(int(shuffled_data.shape[1] / len(channels) - 1)))
 
 
-    @pytest.mark.parametrize('tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points', pshet_params)
-    def asdf_pshet(tap, ref, tap_harm, pshet_harm, zpi, sp, sh, modulation, points):
-        """ simple sequence of pshet_binning and pshet_ft.
-        The difference to test_pshet_ft is that ft_data is created with pshet. """
-        df = single_data_points(tap_nbins=tap, ref_nbins=ref, tap_harm=tap_harm, pshet_harm=pshet_harm, zero_and_pi=zpi,
-                                sparse=sp, shuffled=sh, mod=modulation, n_points=points)
-        ft_data = pshet(df.copy(), tap, ref)
+@pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+def _pshet_binning_empty(pshet_data_points, drops):
+    """ Test the binning of data containing missing bins.
+    """
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    perforated_data = pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
 
+    # the shape should be unchanged
+    assert perforated_data.shape[0] == tap_nbins
+    assert perforated_data.shape[1] == 2 * ref_nbins
+
+    # TODO check for inserted nans
+    # Nan should be inserted in missing bins
+    # tap_n = bin_index(np.arctan2(test_data['tap_y'][test_data.index[drops]],
+    #                             test_data['tap_x'][test_data.index[drops]]), tap_nbins)
+    # ref_n = bin_index(np.arctan2(test_data['ref_y'][test_data.index[drops]],
+    #                             test_data['ref_x'][test_data.index[drops]]), ref_nbins)
+    # assert all(np.isnan(perforated_data['sig_a', ref_n][tap_n]))    # does this work ?
+
+
+def test_pshet_ft_shape(pshet_data_points):
+    """ Test the shape of the DataFrame returned by pshet_ft.
+    This test assumes that pshet_binning is working as expected.
+    """
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
+
+    # test shape of returned arrays
+    assert all('sig' in key for key in ft_data.keys())
+    for array in ft_data.values():
+        assert array.shape[0] == tap_nbins
+        assert array.shape[1] == ref_nbins / 2 + 1
+
+
+def test_pshet_ft_harmonics(pshet_data_points):
+    """ Retrieve amplitudes and phases of harmonics with phset_ft"""
+    # TODO check implementation after adding scaling to pshet_ft
+
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
+    
+    # signals, e.g. 'sig_a' are keys of ft_data
+    for key in ft_data.keys():
+        # tapping harmonics
+        for n in range(tap_nharm):
+            initial_tap_phase = np.angle(tap_harm_amps[n])
+            initial_tap_amp = np.abs(tap_harm_amps[n])
+            returned_tap_phase = np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0]))
+            returned_tap_amp = np.abs(ft_data['sig_a'][n, 0])
+            # np.fft.rfft only returns positive amplitudes
+            if n > 0:
+                returned_tap_amp *= 2
+            # data point in the middle of bins => phase is shifted by half a bin
+            returned_tap_phase -= n * np.pi / tap_nbins
+
+            assert np.isclose(initial_tap_phase, (returned_tap_phase + np.pi) % np.pi)
+            assert np.isclose(initial_tap_amp, returned_tap_amp)
+
+        # pshet harmonics
+        for m in range(ref_nharm):
+            initial_ref_phase = np.angle(ref_harm_amps[m])
+            initial_ref_amp = np.abs(ref_harm_amps[m])
+            returned_ref_phase = np.arctan2(np.imag(ft_data[key][0][m]), np.real(ft_data[key][0][m]))
+            returned_ref_amp = np.abs(ft_data[key][0][m])
+            # np.fft.rfft only returns positive amplitudes
+            if m > 0:
+                returned_ref_amp *= 2
+            # data point in the middle of bins => phase is shifted by half a bin
+            returned_ref_phase -= m * np.pi / ref_nbins
+
+            assert np.isclose(initial_ref_phase, (returned_ref_phase + np.pi) % np.pi)
+            assert np.isclose(initial_ref_amp, returned_ref_amp)
+        
+        
+@pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+def _pshet_ft_empty(pshet_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by pshet_ft.
+    """
+    # retrieve parameters and test data from fixture
+    params, test_data = pshet_data_points
+    tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+
+    # TODO update handling of missing and nan filled bins
+    with pytest.raises(NotImplementedError):
+        pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
