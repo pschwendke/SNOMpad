@@ -174,7 +174,8 @@ def pshet_ft(avg: pd.DataFrame):
     except ValueError:
         raise NotImplementedError('Handling of missing bins')
 
-    return {k: np.fft.rfft2(avg[k].to_numpy())  # scale is missing...
+    # normalization is the same as 1D, but divided by both lengths
+    return {k: np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
             for k in avg.columns.get_level_values(0).drop_duplicates()
             }
 
