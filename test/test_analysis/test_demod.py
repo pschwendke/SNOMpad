@@ -4,9 +4,7 @@ import numpy as np
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
 
 # TODO: Do we need duplicate tests for shd_ft and shd?
-#  dealing with missing bins
 #  test passing pshet data to shd functions (which one?)
-#  check all tests are 'online'
 
 # some parameters to create test data
 shd_parameters = [
@@ -75,9 +73,9 @@ def test_shd_binning_empty(shd_data_points, drops):
 
     # the shape should be unchanged
     assert perforated_data.shape[0] == tap_nbins
+    assert all(perforated_data.index[i] < perforated_data.index[i + 1] for i in range(len(perforated_data) - 1))
     # Nan should be inserted in missing bins
-    # TODO check for nans
-    # assert all(np.isnan(perforated_data[drops]))
+    assert all(np.isnan(perforated_data.iloc[drops]))
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
@@ -185,7 +183,7 @@ def test_pshet_binning_shuffled(pshet_data_points):
                    for i in range(int(shuffled_data.shape[1] / len(channels) - 1)))
 
 
-@pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+@pytest.mark.parametrize('drops', [[0], [31, 32, 100], [123, -1]])
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_binning_empty(pshet_data_points, drops):
     """ Test the binning of data containing missing bins.
@@ -199,13 +197,13 @@ def test_pshet_binning_empty(pshet_data_points, drops):
     assert perforated_data.shape[0] == tap_nbins
     assert perforated_data.shape[1] == 2 * ref_nbins
 
-    # TODO check for inserted nans
-    # Nan should be inserted in missing bins
-    # tap_n = bin_index(np.arctan2(test_data['tap_y'][test_data.index[drops]],
-    #                             test_data['tap_x'][test_data.index[drops]]), tap_nbins)
-    # ref_n = bin_index(np.arctan2(test_data['ref_y'][test_data.index[drops]],
-    #                             test_data['ref_x'][test_data.index[drops]]), ref_nbins)
-    # assert all(np.isnan(perforated_data['sig_a', ref_n][tap_n]))    # does this work ?
+    # select dropped data points and assert that they are all nans in binned data frame
+    tap_n = bin_index(np.arctan2(test_data['tap_y'][test_data.index[drops]],
+                                 test_data['tap_x'][test_data.index[drops]]), tap_nbins)
+    ref_n = bin_index(np.arctan2(test_data['ref_y'][test_data.index[drops]],
+                                 test_data['ref_x'][test_data.index[drops]]), ref_nbins)
+    for i in range(len(drops)):
+        assert np.isnan(perforated_data['sig_a', ref_n.iloc[i]][tap_n.iloc[i]])
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -266,7 +264,7 @@ def test_pshet_ft_harmonics(pshet_data_points):
             assert np.isclose(initial_ref_amp, returned_ref_amp)
         
         
-@pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+@pytest.mark.parametrize('drops', [0, [31, 32, 100], [123, -1]])
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_empty(pshet_data_points, drops):
     """ Missing bins or bins filled with nans should be caught by pshet_ft.
@@ -277,7 +275,7 @@ def test_pshet_ft_empty(pshet_data_points, drops):
 
     # TODO update handling of missing and nan filled bins
     with pytest.raises(NotImplementedError):
-        pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
+        pshet_ft(pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins))
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
