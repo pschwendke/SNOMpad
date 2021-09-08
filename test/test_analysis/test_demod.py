@@ -51,7 +51,7 @@ def test_shd_binning_shuffled(shd_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
-def _shd_binning_empty(shd_data_points, drops):
+def test_shd_binning_empty(shd_data_points, drops):
     """ Test the binning of data containing missing bins.
     """
     # retrieve parameters and test data from fixture
@@ -167,7 +167,7 @@ def test_pshet_binning_shuffled(pshet_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
-def _pshet_binning_empty(pshet_data_points, drops):
+def test_pshet_binning_empty(pshet_data_points, drops):
     """ Test the binning of data containing missing bins.
     """
     # retrieve parameters and test data from fixture
@@ -245,7 +245,7 @@ def test_pshet_ft_harmonics(pshet_data_points):
         
         
 @pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
-def _pshet_ft_empty(pshet_data_points, drops):
+def test_pshet_ft_empty(pshet_data_points, drops):
     """ Missing bins or bins filled with nans should be caught by pshet_ft.
     """
     # retrieve parameters and test data from fixture
