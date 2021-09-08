@@ -9,6 +9,18 @@ from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, 
 #  test passing pshet data to shd functions (which one?)
 #  check all tests are 'online'
 
+# some parameters to create test data
+shd_parameters = [
+    [32, 3, [1, 1, 1]],
+    [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j]]
+]
+pshet_parameters = [
+    [32, 3, [1, 1, 1], 16, 3, [1, 1, 1]],
+    [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j], 16, 4, [1, 2 + .5j, 1 + 1j, .5 + 2j]]
+]
+np.random.seed(2108312109)
+npoints = [10, 1000, 200_000]
+
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
 def test_bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
@@ -21,13 +33,14 @@ def test_bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     assert np.allclose(centers, ref)
 
 
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_binning(shd_data_points):
     """ Unit test for shd_binning. Testing binning and shape of returned DataFrame.
     """
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    binned_data = shd_binning(test_data.copy())
+    binned_data = shd_binning(test_data.copy(), tap_nbins)
 
     # data should be unchanged by binning
     assert binned_data['sig_a'].equals(test_data['sig_a'])
@@ -38,6 +51,7 @@ def test_shd_binning(shd_data_points):
     assert all('sig' in binned_data.columns[i] for i in range(binned_data.shape[1]))
 
 
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_binning_shuffled(shd_data_points):
     """ Test that shd_binning returns a DataFrame ordered with respect to tap_n
     """
@@ -51,6 +65,7 @@ def test_shd_binning_shuffled(shd_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_binning_empty(shd_data_points, drops):
     """ Test the binning of data containing missing bins.
     """
@@ -66,6 +81,7 @@ def test_shd_binning_empty(shd_data_points, drops):
     # assert all(np.isnan(perforated_data[drops]))
 
 
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_ft_shape(shd_data_points):
     """ Test the shape of the DataFrame returned by shd_ft.
     This test assumes that shd_binning is working as expected.
@@ -79,6 +95,7 @@ def test_shd_ft_shape(shd_data_points):
     assert all('sig' in ft_data.columns[i] for i in range(ft_data.shape[1]))
 
 
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_ft_harmonics(shd_data_points):
     """ Retrieve amplitudes and phases of harmonics with shd_ft.
     """
@@ -103,6 +120,7 @@ def test_shd_ft_harmonics(shd_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
+@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_ft_empty(shd_data_points, drops):
     """ Missing bins or bins filled with nans should be caught by shd_ft.
     """
@@ -115,6 +133,7 @@ def test_shd_ft_empty(shd_data_points, drops):
         shd_ft(shd_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins))
 
 
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_binning(pshet_data_points):
     """ Unit test for pshet_binning. Only sig_a is tested.
     """
@@ -143,6 +162,7 @@ def test_pshet_binning(pshet_data_points):
     assert all_true
 
 
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_binning_shuffled(pshet_data_points):
     """ Test that pshet_binning returns a DataFrame ordered with respect to tap_n and ref_n
     """
@@ -167,6 +187,7 @@ def test_pshet_binning_shuffled(pshet_data_points):
 
 
 @pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_binning_empty(pshet_data_points, drops):
     """ Test the binning of data containing missing bins.
     """
@@ -188,6 +209,7 @@ def test_pshet_binning_empty(pshet_data_points, drops):
     # assert all(np.isnan(perforated_data['sig_a', ref_n][tap_n]))    # does this work ?
 
 
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_shape(pshet_data_points):
     """ Test the shape of the DataFrame returned by pshet_ft.
     This test assumes that pshet_binning is working as expected.
@@ -204,6 +226,7 @@ def test_pshet_ft_shape(pshet_data_points):
         assert array.shape[1] == ref_nbins / 2 + 1
 
 
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_harmonics(pshet_data_points):
     """ Retrieve amplitudes and phases of harmonics with phset_ft"""
     # retrieve parameters and test data from fixture
@@ -245,6 +268,7 @@ def test_pshet_ft_harmonics(pshet_data_points):
         
         
 @pytest.mark.parametrize('drops', [0, [0, 32], [31, 32, 100], [123, -1]])
+@pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_empty(pshet_data_points, drops):
     """ Missing bins or bins filled with nans should be caught by pshet_ft.
     """
@@ -255,3 +279,25 @@ def test_pshet_ft_empty(pshet_data_points, drops):
     # TODO update handling of missing and nan filled bins
     with pytest.raises(NotImplementedError):
         pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
+
+
+@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+def test_shd_binning_benchmark(benchmark, noise_data):
+    """ """
+    tap_nbins = 32
+    binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
+
+    # test for correct shape, i.e. number of bins
+    assert binned_noise.shape[0] == tap_nbins
+
+
+@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+def test_pshet_binning_benchmark(benchmark, noise_data):
+    """ """
+    tap_nbins = 32
+    ref_nbins = 16
+    binned_noise = benchmark(pshet_binning, noise_data.copy(), tap_nbins, ref_nbins)
+
+    # test for correct shape, i.e. number of bins
+    assert binned_noise.shape[0] == tap_nbins
+    assert binned_noise.shape[1] == 2 * ref_nbins

@@ -3,13 +3,7 @@ import pandas as pd
 import pytest
 
 
-shd_parameters = [
-    [32, 3, [1, 1, 1]],
-    [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j]]
-]
-
-
-@pytest.fixture(scope='session', params=shd_parameters)
+@pytest.fixture(scope='session')
 def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
     tap_nbins, tap_nharm, tap_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
@@ -40,13 +34,7 @@ def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
     return request.param, data
 
 
-pshet_parameters = [
-    [32, 3, [1, 1, 1], 16, 3, [1, 1, 1]],
-    [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j], 16, 4, [1, 2 + .5j, 1 + 1j, .5 + 2j]]
-]
-
-
-@pytest.fixture(scope='session', params=pshet_parameters)
+@pytest.fixture(scope='session')
 def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
@@ -89,3 +77,35 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
     data = pd.DataFrame(signal, columns=['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y'])
 
     return request.param, data
+
+
+@pytest.fixture(scope='session')
+def noise_data(request) -> pd.DataFrame:
+    npts = request.param
+    """ Creates random (noise) data for sig_a and sig_b for n_points data points.
+    tap_x,y and re_x,y are calculated for random phases.
+    
+    Parameters
+    ----------
+    npts: int
+        number of data points in returned DataFrame
+
+    Returns
+    -------
+    data_df: pd.DataFrame
+        Channels as columns and data points as rows.
+    """
+    # creating some noise data
+    tap_phase = np.random.uniform(-np.pi, np.pi, npts)
+    ref_phase = np.random.uniform(-np.pi, np.pi, npts)
+    tap_x = np.cos(tap_phase)
+    tap_y = np.sin(tap_phase)
+    ref_x = np.cos(ref_phase)
+    ref_y = np.sin(ref_phase)
+    sig_a = np.random.uniform(-np.pi, np.pi, npts)
+    sig_b = np.random.uniform(-np.pi, np.pi, npts)
+
+    data_array = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y]).T
+    data_df = pd.DataFrame(data_array, columns=['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y'])
+
+    return data_df
