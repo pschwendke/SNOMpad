@@ -24,7 +24,7 @@ def empty_bins_in(df: pd.DataFrame) -> None:
                     raise ValueError('The binned DataFrame has missing bins.')
 
     # check for empty (NAN) bins
-    if not all(df.notna()):
+    if np.isnan(df).any(axis=None):
         raise ValueError('The binned DataFrame has empty bins.')
     return
 
@@ -77,7 +77,6 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
     """
     # TODO test
     #  smoke test passed
-    #  fill missing bins with nans
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     # compute indices
@@ -85,6 +84,12 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
     # compute histogram
     avg = df.drop(columns=_avg_drop_cols & set(df.columns)
                   ).groupby(["tap_n"]).mean()
+    # fill missing bins with nans
+    if len(avg) != tap_nbins:
+        for i in range(tap_nbins):
+            if i not in avg.index:
+                avg.loc[i] = np.full(avg.shape[1], np.nan)
+        avg.sort_index(inplace=True)
     return avg
 
 
@@ -105,6 +110,7 @@ def shd_ft(avg: pd.DataFrame):
     """
     # todo: add to test suite before modifying
     #  smoke test passed
+    #  implement handling of empty bins
     try:
         empty_bins_in(avg)
     except ValueError:
@@ -168,7 +174,8 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
 def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
-    # TODO: test
+    #  test
+    #  implement handling of empty bins
     try:
         empty_bins_in(avg)
     except ValueError:
