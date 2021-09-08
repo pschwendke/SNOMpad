@@ -4,7 +4,6 @@ import numpy as np
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
 
 # TODO: Do we need duplicate tests for shd_ft and shd?
-#  benchmarking for binning functions
 #  dealing with missing bins
 #  test passing pshet data to shd functions (which one?)
 #  check all tests are 'online'
@@ -19,7 +18,7 @@ pshet_parameters = [
     [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j], 16, 4, [1, 2 + .5j, 1 + 1j, .5 + 2j]]
 ]
 np.random.seed(2108312109)
-npoints = [10, 1000, 200_000]
+npoints = [10, 1000, 10_000, 100_000]
 
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
