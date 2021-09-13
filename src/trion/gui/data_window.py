@@ -22,14 +22,15 @@ from qtlets.widgets import IntEdit, ValuedComboBox
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum
-from ..analysis.demod import dft_naive, shd
+from ..analysis.demod import dft_naive, shd, pshet_harmamps
 
 logger = logging.getLogger(__name__)
 
 # TODO: move all of these objects to their own thread.
 
+
 class DisplayMode(IntEnum):
-    raw = 0 # values indidcate the order in the stackwidget
+    raw = 0    # values indidcate the order in the stackwidget
     phase = 1
     fourier = 2
 
@@ -110,7 +111,6 @@ class FourierCntrl(QWidget):
         lyt.setContentsMargins(0,0,0,0)
 
 
-
 class ViewPanel(QDockWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -126,7 +126,6 @@ class ViewPanel(QDockWidget):
         self.panels[DisplayMode.raw] = self.raw_cntrl
         self.panels[DisplayMode.phase] = self.phase_cntrl
         self.panels[DisplayMode.fourier] = self.fourier_cntrl
-
 
         self.stack = QStackedWidget()
         lyt.addWidget(self.stack, 1, 0, 1, 2)
@@ -185,6 +184,7 @@ class RawView(BaseView):
         Signals.ref_x: 2,
         Signals.ref_y: 2,
     }
+
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         # start with a single window
@@ -270,7 +270,7 @@ class PhaseView(BaseView):
             self.curves[n] = crv
 
     def plot(self, data, names, **kwargs):
-        #data[~np.isfinite(data)] = 0
+        # data[~np.isfinite(data)] = 0
         ds = kwargs["downsample"]
         x = np.arctan2(data[::ds,self.y_idx], data[::ds,self.x_idx])
         for n, i in self.columns.items():
@@ -374,6 +374,20 @@ class FourierView(BaseView):
         # columns are signals, (order, signal). Signal is the fastest index.
         return np.abs(demod).reshape(1, -1)
 
+    def compute_pshet(self, data, **kwargs):
+        #  this might be a bit slow -> min window length?
+        win_len = kwargs['window_size']
+        orders = len(self.orders)
+        channel = 'sig_a'
+        data = data.take(self.input_indices, axis=1)[-win_len:, :]
+        try:
+            demod = pshet_harmamps(data, channel, orders)
+        except Exception:
+            logger.debug(f'max demod order: {orders}')
+            logger.debug(f'demod channel: {channel}')
+            raise
+        return demod
+
     def plot(self, data, names, **kwargs):
         amps = self.compute_components(data, names, **kwargs)
         self.buf.put(amps)
@@ -402,8 +416,6 @@ class DataWindow(QTabWidget):
         })
 
         self.setTabPosition(QTabWidget.South)
-
-
 
 
 class DisplayController(QObject):

@@ -291,6 +291,33 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     amps = dft_naive(phi.to_numpy(), data.to_numpy(), np.arange(max_order))
     return pd.DataFrame(amps, columns=cols)
 
+
+def pshet_harmamps(df: pd.DataFrame, channel: str = 'sig_a', max_order: int = 6) -> np.ndarray:
+    """
+
+    Parameters
+    ----------
+    df
+    channel
+    max_order
+
+    Returns
+    -------
+
+    """
+    # TODO documentation
+    #  testing
+    m = 1    # evaluating m and m+1 sidebands
+    data = pshet(df)[channel]
+
+    amps = np.zeros(max_order)
+    amps[0] = np.real(data[0, 0])    # or absolute ?
+    for n in range(1, max_order):
+        amps[n] = np.abs(data[n, m] + 1j * data[n, m+1])   # constant factors are omitted
+
+    return amps
+
+
 #####  older stuff, kept for compatibility
 
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
