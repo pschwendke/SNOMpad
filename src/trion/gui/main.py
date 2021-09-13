@@ -148,7 +148,6 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         if filename:
             self.acq_cntrl.export.emit(filename)
 
-
     def shutdown(self):
         # stop acquisition
         self.acq_cntrl.stop()

@@ -17,8 +17,8 @@ be determined from the set of acquisition variables present in a dataset.
 The possible variables are:
 
 ### Optical signals (units: Volts)
-* `sig_A` : Optical signal A. Used for single channel detection,
-* `sig_B` : Optical signal B. Used for dual channel detection,
+* `sig_a` : Optical signal A. Used for single channel detection,
+* `sig_b` : Optical signal B. Used for dual channel detection,
 * `sig_d` : Optical difference signal, for balanced detection,
 * `sig_s` : Optical sum signal, for balanced detection,
 
@@ -40,8 +40,8 @@ The possible variables are:
 The variables will be processed in order to yield the signal. The 
 processed variables are to be determined.
 
-* `tap_phi` : Tapping phase (radians),
-* `ref_phi` : psHet reference mirror phase (radians),
+* `tap_p` : Tapping phase (radians),
+* `ref_p` : psHet reference mirror phase (radians),
 
 ## Miscellaneous data
 

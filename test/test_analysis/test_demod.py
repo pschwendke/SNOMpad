@@ -4,7 +4,6 @@ import numpy as np
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
 
 # TODO: Do we need duplicate tests for shd_ft and shd?
-#  test passing pshet data to shd functions (which one?)
 
 # some parameters to create test data
 shd_parameters = [

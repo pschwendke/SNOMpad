@@ -88,12 +88,13 @@ def signal_colormap(scale=255, filename=None) -> dict:
 
 class Scan(NamedEnum):
     point = auto()
-    # approach curve?
+    # approach = auto()
+    # AFM = auto()
     # image scan, or AFM, or SNOM?
 
 
 class Demodulation(NamedEnum):
-    shd = auto()  # self-homodyne
+    shd = auto()
     pshet = auto()
     # nanospectroscopy
 

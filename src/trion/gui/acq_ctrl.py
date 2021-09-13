@@ -201,8 +201,7 @@ class AcquisitionController(QObject):
         if not self.current_exp.continuous and self.n_acquired >= self.current_exp.npts:
             # this frame is complete
             # i think we should replace this by a `something.is_acquisition_complete()`
-            if (self.current_exp.frame_reps > 1 and
-                self.buffer.frame_idx < self.current_exp.frame_reps):
+            if self.current_exp.frame_reps > 1 and self.buffer.frame_idx < self.current_exp.frame_reps:
                 logger.info("Preparing next frame.")
                 self.prepare_next_frame()
             else:
