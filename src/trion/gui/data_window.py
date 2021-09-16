@@ -370,12 +370,12 @@ class FourierView(BaseView):
             logger.debug(f"phi shape: {phi.shape}")
             logger.debug(f"name shape: {phi.shape}")
             raise
-    # fourier buffer expects one row per tick.
+        # fourier buffer expects one row per tick.
         # columns are signals, (order, signal). Signal is the fastest index.
         return np.abs(demod).reshape(1, -1)
 
-    def compute_pshet(self, data, **kwargs):
-        #  this might be a bit slow -> min window length?
+    def compute_pshet(self, data, **kwargs) -> np.ndarray:
+        #  this might be a bit slow -> max window length?
         win_len = kwargs['window_size']
         orders = len(self.orders)
         channel = 'sig_a'

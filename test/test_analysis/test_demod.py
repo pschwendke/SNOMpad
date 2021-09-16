@@ -1,7 +1,8 @@
 import pytest
 import numpy as np
 
-from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
+from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
+    pshet_binning, pshet_ft, pshet, pshet_harmamps
 
 # TODO: Do we need duplicate tests for shd_ft and shd?
 
@@ -278,7 +279,7 @@ def test_pshet_ft_empty(pshet_data_points, drops):
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
-def test_shd_binning_benchmark(benchmark, noise_data):
+def _shd_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
@@ -288,7 +289,7 @@ def test_shd_binning_benchmark(benchmark, noise_data):
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
-def test_pshet_binning_benchmark(benchmark, noise_data):
+def _pshet_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     ref_nbins = 16
@@ -297,3 +298,15 @@ def test_pshet_binning_benchmark(benchmark, noise_data):
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
     assert binned_noise.shape[1] == 2 * ref_nbins
+
+
+@pytest.mark.parametrize('noise_data', [5000, 10_000, 20_000, 100_000], indirect=['noise_data'])
+@pytest.mark.parametrize('orders', [5])
+def test_pshetharmamps_benchmark(benchmark, noise_data, orders):
+    """ Tests the computation of pshet harmonics in the class FourierView, which uses the pshet demodulation.
+    The time needed for demodulation is heavily dependent on the window length of data passed to the function.
+    """
+    data = benchmark(pshet_harmamps, df=noise_data, channel='sig_a', max_order=orders)
+
+    # test for correct number of retrieved harmonics
+    assert data.shape == (orders,)
