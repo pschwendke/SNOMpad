@@ -213,6 +213,7 @@ def dft_naive(phi, y, orders):
         Complex amplitude for the given orders.
     """
     assert phi.ndim == 1
+    y_org_ndim = y.ndim
     if y.ndim == 1:
         y = y[:, np.newaxis]
     else:
@@ -231,7 +232,11 @@ def dft_naive(phi, y, orders):
         axis=-1
     )/np.pi
     intgr[:, orders == 0] *= 0.5
-    return np.squeeze(intgr.T)
+    if y_org_ndim == 1:
+        intgr = np.squeeze(intgr)
+    else:
+        intgr = intgr.T
+    return intgr
 
 
 def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:

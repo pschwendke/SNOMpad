@@ -14,13 +14,20 @@ def randphi(npts):
 def samplesingle(npts, amps, phi_func):
     # generate values of phi
     phi = phi_func(npts)
+    org_dim = amps.ndim
     amps = np.atleast_2d(amps)
     # generate signal as: y_j = sum_n a_n * exp(-i n phi_j)
     # axis 0 is pts (j), axis 1 is signal column, axis -1 is order (n)
     sig = amps * np.exp(-1j*np.arange(amps.shape[-1])[np.newaxis,np.newaxis,:]*phi[:,np.newaxis,np.newaxis])
     assert sig.shape[0] == npts
     assert sig.shape[1:] == (amps.shape)
-    sig = np.squeeze(sig.real.sum(axis=-1))  # sum over orders
+    sig = sig.real.sum(axis=-1)  # sum over orders
+    if org_dim == 1:
+        sig = np.squeeze(sig)
+    else:
+        assert sig.ndim == 2
+        assert sig.shape[1] == amps.shape[0]
+    assert sig.shape[0] == npts
     return sig, phi
 
 
@@ -34,8 +41,8 @@ cmplx_amps = [
     np.array([0, 1, 0, 0, 0, 0, 0]),
     np.array([0, 0, 1, 0, 0, 0, 0]),
     np.array([0, 0, 1j, 0, 0, 0, 0]),
-    np.array([0, 1, 1j, 0, 0, 0, 0]),
     np.array([1, 1, 1j, 0, 0, 0, 0]),
+    np.array([[1, 1, 1j, 0, 0, 0, 0]]),  # testing for shape conservation
     randamp,
     randamp[:-2],
     # two dimensional
@@ -47,7 +54,7 @@ cmplx_amps = [
 @pytest.mark.parametrize("amps", cmplx_amps)
 @pytest.mark.parametrize("phi_func", [bin_midpoints, randphi])
 @pytest.mark.parametrize("nmax", [2, 8, 16])
-def test_1d_shape(samplesingle, amps, nmax):
+def test_shape(samplesingle, amps, nmax):
     # test the return shape
     sig, phi = samplesingle
     orders = np.arange(0, nmax)
@@ -92,5 +99,5 @@ def test_shd_naive(samplesingle, amps, phi_func):
     # get reference data
     ref = dft_naive(phi, sig, np.arange(amps.shape[-1]))
     # get data using shd_naive, compare with dft results.
-    ret = np.squeeze(shd_naive(df, amps.shape[-1]).to_numpy())
-    assert np.allclose(ret, ref)
+    ret = shd_naive(df, amps.shape[-1]).to_numpy()
+    assert np.allclose(ret.flat, ref.flat)

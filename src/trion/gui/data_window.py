@@ -98,6 +98,19 @@ class ShdCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.title = "SHD view"
+        lyt = QGridLayout()
+        self.setLayout(lyt)
+
+        self.window_len = QSpinBox()
+        self.window_len.setMinimum(10)
+        self.window_len.setMaximum(2_000_000)
+
+        grid = []
+        grid.append(["Window size:", self.window_len])
+        add_grid(grid, lyt)
+        lyt.setColumnStretch(1, 1)
+        lyt.setRowStretch(lyt.rowCount(), 1)
+        lyt.setContentsMargins(0,0,0,0)
 
 
 class PshetCntrl(QWidget):
@@ -587,6 +600,8 @@ class DisplayController(QObject):
             self.display_cfg.link_widget(cntrl.downsampling, "downsample")
             self.display_cfg.link_widget(cntrl.display_size, "display_size")
         self.display_cfg.link_widget(self.view_panel.fourier_cntrl.window_len,
+                                     "window_size")
+        self.display_cfg.link_widget(self.view_panel.shd_cntrl.window_len,
                                      "window_size")
         self.display_cfg.link_widget(self.view_panel.fourier_cntrl.shd_algo,
                                      "shd_algorithm")
