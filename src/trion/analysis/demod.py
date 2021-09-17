@@ -286,6 +286,8 @@ def pshet_harmamps(df: pd.DataFrame, channel: str = 'sig_a', max_order: int = 6)
     """
     # TODO documentation
     #  testing
+    #  rewrite: interface doesn't match dft_naive
+    #  rewrite: we need to use the abs values of the coefficients.
     m = 1    # evaluating m and m+1 sidebands
     data = pshet(df)[channel]
 

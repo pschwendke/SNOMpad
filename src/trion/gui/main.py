@@ -14,7 +14,7 @@ from nidaqmx.system import System
 
 from qtlets.qtlets import HasQtlets
 
-from .data_window import RawView, ViewPanel, DisplayController, DataWindow
+from .data_window import RawView, ViewCntrlPanel, DisplayController, DataWindow
 from .log import QPopupLogDlg
 from .qdaq import DaqPanel
 from .expt import ExpPanel
@@ -43,7 +43,7 @@ class TRIONMainWindow(QtWidgets.QMainWindow):
         self.daq_panel = DaqPanel("DAQ", buffer_cfg=self.buffer_cfg,
                                   parent=self)
         # Display control panel
-        self.view_panel = ViewPanel("Data display", parent=self)
+        self.view_panel = ViewCntrlPanel("Data display", parent=self)
 
         # setup threads
 

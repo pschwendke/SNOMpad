@@ -1,3 +1,4 @@
+import abc
 from abc import ABC
 from collections import deque
 from itertools import repeat, cycle, product
@@ -21,7 +22,7 @@ from .utils import add_grid, enum_to_combo
 from qtlets.widgets import IntEdit, ValuedComboBox
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
-from trion.analysis.signals import signal_colormap, Signals, NamedEnum
+from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
 from ..analysis.demod import dft_naive, shd, pshet_harmamps
 
 logger = logging.getLogger(__name__)
@@ -30,9 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 class DisplayMode(IntEnum):
-    raw = 0    # values indidcate the order in the stackwidget
-    phase = 1
-    fourier = 2
+    raw = auto()    # values indidcate the order in the stackwidget
+    phase = auto()
+    shd = auto()
+    pshet = auto()
+    fourier = auto()
 
 
 class shd_algorithm(NamedEnum):
@@ -91,6 +94,18 @@ class PhaseCntrl(QWidget):
         lyt.setContentsMargins(0,0,0,0)
 
 
+class ShdCntrl(QWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.title = "SHD view"
+
+
+class PshetCntrl(QWidget):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.title = "psHet view"
+
+
 class FourierCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -111,7 +126,8 @@ class FourierCntrl(QWidget):
         lyt.setContentsMargins(0,0,0,0)
 
 
-class ViewPanel(QDockWidget):
+class ViewCntrlPanel(QDockWidget):
+    """Panel containing display control parameters, such as downsampling."""
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         panel = QWidget()
@@ -122,15 +138,19 @@ class ViewPanel(QDockWidget):
         self.panels = {}
         self.raw_cntrl =  RawCntrl()
         self.phase_cntrl = PhaseCntrl()
+        self.shd_cntrl = ShdCntrl()
+        self.pshet_cntrl = PshetCntrl()
         self.fourier_cntrl = FourierCntrl()
         self.panels[DisplayMode.raw] = self.raw_cntrl
         self.panels[DisplayMode.phase] = self.phase_cntrl
+        self.panels[DisplayMode.shd] = self.shd_cntrl
+        self.panels[DisplayMode.pshet] =  self.pshet_cntrl
         self.panels[DisplayMode.fourier] = self.fourier_cntrl
 
         self.stack = QStackedWidget()
         lyt.addWidget(self.stack, 1, 0, 1, 2)
         for idx, panel in self.panels.items():
-            self.stack.addWidget(panel)
+            self.stack.insertWidget(idx, panel)
 
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
@@ -159,6 +179,12 @@ class BaseView(pg.GraphicsLayoutWidget):
         """Clear the contents of all plots"""
         for i, item in enumerate(self.ci.items):
             item.clear()
+
+    def prepare_plots(self, names, display_cfg: DisplayConfig):
+        raise NotImplementedError
+
+    def plot(self, data, names, **kw):
+        raise NotImplementedError
 
     def minimumSizeHint(self):
         return QSize(400, 400)
@@ -225,6 +251,7 @@ class RawView(BaseView):
             self.curves[n].setData(x[m], y[m], connect="finite")
 
 
+
 class PhaseView(BaseView):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -278,6 +305,108 @@ class PhaseView(BaseView):
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m])
 
+
+class ShdView(BaseView):
+    """
+    View the SHD components.
+
+    For SHD, this is the amplitudes per order `n`. Single graph.
+    """
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.x_idx = None
+        self.y_idx = None
+        self.columns = {}  # mapping signal name -> index
+        self.input_indices = []  # indices of the signals in the input data
+
+        self.curves = {}  # list of pens.
+
+        self.addPlot(row=0, col=0, name="SHD amplitudes")
+        self.orders = np.arange(9)
+        margin = 1
+        for plot in self.ci.items:
+            plot.setClipToView(False)
+            plot.enableAutoRange("xy", False)
+            #plot.setYRange(-1, 1)
+            plot.setXRange(-margin, np.max(self.orders)+margin)
+            plot.showAxis("top")
+            plot.showAxis("right")
+            plot.addLegend(offset=(2,2))
+
+    def prepare_plots(self, names, display_cfg: DisplayConfig):
+        self.clear_plots()
+        self.x_idx = names.index(Signals.tap_x)
+        self.y_idx = names.index(Signals.tap_y)
+        self.columns = {
+            n: names.index(n) for n in names if n in signals.all_detector_signals
+        }
+        self.input_indices = list(self.columns.values())
+        for n in self.columns:
+            item = self.getItem(0,0)
+            pen = mkPen(color=self.cmap[n])
+            brush = mkBrush(color=self.cmap[n])
+            crv = item.plot(
+                pen=None,
+                symbolPen=pen,
+                symbolBrush=brush,
+                name=n.value,
+                symbolSize=3,
+                pxMode=True,
+            )
+            self.curves[n] = crv
+
+    def plot(self, data, names, **kwargs):
+        # todo: we should remove all these calculations and put them in a sort of pipeline.
+        win_len = kwargs["window_size"]
+        phi = np.arctan2(data[-win_len:, self.y_idx],
+                         data[-win_len:, self.x_idx])
+        data = data.take(self.input_indices, axis=1)[-win_len:, :]
+
+        demod = dft_naive(phi, data, orders=self.orders)
+        # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
+        amps = np.abs(demod)
+        for name, idx in self.columns.items():
+            self.curves[name].setData(self.orders, amps[:,idx])
+
+
+class PshetView(BaseView):
+    """
+    View the demodulated components.
+
+    For SHD, this is the amplitudes per order `n`. Single graph.
+    For psHet, this is the matrix of amplitudes per order `n,m`.  Up to 2 plots.
+    """
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.x_idx = None
+        self.y_idx = None
+        self.columns = {}  # mapping signal name -> index
+        self.input_indices = []  # indices of the signals in the input data
+
+        self.curves = {}  # list of pens.
+        self.addPlot(row=0, col=0, name="SHD amplitudes")
+
+    def prepare_plots(self, names, display_cfg: DisplayConfig):
+        self.clear_plots()
+        self.x_idx = names.index(Signals.tap_x)
+        self.y_idx = names.index(Signals.tap_y)
+        self.columns = {
+            n: names.index(n) for n in names if n in signals.all_detector_signals
+        }
+        for n in self.columns:
+            item = self.getItem(0,0)
+            pen = mkPen(color=self.cmap[n])
+            brush = mkBrush(color=self.cmap[n])
+            crv = item.plot(
+                pen=None,
+                symbolPen=pen,
+                symbolBrush=brush,
+                name=n.value,
+                symbolSize=3,
+                pxMode=True,
+            )
+            self.curves[n] = crv
 
 class FourierView(BaseView):
     """
@@ -407,12 +536,16 @@ class DataWindow(QTabWidget):
         # Create pages
         self.raw_view = RawView()
         self.phase_view = PhaseView()
+        self.shd_view = ShdView()
+        self.pshet_view = PshetView()
         self.fourier_view = FourierView()
 
         self.tab_map = bidict({
             DisplayMode.raw: self.addTab(self.raw_view, "Raw"),
             DisplayMode.phase: self.addTab(self.phase_view, "Phase"),
-            DisplayMode.fourier: self.addTab(self.fourier_view, "Fourier")
+            DisplayMode.shd: self.addTab(self.shd_view, "SHD"),
+            DisplayMode.pshet: self.addTab(self.pshet_view, "psHet"),
+            DisplayMode.fourier: self.addTab(self.fourier_view, "Fourier"),
         })
 
         self.setTabPosition(QTabWidget.South)
@@ -426,7 +559,7 @@ class DisplayController(QObject):
     update_fps = Signal(float)
 
     def __init__(self, *a, data_window: DataWindow=None,
-                 view_panel: ViewPanel=None,
+                 view_panel: ViewCntrlPanel=None,
                  acquisition_controller=None,
                  buffer=None,
                  display_dt=0.02,
