@@ -1,4 +1,5 @@
 import abc
+import warnings
 from abc import ABC
 from collections import deque
 from itertools import repeat, cycle, product
@@ -41,6 +42,26 @@ class DisplayMode(IntEnum):
 class shd_algorithm(NamedEnum):
     dft = auto()
     bin = auto()
+
+
+def calc_naive(data, orders, tap_x, tap_y, sig_idx):
+    phi = np.arctan2(data[:, tap_y],
+                     data[:, tap_x])
+    data = data.take(sig_idx, axis=1)
+    # data has shape (N_pts, N_sig)
+    # phi has shape (N_pts,)
+    # orders has shape (N_orders,)
+    # final size should be (N_orders, N_sig)
+    try:
+        demod = dft_naive(phi, data, orders)
+    except Exception:
+        logger.debug(f"data shape: {data.shape}")
+        logger.debug(f"phi shape: {phi.shape}")
+        logger.debug(f"name shape: {phi.shape}")
+        raise
+    # fourier buffer expects one row per tick.
+    # columns are signals, (order, signal). Signal is the fastest index.
+    return np.abs(demod)
 
 
 @attr.s(auto_attribs=True)
@@ -104,9 +125,11 @@ class ShdCntrl(QWidget):
         self.window_len = QSpinBox()
         self.window_len.setMinimum(10)
         self.window_len.setMaximum(2_000_000)
+        self.shd_algo = enum_to_combo(shd_algorithm, ValuedComboBox)
 
         grid = []
         grid.append(["Window size:", self.window_len])
+        grid.append(["SHD:", self.shd_algo])
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
@@ -191,7 +214,10 @@ class BaseView(pg.GraphicsLayoutWidget):
     def clear_plots(self):
         """Clear the contents of all plots"""
         for i, item in enumerate(self.ci.items):
-            item.clear()
+            try:
+                item.clear()
+            except AttributeError:
+                pass # this is a labelitem or something like this.
 
     def prepare_plots(self, names, display_cfg: DisplayConfig):
         raise NotImplementedError
@@ -329,18 +355,25 @@ class ShdView(BaseView):
         super().__init__(*a, **kw)
         self.x_idx = None
         self.y_idx = None
+        self.nbins = 32
         self.columns = {}  # mapping signal name -> index
         self.input_indices = []  # indices of the signals in the input data
-
+        self.orders = np.arange(9)
         self.curves = {}  # list of pens.
 
-        self.addPlot(row=0, col=0, name="SHD amplitudes")
-        self.orders = np.arange(9)
+        # We would probably need to define a form of `HoverText` class to
+        # handle this better, by mashing together TextItem and LegendItem
+        self.error_text = pg.LabelItem(" ", color=(200, 20, 20), size="10pt")
+        self.addItem(self.error_text)
+        plt = self.addPlot(row=1, col=0, name="SHD amplitudes")
+        logger.debug("plt type:" + repr(type(plt)))
+
         margin = 1
         for plot in self.ci.items:
+            if not isinstance(plot, pg.PlotItem):
+                continue
             plot.setClipToView(False)
             plot.enableAutoRange("xy", False)
-            #plot.setYRange(-1, 1)
             plot.setXRange(-margin, np.max(self.orders)+margin)
             plot.showAxis("top")
             plot.showAxis("right")
@@ -354,8 +387,9 @@ class ShdView(BaseView):
             n: names.index(n) for n in names if n in signals.all_detector_signals
         }
         self.input_indices = list(self.columns.values())
+
         for n in self.columns:
-            item = self.getItem(0,0)
+            item = self.getItem(1,0)
             pen = mkPen(color=self.cmap[n])
             brush = mkBrush(color=self.cmap[n])
             crv = item.plot(
@@ -371,15 +405,32 @@ class ShdView(BaseView):
     def plot(self, data, names, **kwargs):
         # todo: we should remove all these calculations and put them in a sort of pipeline.
         win_len = kwargs["window_size"]
-        phi = np.arctan2(data[-win_len:, self.y_idx],
-                         data[-win_len:, self.x_idx])
-        data = data.take(self.input_indices, axis=1)[-win_len:, :]
-
-        demod = dft_naive(phi, data, orders=self.orders)
+        shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        try:
+            if shd_algo == shd_algorithm.dft:
+                amps = calc_naive(data[-win_len:,:], self.orders, self.x_idx,
+                              self.y_idx, self.input_indices)
+            elif shd_algo == shd_algorithm.bin:
+                df = pd.DataFrame(data=data[-win_len:,:], columns=[s.name for s in names])
+                amps = np.abs(
+                    shd(
+                        df,
+                        self.nbins
+                    ).to_numpy()
+                )[:len(self.orders), :]
+        except ValueError as e:
+            if data.shape[0] == 0:
+                pass
+            if "empty bins" in str(e):
+                self.error_text.setText("empty bins detected")
+                amps = np.zeros((len(self.orders), len(self.input_indices)))
+        else:
+            self.error_text.setText("")
         # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
-        amps = np.abs(demod)
         for name, idx in self.columns.items():
             self.curves[name].setData(self.orders, amps[:,idx])
+
+
 
 
 class PshetView(BaseView):
@@ -498,23 +549,8 @@ class FourierView(BaseView):
 
     def compute_naive(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        phi = np.arctan2(data[-win_len:, self.y_idx],
-                         data[-win_len:, self.x_idx])
-        data = data.take(self.input_indices, axis=1)[-win_len:, :]
-        # data has shape (N_pts, N_sig)
-        # phi has shape (N_pts,)
-        # orders has shape (N_orders,)
-        # final size should be (N_orders, N_sig)
-        try:
-            demod = dft_naive(phi, data, orders=self.orders)
-        except Exception:
-            logger.debug(f"data shape: {data.shape}")
-            logger.debug(f"phi shape: {phi.shape}")
-            logger.debug(f"name shape: {phi.shape}")
-            raise
-        # fourier buffer expects one row per tick.
-        # columns are signals, (order, signal). Signal is the fastest index.
-        return np.abs(demod).reshape(1, -1)
+        return calc_naive(data[-win_len:,:], self.orders, self.x_idx,
+                          self.y_idx, self.input_indices)
 
     def compute_pshet(self, data, **kwargs) -> np.ndarray:
         #  this might be a bit slow -> max window length?
@@ -603,6 +639,8 @@ class DisplayController(QObject):
                                      "window_size")
         self.display_cfg.link_widget(self.view_panel.shd_cntrl.window_len,
                                      "window_size")
+        self.display_cfg.link_widget(self.view_panel.shd_cntrl.shd_algo,
+                                     "shd_algorithm")
         self.display_cfg.link_widget(self.view_panel.fourier_cntrl.shd_algo,
                                      "shd_algorithm")
 
@@ -668,6 +706,7 @@ class DisplayController(QObject):
     def start(self):
         self.fps_updt_timer.start()
         self.display_timer.start()
+
 
     def stop(self):
         self.display_timer.stop()

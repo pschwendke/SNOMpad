@@ -90,11 +90,8 @@ def shd_ft(avg: pd.DataFrame):
     # todo: add to test suite before modifying
     #  smoke test passed
     #  implement handling of empty bins
-    try:
-        empty_bins_in(avg)
-    except ValueError:
-        raise NotImplementedError('Handling of missing bins')
-
+    if empty_bins_in(avg):
+        raise ValueError("The binned DataFrame has empty bins.")
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
     return avg.apply(np.fft.rfft, axis=0)/len(avg)
 
@@ -107,7 +104,10 @@ def shd(df: pd.DataFrame, tap_nbins: int = 32):
     """
     # todo: add to test suite before modifying
     #  smoke test passed
-    return shd_ft(shd_binning(df, tap_nbins))
+    avg = shd_binning(df, tap_nbins)
+    if empty_bins_in(avg):
+        raise ValueError("The binned DataFrame has empty bins.")
+    return shd_ft(avg)
 
 
 def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
@@ -155,10 +155,6 @@ def pshet_ft(avg: pd.DataFrame):
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     #  test
     #  implement handling of empty bins
-    try:
-        empty_bins_in(avg)
-    except ValueError:
-        raise NotImplementedError('Handling of missing bins')
 
     # normalization is the same as 1D, but divided by both lengths
     return {k: np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
@@ -172,6 +168,8 @@ def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     """
     # todo: test
     avg = pshet_binning(df, tap_nbins, ref_nbins)
+    if empty_bins_in(avg):
+        raise ValueError("The binned DataFrame has empty bins.")
     return pshet_ft(avg)
 
 

@@ -126,8 +126,8 @@ def test_shd_ft_empty(shd_data_points, drops):
     tap_nbins, tap_nharm, tap_harm_amps = params
 
     # TODO update handling of missing and nan filled bins
-    with pytest.raises(NotImplementedError):
-        shd_ft(shd_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins))
+    with pytest.raises(ValueError):
+        shd(test_data.drop(test_data.index[drops]).copy(), tap_nbins)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -274,8 +274,8 @@ def test_pshet_ft_empty(pshet_data_points, drops):
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
 
     # TODO update handling of missing and nan filled bins
-    with pytest.raises(NotImplementedError):
-        pshet_ft(pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins))
+    with pytest.raises(ValueError):
+        pshet(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
