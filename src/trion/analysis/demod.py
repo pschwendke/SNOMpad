@@ -273,14 +273,14 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-def pshet_harmamps(df: pd.DataFrame, channel: str = 'sig_a', max_order: int = 6) -> np.ndarray:
+def pshet_harmamps(df: pd.DataFrame, channel, orders) -> np.ndarray:
     """
 
     Parameters
     ----------
     df
     channel
-    max_order
+    orders
 
     Returns
     -------
@@ -292,11 +292,7 @@ def pshet_harmamps(df: pd.DataFrame, channel: str = 'sig_a', max_order: int = 6)
     #  rewrite: we need to use the abs values of the coefficients.
     m = 1    # evaluating m and m+1 sidebands
     data = pshet(df)[channel]
-
-    amps = np.zeros(max_order)
-    amps[0] = np.real(data[0, 0])    # or absolute ?
-    for n in range(1, max_order):
-        amps[n] = np.abs(data[n, m] + 1j * data[n, m+1])   # constant factors are omitted
+    amps = np.abs(data[orders, m] + 1j * data[orders, m+1])   # constant factors are omitted
 
     return amps
 
