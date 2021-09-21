@@ -4,8 +4,6 @@ import numpy as np
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
     pshet_binning, pshet_ft, pshet, pshet_harmamps
 
-# TODO: Do we need duplicate tests for shd_ft and shd?
-
 # some parameters to create test data
 shd_parameters = [
     [32, 3, [1, 1, 1]],
@@ -118,8 +116,8 @@ def test_shd_ft_harmonics(shd_data_points):
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
-def test_shd_ft_empty(shd_data_points, drops):
-    """ Missing bins or bins filled with nans should be caught by shd_ft.
+def test_shd_empty(shd_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by shd.
     """
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
@@ -266,8 +264,8 @@ def test_pshet_ft_harmonics(pshet_data_points):
         
 @pytest.mark.parametrize('drops', [0, [31, 32, 100], [123, -1]])
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
-def test_pshet_ft_empty(pshet_data_points, drops):
-    """ Missing bins or bins filled with nans should be caught by pshet_ft.
+def test_pshet_empty(pshet_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by pshet.
     """
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
@@ -279,7 +277,7 @@ def test_pshet_ft_empty(pshet_data_points, drops):
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
-def _shd_binning_benchmark(benchmark, noise_data):
+def test_shd_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
@@ -289,7 +287,7 @@ def _shd_binning_benchmark(benchmark, noise_data):
 
 
 @pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
-def _pshet_binning_benchmark(benchmark, noise_data):
+def test_pshet_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     ref_nbins = 16

@@ -89,9 +89,6 @@ def shd_ft(avg: pd.DataFrame):
     """
     # todo: add to test suite before modifying
     #  smoke test passed
-    #  implement handling of empty bins
-    if empty_bins_in(avg):
-        raise ValueError("The binned DataFrame has empty bins.")
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
     return avg.apply(np.fft.rfft, axis=0)/len(avg)
 
@@ -104,6 +101,7 @@ def shd(df: pd.DataFrame, tap_nbins: int = 32):
     """
     # todo: add to test suite before modifying
     #  smoke test passed
+    #  implement handling of empty bins
     avg = shd_binning(df, tap_nbins)
     if empty_bins_in(avg):
         raise ValueError("The binned DataFrame has empty bins.")
@@ -167,6 +165,7 @@ def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     Perform pshet demodulation by binning and FT.
     """
     # todo: test
+    #  implement handling of empty bins
     avg = pshet_binning(df, tap_nbins, ref_nbins)
     if empty_bins_in(avg):
         raise ValueError("The binned DataFrame has empty bins.")

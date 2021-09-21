@@ -290,7 +290,6 @@ class RawView(BaseView):
             self.curves[n].setData(x[m], y[m], connect="finite")
 
 
-
 class PhaseView(BaseView):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -431,8 +430,6 @@ class ShdView(BaseView):
             self.curves[name].setData(self.orders, amps[:,idx])
 
 
-
-
 class PshetView(BaseView):
     """
     View the demodulated components.
@@ -471,6 +468,7 @@ class PshetView(BaseView):
                 pxMode=True,
             )
             self.curves[n] = crv
+
 
 class FourierView(BaseView):
     """
@@ -553,7 +551,6 @@ class FourierView(BaseView):
                           self.y_idx, self.input_indices)
 
     def compute_pshet(self, data, **kwargs) -> np.ndarray:
-        #  this might be a bit slow -> max window length?
         win_len = kwargs['window_size']
         orders = len(self.orders)
         channel = 'sig_a'
