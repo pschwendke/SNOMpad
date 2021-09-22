@@ -24,7 +24,7 @@ from qtlets.widgets import IntEdit, ValuedComboBox
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
-from ..analysis.demod import dft_naive, shd, pshet_harmamps
+from ..analysis.demod import dft_naive, shd, pshet, pshet_harmamps
 
 logger = logging.getLogger(__name__)
 
@@ -64,15 +64,29 @@ def calc_naive(data, orders, tap_x, tap_y, sig_idx):
     return np.abs(demod)
 
 
-def calc_pshet(data, orders, sig_idx) -> np.ndarray:
+def calc_pshet_2D(data: np.ndarray, sig_idx: list, n_max: int = 6, m_max: int = 3) -> dict:
+    """ Returns dict with sig_idx as keys and 2D np.ndarray as values"""
+    # TODO should this return dict, or rather 3D np.ndarray?
+    #  testing
+    channels = sig_idx + list(signals.all_modulation_signals)    # TODO check data types
+    df = pd.DataFrame(data.take(channels, axis=1), columns=channels)
     try:
-        demod = pshet_harmamps(data, sig_idx, orders)
+        demod = pshet(df)    # pshet returns a dict with channel names as keys
+        for k in demod.keys():
+            demod[k] = demod[k][:n_max, :m_max]
+    except ValueError:
+        # TODO handling of empty bins
+        raise
     except Exception:
         logger.debug(f'data shape: {data.shape}')
-        logger.debug(f'orders: {orders}')
         logger.debug(f'signals: {sig_idx}')
         raise
     return demod
+
+
+def calc_pshet_orders(data: np.ndarray, orders: np.ndarray, sig_idx) -> np.ndarray:
+    # TODO rewrite: use calc_pshet_2D output to save computation time
+    pass
 
 
 @attr.s(auto_attribs=True)
@@ -560,10 +574,6 @@ class FourierView(BaseView):
         return calc_naive(data[-win_len:, :], self.orders, self.x_idx,
                           self.y_idx, self.input_indices)
 
-    def compute_pshet(self, data, names, **kwargs) -> np.ndarray:
-        win_len = kwargs['window_size']
-        return calc_pshet(data[-win_len:, :], self.orders, self.input_indices)
-
     def plot(self, data, names, **kwargs):
         amps = self.compute_components(data, names, **kwargs)
         self.buf.put(amps)
@@ -704,7 +714,6 @@ class DisplayController(QObject):
     def start(self):
         self.fps_updt_timer.start()
         self.display_timer.start()
-
 
     def stop(self):
         self.display_timer.stop()
