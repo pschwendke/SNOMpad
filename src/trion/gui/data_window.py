@@ -67,13 +67,14 @@ def calc_naive(data, orders, tap_x, tap_y, sig_idx):
 def calc_pshet_2D(data: np.ndarray, sig_idx: list, n_max: int = 6, m_max: int = 3) -> dict:
     """ Returns dict with sig_idx as keys and 2D np.ndarray as values"""
     # TODO should this return dict, or rather 3D np.ndarray?
-    #  testing
+    #  test:
+    #   data.keys() == sig_idx
     channels = sig_idx + list(signals.all_modulation_signals)    # TODO check data types
     df = pd.DataFrame(data.take(channels, axis=1), columns=channels)
     try:
         demod = pshet(df)    # pshet returns a dict with channel names as keys
         for k in demod.keys():
-            demod[k] = demod[k][:n_max, :m_max]
+            demod[k] = demod[k][:n_max, :m_max]    # truncating all harmonics returned by ft to n_max, m_max
     except ValueError:
         # TODO handling of empty bins
         raise
@@ -84,9 +85,13 @@ def calc_pshet_2D(data: np.ndarray, sig_idx: list, n_max: int = 6, m_max: int = 
     return demod
 
 
-def calc_pshet_orders(data: np.ndarray, orders: np.ndarray, sig_idx) -> np.ndarray:
-    # TODO rewrite: use calc_pshet_2D output to save computation time
-    pass
+def calc_pshet_orders(demod: dict, orders: np.ndarray, sig_idx: list) -> np.ndarray:
+    """ Takes demodulated pshet signals, as returned by calc_pshet_2D,
+    and returns orders in tapping modulation evaluated at the side-bands"""
+    demod_orders = np.zeros((len(orders), len(sig_idx)))
+    for i in range(len(sig_idx)):
+        demod_orders[:, i] = pshet_harmamps(demod[sig_idx[i]], orders)
+    return demod_orders    # columns are signals, (order, signal)
 
 
 @attr.s(auto_attribs=True)

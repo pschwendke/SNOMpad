@@ -152,8 +152,6 @@ def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     #  test
-    #  implement handling of empty bins
-
     # normalization is the same as 1D, but divided by both lengths
     return {k: np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
             for k in avg.columns.get_level_values(0).drop_duplicates()
@@ -163,6 +161,7 @@ def pshet_ft(avg: pd.DataFrame):
 def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     """
     Perform pshet demodulation by binning and FT.
+    Returns dict with signal names as keys as 2D np.ndarray of harmonics as values
     """
     # todo: test
     #  implement handling of empty bins
@@ -273,28 +272,26 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-def pshet_harmamps(df: pd.DataFrame, channel, orders) -> np.ndarray:
-    """
+def pshet_harmamps(demod: np.ndarray, orders: np.ndarray) -> np.ndarray:
+    """ Qualitatively computes tapping order harmonics at the sidebands.
+    Pshet modulation depth needs to be adjusted that J_m == J_m+1
 
     Parameters
     ----------
-    df
-    channel
-    orders
+    demod: np.ndarray
+        2D array of demodulated pshet signal as returned as values by pshet_ft
+    orders: np:ndarray
+        Demodulation orders
 
     Returns
     -------
-
+        amplitudes of demodulation orders
     """
-    # TODO documentation
-    #  testing
-    #  rewrite: interface doesn't match dft_naive
-    #  rewrite: we need to use the abs values of the coefficients.
+    # TODO
+    #  rewrite: interface doesn't match dft_naive   ### does it now? ###
     m = 1    # evaluating m and m+1 sidebands
-    data = pshet(df)[channel]
-    amps = np.abs(data[orders, m] + 1j * data[orders, m+1])   # constant factors are omitted
-
-    return amps
+    coefficients = demod[orders, m] + 1j * demod[orders, m+1]   # constant factors are omitted
+    return np.abs(coefficients)
 
 
 #####  older stuff, kept for compatibility
