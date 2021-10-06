@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def empty_bins_in(df: pd.DataFrame) -> None:
+def empty_bins_in(df: pd.DataFrame) -> bool:
     """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
     Returns True if empty bins are detected."""
 

@@ -97,7 +97,7 @@ class RawCntrl(QWidget):
         add_grid(grid, lyt)
         lyt.setColumnStretch(1,1)
         lyt.setRowStretch(lyt.rowCount(), 1)
-        lyt.setContentsMargins(0,0,0,0)
+        lyt.setContentsMargins(0, 0, 0, 0)
 
 
 class PhaseCntrl(QWidget):
@@ -117,7 +117,7 @@ class PhaseCntrl(QWidget):
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
-        lyt.setContentsMargins(0,0,0,0)
+        lyt.setContentsMargins(0, 0, 0, 0)
 
 
 class ShdCntrl(QWidget):
@@ -141,7 +141,7 @@ class ShdCntrl(QWidget):
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
-        lyt.setContentsMargins(0,0,0,0)
+        lyt.setContentsMargins(0, 0, 0, 0)
 
 
 class PshetCntrl(QWidget):
@@ -216,7 +216,7 @@ class ViewCntrlPanel(QDockWidget):
         self.setWidget(panel)
 
         self.panels = {}
-        self.raw_cntrl =  RawCntrl()
+        self.raw_cntrl = RawCntrl()
         self.phase_cntrl = PhaseCntrl()
         self.shd_cntrl = ShdCntrl()
         self.pshet_cntrl = PshetCntrl()
@@ -232,7 +232,7 @@ class ViewCntrlPanel(QDockWidget):
         for idx, panel in self.panels.items():
             self.stack.insertWidget(idx, panel)
 
-        lyt.setColumnStretch(1,1)
+        lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
 
         self.setFeatures(
@@ -309,7 +309,7 @@ class RawView(BaseView):
             plot.setXRange(0, 200_000)
             plot.showAxis("top")
             plot.showAxis("right")
-            plot.addLegend(offset=(2,2))
+            plot.addLegend(offset=(2, 2))
             if plot is not p0:
                 plot.setXLink(p0)
 
@@ -329,7 +329,7 @@ class RawView(BaseView):
         ds = kwargs["downsample"]
         x = np.arange(0, data.shape[0])[::ds]
         for i, n in enumerate(names):
-            y = data[::ds,i]
+            y = data[::ds, i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m], connect="finite")
 
@@ -351,7 +351,7 @@ class PhaseView(BaseView):
             plot.enableAutoRange("xy", False)
             plot.setYRange(-2, 2)
             plot.setXRange(-np.pi, np.pi)
-            plot.addLegend(offset=(2,2))
+            plot.addLegend(offset=(2, 2))
             plot.showAxis("top")
             plot.showAxis("right")
 
@@ -381,9 +381,9 @@ class PhaseView(BaseView):
     def plot(self, data, names, **kwargs):
         # data[~np.isfinite(data)] = 0
         ds = kwargs["downsample"]
-        x = np.arctan2(data[::ds,self.y_idx], data[::ds,self.x_idx])
+        x = np.arctan2(data[::ds, self.y_idx], data[::ds, self.x_idx])
         for n, i in self.columns.items():
-            y = data[::ds,i]
+            y = data[::ds, i]
             m = np.isfinite(y)
             self.curves[n].setData(x[m], y[m])
 
@@ -420,7 +420,7 @@ class ShdView(BaseView):
             plot.setXRange(-margin, np.max(self.orders)+margin)
             plot.showAxis("top")
             plot.showAxis("right")
-            plot.addLegend(offset=(2,2))
+            plot.addLegend(offset=(2, 2))
 
     def prepare_plots(self, names, display_cfg: DisplayConfig):
         self.clear_plots()
@@ -432,7 +432,7 @@ class ShdView(BaseView):
         self.input_indices = list(self.columns.values())
 
         for n in self.columns:
-            item = self.getItem(1,0)
+            item = self.getItem(1, 0)
             pen = mkPen(color=self.cmap[n])
             brush = mkBrush(color=self.cmap[n])
             crv = item.plot(
@@ -452,10 +452,10 @@ class ShdView(BaseView):
         tap_nbins = kwargs["tap_nbins"]
         try:
             if shd_algo == shd_algorithm.dft:
-                amps = calc_naive(data[-win_len:,:], self.orders, self.x_idx,
-                              self.y_idx, self.input_indices)
+                amps = calc_naive(data[-win_len:, :], self.orders, self.x_idx,
+                                  self.y_idx, self.input_indices)
             elif shd_algo == shd_algorithm.bin:
-                df = pd.DataFrame(data=data[-win_len:,:], columns=[s.name for s in names])
+                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
                 amps = np.abs(
                     shd(
                         df,
@@ -600,7 +600,6 @@ class FourierView(BaseView):
         self.getItem(1,0).addLegend(offset=(2,2))
         self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
         self.ci.setContentsMargins(0, 10, 0, 10)
-
         #self.ci.setBorder((50, 50, 100))
 
     def prepare_plots(self, names, display_cfg: DisplayConfig):
@@ -635,7 +634,7 @@ class FourierView(BaseView):
 
     def compute_naive(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        return calc_naive(data[-win_len:,:], self.orders, self.x_idx,
+        return calc_naive(data[-win_len:, :], self.orders, self.x_idx,
                           self.y_idx, self.input_indices)
 
     def compute_pshet(self, data, **kwargs) -> np.ndarray:
@@ -653,40 +652,14 @@ class FourierView(BaseView):
         return demod
 
     def plot(self, data, names, **kwargs):
-        win_len = kwargs["window_size"]
-        shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
-        tap_nbins = kwargs["tap_nbins"]
-        ref_nbins = kwargs["ref_nbins"]
-        try:
-            if kwargs["use_pshet"]:
-                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
-                amps = pshet(df, tap_nbins, ref_nbins)
-            if shd_algo == shd_algorithm.dft:
-                amps = calc_naive(data[-win_len:, :], self.orders, self.x_idx,
-                                  self.y_idx, self.input_indices)
-
-            elif shd_algo == shd_algorithm.bin:
-                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
-                amps = np.abs(
-                    shd(
-                        df,
-                        tap_nbins
-                    ).to_numpy()
-                )[:len(self.orders), :]
-        except ValueError as e:
-            if data.shape[0] == 0:
-                pass
-            if "empty bins" in str(e):
-                self.error_text.setText("empty bins detected")
-        else:
-            self.error_text.setText("")
-            self.buf.put(amps)
+        amps = self.compute_components(data, names, **kwargs)
+        self.buf.put(amps)
         y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
         x = np.arange(y.shape[0])
-        m = np.isfinite(y[:,0])
+        m = np.isfinite(y[:, 0])
         for i, v in enumerate(vars):
-            self.curves[v].setData(x[m], y[:,i].compress(m, axis=0))
+            self.curves[v].setData(x[m], y[:, i].compress(m, axis=0))
 
 
 class DataWindow(QTabWidget):
@@ -814,7 +787,7 @@ class DisplayController(QObject):
             except Exception:
                 if self.acquisition_controller is not None:
                     self.acquisition_controller.act.stop.trigger()
-                self.display_timer.stop() # we'll fall out of sync...
+                self.display_timer.stop()  # we'll fall out of sync...
                 raise
 
     def plot(self, *a, **kw):
@@ -835,7 +808,6 @@ class DisplayController(QObject):
     def start(self):
         self.fps_updt_timer.start()
         self.display_timer.start()
-
 
     def stop(self):
         self.display_timer.stop()

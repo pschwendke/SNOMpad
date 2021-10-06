@@ -10,15 +10,21 @@ def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
 
     Parameters
     ----------
-    tap_nbins
-    tap_nharm
-    tap_harm_amps
+    tap_nbins: int
+        number of bins, also number of data points (one per bin)
+    tap_nharm: int
+        number of harmonics of the returned signal, also the lenght of tap_harm_amps
+    tap_harm_amps: list
+        list of complex amplitudes for creation of harmonics
 
     Returns
     -------
-
+    request.param:
+        all parameters that are passed to the function, in order to be accessible in test function.
+    data: pd.DataFrame
+        columns are ['sig_a', 'tap_x', 'tap_y']
+        rows are data points (one per bin)
     """
-    # TODO documentation
     # tap phase
     tap_phase = np.arange(-np.pi, np.pi, 2 * np.pi / tap_nbins)
     tap_phase += np.pi / tap_nbins
@@ -41,18 +47,27 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
 
     Parameters
     ----------
-    tap_nbins
-    tap_nharm
-    tap_harm_amps
-    ref_nbins
-    ref_nharm
-    ref_harm_amps
+    tap_nbins: int
+        number of bins for tapping demodulation
+    tap_nharm: int
+        number of harmonics in tapping modulation
+    tap_harm_amps: list
+        list of complex amplitudes of harmonics of tapping modulation
+    ref_nbins: int
+        number of bins for pshet demodulation
+    ref_nharm: int
+        number of harmonics in pshet modulation
+    ref_harm_amps: list
+        list of complex amplitudes of harmonics of pshet modulation
 
     Returns
     -------
-
+    request.param:
+        all parameters that are passed to the function, in order to be accessible in test function.
+    data: pd.DataFrame
+        columns are ['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y']
+        rows are data points (one for each combination of tap and ref bin)
     """
-    # TODO documentation
     # generating phases
     tap_phase = np.arange(-np.pi, np.pi, 2 * np.pi / tap_nbins)
     tap_phase += np.pi / tap_nbins
