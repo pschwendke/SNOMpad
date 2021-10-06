@@ -13,14 +13,14 @@ import pyqtgraph as pg
 from enum import IntEnum, auto
 from PySide2.QtCore import QSize, QObject, Signal, QTimer
 from PySide2.QtWidgets import QStackedWidget, QDockWidget, QWidget, \
-    QGridLayout, QTabWidget, QSpinBox
+    QGridLayout, QTabWidget, QSpinBox, QCheckBox
 from bidict import bidict
 from pyqtgraph import mkPen, mkBrush
 from qtlets import HasQtlets
 import attr
 
 from .utils import add_grid, enum_to_combo
-from qtlets.widgets import IntEdit, ValuedComboBox
+from qtlets.widgets import IntEdit, ValuedComboBox, FloatEdit
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
@@ -72,6 +72,8 @@ class DisplayConfig(HasQtlets):
     tap_nbins: int = 32
     shd_algorithm: shd_algorithm = shd_algorithm.dft
     ref_nbins: int = 16
+    use_pshet: bool = False
+    gamma: float = 2.63
 
     # TODO: I think attrs has been updated such that this is not necessary anymore
     def __attrs_post_init__(self):
@@ -184,6 +186,9 @@ class FourierCntrl(QWidget):
         self.ref_nbins.setMinimum(8)
         self.ref_nbins.setMaximum(32)
         self.ref_nbins.setEnabled(False)
+        self.use_pshet = QCheckBox()
+        self.gamma = FloatEdit(2.63, bottom=0.001, decimals=3)
+
 
         lyt = QGridLayout()
         self.setLayout(lyt)
@@ -192,6 +197,8 @@ class FourierCntrl(QWidget):
         grid.append(["SHD:", self.shd_algo])
         grid.append(["Tap bins:", self.tap_nbins])
         grid.append(["Ref bins:", self.ref_nbins])
+        grid.append(["Use psHet:", self.use_pshet])
+        grid.append(["gamma", self.gamma])
 
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
@@ -463,6 +470,7 @@ class ShdView(BaseView):
         else:
             self.error_text.setText("")
             # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
+            # Use shortes of orders and amps.
             len_ = min(len(self.orders), amps.shape[0])
             for name, idx in self.columns.items():
                 self.curves[name].setData(self.orders[:len_], amps[:len_,idx])
@@ -511,10 +519,8 @@ class PshetView(BaseView):
         # TODO: it would be simpler to change the HistogramLutItem widget to support multiple images
         cbar.sigLookupTableChanged.connect(self.onLutChanged)
         cbar.sigLevelsChanged.connect(self.onLevelsChanged)
-
-
-
         #self.addPlot(row=0, col=0, name="SHD amplitudes")
+
     def onLutChanged(self, lut):
         images = list(self.images.values())
         for img in images[1:]:
@@ -527,26 +533,6 @@ class PshetView(BaseView):
 
     def prepare_plots(self, names, display_cfg: DisplayConfig):
         pass
-        #self.clear_plots()
-        # self.x_idx = names.index(Signals.tap_x)
-        # self.y_idx = names.index(Signals.tap_y)
-        # self.columns = {
-        #     n: names.index(n) for n in names if n in signals.all_detector_signals
-        # }
-
-        # for n in self.columns:
-        #     item = self.getItem(0,0)
-        #     pen = mkPen(color=self.cmap[n])
-        #     brush = mkBrush(color=self.cmap[n])
-        #     crv = item.plot(
-        #         pen=None,
-        #         symbolPen=pen,
-        #         symbolBrush=brush,
-        #         name=n.value,
-        #         symbolSize=3,
-        #         pxMode=True,
-        #     )
-        #     self.curves[n] = crv
 
     def plot(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
@@ -670,10 +656,15 @@ class FourierView(BaseView):
         win_len = kwargs["window_size"]
         shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
         tap_nbins = kwargs["tap_nbins"]
+        ref_nbins = kwargs["ref_nbins"]
         try:
+            if kwargs["use_pshet"]:
+                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
+                amps = pshet(df, tap_nbins, ref_nbins)
             if shd_algo == shd_algorithm.dft:
                 amps = calc_naive(data[-win_len:, :], self.orders, self.x_idx,
                                   self.y_idx, self.input_indices)
+
             elif shd_algo == shd_algorithm.bin:
                 df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
                 amps = np.abs(
@@ -733,7 +724,7 @@ class DisplayController(QObject):
                  acquisition_controller=None,
                  buffer=None,
                  display_dt=0.02,
-                 display_config = None,
+                 display_config=None,
                  **kw):
         super().__init__(*a, **kw)
         self.data_view = data_window
@@ -743,7 +734,7 @@ class DisplayController(QObject):
         self.current = self.data_view.tab_map.inverse[self.data_view.currentIndex()]
         self.acquisition_controller = acquisition_controller
         self.display_cfg = display_config or DisplayConfig()
-        self.plot_cache = None #((),{})
+        self.plot_cache = None
         self.view_changed.connect(self.onViewChanged)
         self.data_view.currentChanged.connect(self.onTabIndexChanged)
         self.data_view.currentChanged.connect(self.view_panel.onTabIndexChanged)
@@ -778,6 +769,8 @@ class DisplayController(QObject):
             self.view_panel.pshet_cntrl,
         ]:
             self.display_cfg.link_widget(cntrl.ref_nbins, "ref_nbins")
+        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.use_pshet, "use_pshet")
+        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.gamma, "gamma")
 
 
         self.fps_updt_timer.timeout.connect(self.on_update_fps)
