@@ -2,6 +2,7 @@
 from itertools import product
 from warnings import warn
 import numpy as np
+from scipy.special import jv
 import pandas as pd
 from .utils import empty_bins_in
 
@@ -280,26 +281,32 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-def pshet_harmamps(demod: np.ndarray, gamma:float = 2.63) -> np.ndarray:
+# TODO: I don't like that name...
+def pshet_harmamps(df: pd.DataFrame, gamma:float = 2.63) -> np.ndarray:
     """ Qualitatively computes tapping order harmonics at the sidebands.
     Pshet modulation depth needs to be adjusted that J_m == J_m+1
 
     Parameters
     ----------
-    demod: np.ndarray
-        2D array of demodulated pshet signal as returned as values by pshet_ft
-    orders: np:ndarray
-        Demodulation orders
+    df: pd.Dataframe
+        demodulated pshet signal as returned by pshet_ft
 
     Returns
     -------
-        amplitudes of demodulation orders
+    near_field : pd.Dataframe
+        Near field amplitudes (complex) for tapping harmonics n.
     """
     # TODO
-    #  rewrite: interface doesn't match dft_naive   ### does it now? ###
-    m = 1    # evaluating m and m+1 sidebands
-    coefficients = demod[:, m] + 1j * demod[:, m+1]   # constant factors are omitted
-    return np.abs(coefficients)
+    #   TEST: pass in stupid arrays of ones, or arange(totsize).reshape(shape)
+    #   and check we are just doing the correct sum
+    m = np.array([1, 2])    # evaluating m and m+1 sidebands
+    scales = 1/jv(m, gamma) * np.array([1, 1j])
+    # The next line requires to transpose everything.
+    #coeffs = (np.abs(df.iloc[[1, 2]]) * scales[:, np.newaxis]).sum(axis=0).unstack().T
+    nsigs = len(df.columns.get_level_values(0).drop_duplicates())
+    coeffs = (df.loc[:, (slice(None), m)] * np.tile(scales, nsigs)
+              ).groupby(level=0, axis=1).sum()
+    return coeffs
 
 
 #####  older stuff, kept for compatibility

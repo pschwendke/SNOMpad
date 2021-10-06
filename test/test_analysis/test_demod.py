@@ -4,6 +4,7 @@ import numpy as np
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
     pshet_binning, pshet_ft, pshet, pshet_harmamps
+from trion.analysis.utils import empty_bins_in
 
 # some parameters to create test data
 shd_parameters = [
@@ -282,35 +283,40 @@ def test_pshet_empty(pshet_data_points, drops):
         pshet(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
 
 
-@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', filter(lambda n: n>100, npoints), indirect=['noise_data'])
 def test_shd_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
 
+    assert not empty_bins_in(binned_noise)
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
 
 
-@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', filter(lambda n: n>1000, npoints), indirect=['noise_data'])
 def test_pshet_binning_benchmark(benchmark, noise_data):
     """ """
     tap_nbins = 32
     ref_nbins = 16
     binned_noise = benchmark(pshet_binning, noise_data.copy(), tap_nbins, ref_nbins)
-
+    signals = binned_noise.columns.get_level_values(0).drop_duplicates()
+    assert not empty_bins_in(binned_noise)
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
-    assert binned_noise.shape[1] == 2 * ref_nbins
+    assert binned_noise.shape[1] == len(signals) * ref_nbins
 
 
 @pytest.mark.parametrize('noise_data', [5000, 10_000, 20_000, 100_000], indirect=['noise_data'])
-@pytest.mark.parametrize('orders', [5])
-def test_pshetharmamps_benchmark(benchmark, noise_data, orders):
+def test_pshetharmamps_benchmark(benchmark, noise_data):
     """ Tests the computation of pshet harmonics in the class FourierView, which uses the pshet demodulation.
     The time needed for demodulation is heavily dependent on the window length of data passed to the function.
     """
-    data = benchmark(pshet_harmamps, df=noise_data, channel='sig_a', max_order=orders)
+    tap_nbins = 32
+    ref_nbins = 16
+    demod = pshet(noise_data, tap_nbins, ref_nbins)
+    signals = demod.columns.get_level_values(0).drop_duplicates()
+    data = benchmark(pshet_harmamps, df=demod)
 
     # test for correct number of retrieved harmonics
-    assert data.shape == (orders,)
+    assert data.shape == (tap_nbins, len(signals))
