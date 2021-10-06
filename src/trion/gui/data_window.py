@@ -24,7 +24,7 @@ from qtlets.widgets import IntEdit, ValuedComboBox
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
-from ..analysis.demod import dft_naive, shd, pshet_harmamps
+from ..analysis.demod import dft_naive, shd, pshet, pshet_harmamps
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ class DisplayConfig(HasQtlets):
     window_size: int = 10_000
     tap_nbins: int = 32
     shd_algorithm: shd_algorithm = shd_algorithm.dft
+    ref_nbins: int = 16
 
     # TODO: I think attrs has been updated such that this is not necessary anymore
     def __attrs_post_init__(self):
@@ -145,6 +146,27 @@ class PshetCntrl(QWidget):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.title = "psHet view"
+        self.window_len = QSpinBox()
+        self.window_len.setMinimum(10)
+        self.window_len.setMaximum(2_000_000)
+        self.tap_nbins = QSpinBox()
+        self.tap_nbins.setMinimum(8)
+        self.tap_nbins.setMaximum(256)
+        self.ref_nbins = QSpinBox()
+        self.ref_nbins.setMinimum(8)
+        self.ref_nbins.setMaximum(32)
+
+        grid = []
+        grid.append(["Window size:", self.window_len])
+        grid.append(["Tap bins:", self.tap_nbins])
+        grid.append(["Ref bins:", self.ref_nbins])
+
+        lyt = QGridLayout()
+        self.setLayout(lyt)
+        add_grid(grid, lyt)
+        lyt.setColumnStretch(1, 1)
+        lyt.setRowStretch(lyt.rowCount(), 1)
+        lyt.setContentsMargins(0, 0, 0, 0)
 
 
 class FourierCntrl(QWidget):
@@ -158,6 +180,10 @@ class FourierCntrl(QWidget):
         self.tap_nbins = QSpinBox()
         self.tap_nbins.setMinimum(8)
         self.tap_nbins.setMaximum(256)
+        self.ref_nbins = QSpinBox()
+        self.ref_nbins.setMinimum(8)
+        self.ref_nbins.setMaximum(32)
+        self.ref_nbins.setEnabled(False)
 
         lyt = QGridLayout()
         self.setLayout(lyt)
@@ -165,6 +191,7 @@ class FourierCntrl(QWidget):
         grid.append(["Window size:", self.window_len])
         grid.append(["SHD:", self.shd_algo])
         grid.append(["Tap bins:", self.tap_nbins])
+        grid.append(["Ref bins:", self.ref_nbins])
 
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
@@ -445,40 +472,101 @@ class PshetView(BaseView):
     """
     View the demodulated components.
 
-    For SHD, this is the amplitudes per order `n`. Single graph.
     For psHet, this is the matrix of amplitudes per order `n,m`.  Up to 2 plots.
     """
 
     def __init__(self, *a, **kw):
+        # We need:
+        # - A place for error messages.
+        # - One matrix per signal
+        # - Potentially two extra matrices if we have diff and sum?
         super().__init__(*a, **kw)
         self.x_idx = None
         self.y_idx = None
-        self.columns = {}  # mapping signal name -> index
-        self.input_indices = []  # indices of the signals in the input data
+        self.images = {}  # mapping signal name -> index
+        #self.input_indices = []  # indices of the signals in the input data
 
-        self.curves = {}  # list of pens.
-        self.addPlot(row=0, col=0, name="SHD amplitudes")
+        self.error_text = pg.LabelItem(" ", color=(200, 20, 20), size="10pt")
+        self.addItem(self.error_text, row=0, col=0, colspan=2)
+
+        self.images["sig_a"] = pg.ImageItem(image=np.arange(-4,4,0.5).reshape(4,4))
+        self.images["sig_b"] = pg.ImageItem(image=np.arange(4,-4,-0.5).reshape(4,4))
+        self.plots = [
+            self.addPlot(1, i, title=k)
+            for i, k in enumerate(self.images.keys())
+        ]
+        for p, i in zip(self.plots, self.images.values()):
+            p.addItem(i)
+            p.setAspectLocked(True)
+
+        cbar = pg.HistogramLUTItem(
+            orientation='horizontal',
+            #cmap=pg.colormap.get("inferno"),
+        )
+        images = list(self.images.values())
+        cbar.setImageItem(images[0])
+        cbar.setHistogramRange(-6, 4)
+        cbar.gradient.loadPreset('spectrum')
+        self.addItem(cbar, 2, 0, colspan=2)
+        # TODO: it would be simpler to change the HistogramLutItem widget to support multiple images
+        cbar.sigLookupTableChanged.connect(self.onLutChanged)
+        cbar.sigLevelsChanged.connect(self.onLevelsChanged)
+
+
+
+        #self.addPlot(row=0, col=0, name="SHD amplitudes")
+    def onLutChanged(self, lut):
+        images = list(self.images.values())
+        for img in images[1:]:
+            img.setLookupTable(lut.getLookupTable)
+
+    def onLevelsChanged(self, lut):
+        images = list(self.images.values())
+        for img in images[1:]:
+            img.setLevels(lut.getLevels())
 
     def prepare_plots(self, names, display_cfg: DisplayConfig):
-        self.clear_plots()
-        self.x_idx = names.index(Signals.tap_x)
-        self.y_idx = names.index(Signals.tap_y)
-        self.columns = {
-            n: names.index(n) for n in names if n in signals.all_detector_signals
-        }
-        for n in self.columns:
-            item = self.getItem(0,0)
-            pen = mkPen(color=self.cmap[n])
-            brush = mkBrush(color=self.cmap[n])
-            crv = item.plot(
-                pen=None,
-                symbolPen=pen,
-                symbolBrush=brush,
-                name=n.value,
-                symbolSize=3,
-                pxMode=True,
-            )
-            self.curves[n] = crv
+        pass
+        #self.clear_plots()
+        # self.x_idx = names.index(Signals.tap_x)
+        # self.y_idx = names.index(Signals.tap_y)
+        # self.columns = {
+        #     n: names.index(n) for n in names if n in signals.all_detector_signals
+        # }
+
+        # for n in self.columns:
+        #     item = self.getItem(0,0)
+        #     pen = mkPen(color=self.cmap[n])
+        #     brush = mkBrush(color=self.cmap[n])
+        #     crv = item.plot(
+        #         pen=None,
+        #         symbolPen=pen,
+        #         symbolBrush=brush,
+        #         name=n.value,
+        #         symbolSize=3,
+        #         pxMode=True,
+        #     )
+        #     self.curves[n] = crv
+
+    def plot(self, data, names, **kwargs):
+        win_len = kwargs["window_size"]
+        #shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        tap_nbins = kwargs["tap_nbins"]
+        ref_nbins = kwargs["ref_nbins"]
+        df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
+        try:
+            amps = pshet(df, tap_nbins, ref_nbins)
+        except ValueError as e:
+            if data.shape[0] == 0:
+                pass
+            if "empty bins" in str(e):
+                self.error_text.setText("empty bins detected")
+
+        else:
+            self.error_text.setText("")
+            # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
+            for name, data in amps.items():
+                self.images[name].setImage(np.log10(np.abs(data)), autoLevels=False)
 
 
 class FourierView(BaseView):
@@ -671,11 +759,26 @@ class DisplayController(QObject):
         for cntrl in [self.view_panel.raw_cntrl, self.view_panel.phase_cntrl]:
             self.display_cfg.link_widget(cntrl.downsampling, "downsample")
             self.display_cfg.link_widget(cntrl.display_size, "display_size")
-        for cntrl in [self.view_panel.fourier_cntrl,
-                      self.view_panel.shd_cntrl]:
+
+        for cntrl in [
+            self.view_panel.fourier_cntrl,
+            self.view_panel.shd_cntrl,
+            self.view_panel.pshet_cntrl,
+        ]:
             self.display_cfg.link_widget(cntrl.window_len, "window_size")
-            self.display_cfg.link_widget(cntrl.shd_algo, "shd_algorithm")
             self.display_cfg.link_widget(cntrl.tap_nbins, "tap_nbins")
+
+        for cntrl in [
+            self.view_panel.fourier_cntrl,
+            self.view_panel.shd_cntrl,
+        ]:
+            self.display_cfg.link_widget(cntrl.shd_algo, "shd_algorithm")
+        for cntrl in [
+            self.view_panel.fourier_cntrl,
+            self.view_panel.pshet_cntrl,
+        ]:
+            self.display_cfg.link_widget(cntrl.ref_nbins, "ref_nbins")
+
 
         self.fps_updt_timer.timeout.connect(self.on_update_fps)
         self.display_timer.timeout.connect(self.refresh_display)
