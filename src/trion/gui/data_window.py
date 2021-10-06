@@ -185,7 +185,6 @@ class FourierCntrl(QWidget):
         self.ref_nbins = QSpinBox()
         self.ref_nbins.setMinimum(8)
         self.ref_nbins.setMaximum(32)
-        self.ref_nbins.setEnabled(False)
         self.use_pshet = QCheckBox()
         self.gamma = FloatEdit(2.63, bottom=0.001, decimals=3)
 
@@ -551,8 +550,8 @@ class PshetView(BaseView):
         else:
             self.error_text.setText("")
             # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
-            for name, data in amps.items():
-                self.images[name].setImage(np.log10(np.abs(data)), autoLevels=False)
+            for name, data in amps.groupby(level=0, axis=1):
+                self.images[name].setImage(np.log10(np.abs(data.to_numpy())), autoLevels=False)
 
 
 class FourierView(BaseView):
@@ -641,15 +640,14 @@ class FourierView(BaseView):
                 df,
                 tap_nbins
             ).to_numpy()
-        )[:len(self.orders), :]
+        )
         return amps
 
     def compute_pshet(self, data, names, tap_nbins, ref_nbins, gamma) -> np.ndarray:
-        #  this might be a bit slow -> max window length?
         df = pd.DataFrame(data=data, columns=[s.name for s in names])
         amps = pshet(df, tap_nbins, ref_nbins)
-        coeffs = pshet_harmamps(amps, gamma)
-        return coeffs
+        coeffs = pshet_harmamps(amps, gamma).to_numpy()
+        return np.abs(coeffs)
 
     def plot(self, data, names, **kwargs):
         # TODO: I should probably just get a link to the display configuration object.
@@ -658,16 +656,19 @@ class FourierView(BaseView):
         tap_nbins = kwargs["tap_nbins"]
         ref_nbins = kwargs["ref_nbins"]
         gamma = kwargs["gamma"]
+        if data.shape[0] == 0:
+            return
         try:
             if kwargs["use_pshet"]:
-                self.compute_pshet(
-                    data[-win_len:,:], names, tap_nbins, ref_nbins, gamma
-                )
+                amps = self.compute_pshet(
+                    data[-win_len:, :], names, tap_nbins, ref_nbins, gamma
+                )[:len(self.orders), :]
             elif shd_algo == shd_algorithm.dft:
                 amps = self.compute_naive(data[-win_len:,:])
             elif shd_algo == shd_algorithm.bin:
-                amps = self.compute_shd_binning(data[-win_len:, :],
-                                                names, tap_nbins)
+                amps = self.compute_shd_binning(
+                    data[-win_len:, :], names, tap_nbins
+                )[:len(self.orders), :]
         except ValueError as e:
             if data.shape[0] == 0:
                 pass
