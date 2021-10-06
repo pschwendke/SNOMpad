@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 import numpy as np
 
@@ -139,7 +140,7 @@ def test_pshet_binning(pshet_data_points):
 
     # test shape of returned DataFrame
     assert binned_data.shape[0] == tap_nbins
-    assert binned_data.shape[1] == 2 * ref_nbins
+    assert binned_data.shape[1] == 2 * ref_nbins  # Why 2?!
     assert binned_data.index.name == 'tap_n'
     assert binned_data.columns.names[1] == 'ref_n'
     assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
@@ -212,13 +213,16 @@ def test_pshet_ft_shape(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
+    binned = pshet_binning(test_data.copy(), tap_nbins, ref_nbins)
+    ft_data = pshet_ft(binned)
+    assert type(ft_data) == pd.DataFrame
 
     # test shape of returned arrays
-    assert all('sig' in key for key in ft_data.keys())
-    for array in ft_data.values():
-        assert array.shape[0] == tap_nbins
-        assert array.shape[1] == ref_nbins / 2 + 1
+    signals = ft_data.columns.get_level_values(0).drop_duplicates()
+    assert all('sig' in key for key in signals)
+
+    assert ft_data.shape[0] == tap_nbins
+    assert ft_data.shape[1] == (ref_nbins // 2 + 1) * len(signals)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -230,13 +234,15 @@ def test_pshet_ft_harmonics(pshet_data_points):
     ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
     
     # signals, e.g. 'sig_a' are keys of ft_data
-    for key in ft_data.keys():
+    signals = ft_data.columns.get_level_values(0).drop_duplicates()
+    for key in signals:
         # tapping harmonics
+        arr = ft_data[key].to_numpy()
         for n in range(tap_nharm):
             initial_tap_phase = np.angle(tap_harm_amps[n])
             initial_tap_amp = np.abs(tap_harm_amps[n])
-            returned_tap_phase = np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0]))
-            returned_tap_amp = np.abs(ft_data['sig_a'][n, 0])
+            returned_tap_phase = np.arctan2(np.imag(arr[n, 0]), np.real(arr[n, 0]))
+            returned_tap_amp = np.abs(arr[n, 0])
             # np.fft.rfft only returns positive amplitudes
             if n > 0:
                 returned_tap_amp *= 2
@@ -250,8 +256,8 @@ def test_pshet_ft_harmonics(pshet_data_points):
         for m in range(ref_nharm):
             initial_ref_phase = np.angle(ref_harm_amps[m])
             initial_ref_amp = np.abs(ref_harm_amps[m])
-            returned_ref_phase = np.arctan2(np.imag(ft_data[key][0][m]), np.real(ft_data[key][0][m]))
-            returned_ref_amp = np.abs(ft_data[key][0][m])
+            returned_ref_phase = np.arctan2(np.imag(arr[0][m]), np.real(arr[0][m]))
+            returned_ref_amp = np.abs(arr[0][m])
             # np.fft.rfft only returns positive amplitudes
             if m > 0:
                 returned_ref_amp *= 2

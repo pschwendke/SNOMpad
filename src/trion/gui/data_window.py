@@ -616,8 +616,6 @@ class FourierView(BaseView):
         }  # mapping for input data indices.
         self.input_indices = list(self.columns.values())
         # setup processing method
-        if display_cfg.shd_algorithm == shd_algorithm.dft:
-            self.compute_components = self.compute_naive
 
         # setup buffer
         self.buf = CircularArrayBuffer(
@@ -632,34 +630,58 @@ class FourierView(BaseView):
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[order, n] = pen
 
-    def compute_naive(self, data, names, **kwargs):
-        win_len = kwargs["window_size"]
-        return calc_naive(data[-win_len:, :], self.orders, self.x_idx,
+    def compute_naive(self, data):
+        return calc_naive(data, self.orders, self.x_idx,
                           self.y_idx, self.input_indices)
 
-    def compute_pshet(self, data, **kwargs) -> np.ndarray:
+    def compute_shd_binning(self, data, names, tap_nbins):
+        df = pd.DataFrame(data=data, columns=[s.name for s in names])
+        amps = np.abs(
+            shd(
+                df,
+                tap_nbins
+            ).to_numpy()
+        )[:len(self.orders), :]
+        return amps
+
+    def compute_pshet(self, data, names, tap_nbins, ref_nbins, gamma) -> np.ndarray:
         #  this might be a bit slow -> max window length?
-        win_len = kwargs['window_size']
-        orders = len(self.orders)
-        channel = 'sig_a'
-        data = data.take(self.input_indices, axis=1)[-win_len:, :]
-        try:
-            demod = pshet_harmamps(data, channel, orders)
-        except Exception:
-            logger.debug(f'max demod order: {orders}')
-            logger.debug(f'demod channel: {channel}')
-            raise
-        return demod
+        df = pd.DataFrame(data=data, columns=[s.name for s in names])
+        amps = pshet(df, tap_nbins, ref_nbins)
+        coeffs = pshet_harmamps(amps, gamma)
+        return coeffs
 
     def plot(self, data, names, **kwargs):
-        amps = self.compute_components(data, names, **kwargs)
-        self.buf.put(amps)
-        y = self.buf.tail(self.bufsize)
-        vars = self.buf.vars
-        x = np.arange(y.shape[0])
-        m = np.isfinite(y[:, 0])
-        for i, v in enumerate(vars):
-            self.curves[v].setData(x[m], y[:, i].compress(m, axis=0))
+        # TODO: I should probably just get a link to the display configuration object.
+        win_len = kwargs["window_size"]
+        shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        tap_nbins = kwargs["tap_nbins"]
+        ref_nbins = kwargs["ref_nbins"]
+        gamma = kwargs["gamma"]
+        try:
+            if kwargs["use_pshet"]:
+                self.compute_pshet(
+                    data[-win_len:,:], names, tap_nbins, ref_nbins, gamma
+                )
+            elif shd_algo == shd_algorithm.dft:
+                amps = self.compute_naive(data[-win_len:,:])
+            elif shd_algo == shd_algorithm.bin:
+                amps = self.compute_shd_binning(data[-win_len:, :],
+                                                names, tap_nbins)
+        except ValueError as e:
+            if data.shape[0] == 0:
+                pass
+            if "empty bins" in str(e):
+                self.error_text.setText("empty bins detected")
+        else:
+            self.error_text.setText("")
+            self.buf.put(amps)
+            y = self.buf.tail(self.bufsize)
+            vars = self.buf.vars
+            x = np.arange(y.shape[0])
+            m = np.isfinite(y[:, 0])
+            for i, v in enumerate(vars):
+                self.curves[v].setData(x[m], y[:, i].compress(m, axis=0))
 
 
 class DataWindow(QTabWidget):

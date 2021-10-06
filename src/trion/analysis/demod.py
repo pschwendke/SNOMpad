@@ -151,11 +151,19 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
 def pshet_ft(avg: pd.DataFrame):
     """Fourier transform an averaged pshet dataframe."""
     # TODO: check if we can use a form of `pd.Dataframe.apply`
-    #  test
     # normalization is the same as 1D, but divided by both lengths
-    return {k: np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
-            for k in avg.columns.get_level_values(0).drop_duplicates()
-            }
+    keys = avg.columns.get_level_values(0).drop_duplicates()
+    demod = [np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
+             for k in keys
+             ]
+    r, c = demod[0].shape
+    col_idx = pd.MultiIndex.from_product(
+        (keys, range(c))
+    )
+    ret = pd.DataFrame(
+        data=np.hstack(demod), columns=col_idx, index=range(r),
+    )
+    return ret
 
 
 def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
@@ -272,7 +280,7 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-def pshet_harmamps(demod: np.ndarray, orders: np.ndarray) -> np.ndarray:
+def pshet_harmamps(demod: np.ndarray, gamma:float = 2.63) -> np.ndarray:
     """ Qualitatively computes tapping order harmonics at the sidebands.
     Pshet modulation depth needs to be adjusted that J_m == J_m+1
 
@@ -290,7 +298,7 @@ def pshet_harmamps(demod: np.ndarray, orders: np.ndarray) -> np.ndarray:
     # TODO
     #  rewrite: interface doesn't match dft_naive   ### does it now? ###
     m = 1    # evaluating m and m+1 sidebands
-    coefficients = demod[orders, m] + 1j * demod[orders, m+1]   # constant factors are omitted
+    coefficients = demod[:, m] + 1j * demod[:, m+1]   # constant factors are omitted
     return np.abs(coefficients)
 
 
