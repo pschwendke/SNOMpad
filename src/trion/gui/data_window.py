@@ -69,8 +69,10 @@ class DisplayConfig(HasQtlets):
     display_size: int = 200_000
     downsample: int = 200
     window_size: int = 10_000
+    tap_nbins: int = 32
     shd_algorithm: shd_algorithm = shd_algorithm.dft
 
+    # TODO: I think attrs has been updated such that this is not necessary anymore
     def __attrs_post_init__(self):
         super().__init__()
 
@@ -126,10 +128,13 @@ class ShdCntrl(QWidget):
         self.window_len.setMinimum(10)
         self.window_len.setMaximum(2_000_000)
         self.shd_algo = enum_to_combo(shd_algorithm, ValuedComboBox)
-
+        self.tap_nbins = QSpinBox()
+        self.tap_nbins.setMinimum(8)
+        self.tap_nbins.setMaximum(256)
         grid = []
         grid.append(["Window size:", self.window_len])
         grid.append(["SHD:", self.shd_algo])
+        grid.append(["Tap bins:", self.tap_nbins])
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
         lyt.setRowStretch(lyt.rowCount(), 1)
@@ -150,11 +155,16 @@ class FourierCntrl(QWidget):
         self.window_len.setMinimum(10)
         self.window_len.setMaximum(2_000_000)
         self.shd_algo = enum_to_combo(shd_algorithm, ValuedComboBox)
+        self.tap_nbins = QSpinBox()
+        self.tap_nbins.setMinimum(8)
+        self.tap_nbins.setMaximum(256)
+
         lyt = QGridLayout()
         self.setLayout(lyt)
         grid = []
         grid.append(["Window size:", self.window_len])
         grid.append(["SHD:", self.shd_algo])
+        grid.append(["Tap bins:", self.tap_nbins])
 
         add_grid(grid, lyt)
         lyt.setColumnStretch(1, 1)
@@ -180,7 +190,7 @@ class ViewCntrlPanel(QDockWidget):
         self.panels[DisplayMode.raw] = self.raw_cntrl
         self.panels[DisplayMode.phase] = self.phase_cntrl
         self.panels[DisplayMode.shd] = self.shd_cntrl
-        self.panels[DisplayMode.pshet] =  self.pshet_cntrl
+        self.panels[DisplayMode.pshet] = self.pshet_cntrl
         self.panels[DisplayMode.fourier] = self.fourier_cntrl
 
         self.stack = QStackedWidget()
@@ -290,7 +300,6 @@ class RawView(BaseView):
             self.curves[n].setData(x[m], y[m], connect="finite")
 
 
-
 class PhaseView(BaseView):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -355,7 +364,7 @@ class ShdView(BaseView):
         super().__init__(*a, **kw)
         self.x_idx = None
         self.y_idx = None
-        self.nbins = 32
+        #self.nbins = 32
         self.columns = {}  # mapping signal name -> index
         self.input_indices = []  # indices of the signals in the input data
         self.orders = np.arange(9)
@@ -406,6 +415,7 @@ class ShdView(BaseView):
         # todo: we should remove all these calculations and put them in a sort of pipeline.
         win_len = kwargs["window_size"]
         shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        tap_nbins = kwargs["tap_nbins"]
         try:
             if shd_algo == shd_algorithm.dft:
                 amps = calc_naive(data[-win_len:,:], self.orders, self.x_idx,
@@ -415,7 +425,7 @@ class ShdView(BaseView):
                 amps = np.abs(
                     shd(
                         df,
-                        self.nbins
+                        tap_nbins
                     ).to_numpy()
                 )[:len(self.orders), :]
         except ValueError as e:
@@ -423,14 +433,12 @@ class ShdView(BaseView):
                 pass
             if "empty bins" in str(e):
                 self.error_text.setText("empty bins detected")
-                amps = np.zeros((len(self.orders), len(self.input_indices)))
         else:
             self.error_text.setText("")
-        # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
-        for name, idx in self.columns.items():
-            self.curves[name].setData(self.orders, amps[:,idx])
-
-
+            # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
+            len_ = min(len(self.orders), amps.shape[0])
+            for name, idx in self.columns.items():
+                self.curves[name].setData(self.orders[:len_], amps[:len_,idx])
 
 
 class PshetView(BaseView):
@@ -472,6 +480,7 @@ class PshetView(BaseView):
             )
             self.curves[n] = crv
 
+
 class FourierView(BaseView):
     """
     View the Fourier components, similar to optical alignment in NeaScan.
@@ -492,13 +501,16 @@ class FourierView(BaseView):
         self.input_indices = []  # indices of the signals in the input data
         self.orders = np.arange(max_order + 1)
         self.curves = {}
-
+        self.error_text = pg.LabelItem(" ", color=(200, 20, 20), size="10pt")
+        self.addItem(self.error_text)
         # Try a sparkline mode where each each order has its' plot, rescaled individually
         for idx in self.orders:
-            self.addPlot(row=idx, col=0, name=f"order {idx}")
+            self.addPlot(row=idx+1, col=0, name=f"order {idx}")
 
-        p0 = self.getItem(0, 0)
+        p0 = self.getItem(1, 0)
         for plot in self.ci.items: # TODO: condense this in a common setup method
+            if not isinstance(plot, pg.PlotItem):
+                continue
             plot.setClipToView(False)
             plot.enableAutoRange(y=True)
             #plot.setYRange(0, 2)
@@ -510,8 +522,8 @@ class FourierView(BaseView):
                 plot.getAxis(ax).setWidth(60)
             if plot is not p0:
                 plot.setXLink(p0)
-        self.getItem(0,0).showAxis("top")
-        self.getItem(0,0).addLegend(offset=(2,2))
+        self.getItem(1,0).showAxis("top")
+        self.getItem(1,0).addLegend(offset=(2,2))
         self.getItem(len(self.ci.items)-1,0).showAxis("bottom")
         self.ci.setContentsMargins(0, 10, 0, 10)
 
@@ -543,7 +555,7 @@ class FourierView(BaseView):
         # setup plots
         self.curves = {}
         for order, n in self.buf.vars:
-            item = self.getItem(order, 0)
+            item = self.getItem(order+1, 0)
             pen = item.plot(pen=self.cmap[n], name=n.value)
             self.curves[order, n] = pen
 
@@ -567,8 +579,29 @@ class FourierView(BaseView):
         return demod
 
     def plot(self, data, names, **kwargs):
-        amps = self.compute_components(data, names, **kwargs)
-        self.buf.put(amps)
+        win_len = kwargs["window_size"]
+        shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        tap_nbins = kwargs["tap_nbins"]
+        try:
+            if shd_algo == shd_algorithm.dft:
+                amps = calc_naive(data[-win_len:, :], self.orders, self.x_idx,
+                                  self.y_idx, self.input_indices)
+            elif shd_algo == shd_algorithm.bin:
+                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
+                amps = np.abs(
+                    shd(
+                        df,
+                        tap_nbins
+                    ).to_numpy()
+                )[:len(self.orders), :]
+        except ValueError as e:
+            if data.shape[0] == 0:
+                pass
+            if "empty bins" in str(e):
+                self.error_text.setText("empty bins detected")
+        else:
+            self.error_text.setText("")
+            self.buf.put(amps)
         y = self.buf.tail(self.bufsize)
         vars = self.buf.vars
         x = np.arange(y.shape[0])
@@ -632,17 +665,17 @@ class DisplayController(QObject):
         self.display_timer = QTimer()
         self.display_timer.setInterval(display_dt * 1000)
 
+        # Boilerplate add up!
+        # We can probably generate the control panels directly from the
+        # Display config.
         for cntrl in [self.view_panel.raw_cntrl, self.view_panel.phase_cntrl]:
             self.display_cfg.link_widget(cntrl.downsampling, "downsample")
             self.display_cfg.link_widget(cntrl.display_size, "display_size")
-        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.window_len,
-                                     "window_size")
-        self.display_cfg.link_widget(self.view_panel.shd_cntrl.window_len,
-                                     "window_size")
-        self.display_cfg.link_widget(self.view_panel.shd_cntrl.shd_algo,
-                                     "shd_algorithm")
-        self.display_cfg.link_widget(self.view_panel.fourier_cntrl.shd_algo,
-                                     "shd_algorithm")
+        for cntrl in [self.view_panel.fourier_cntrl,
+                      self.view_panel.shd_cntrl]:
+            self.display_cfg.link_widget(cntrl.window_len, "window_size")
+            self.display_cfg.link_widget(cntrl.shd_algo, "shd_algorithm")
+            self.display_cfg.link_widget(cntrl.tap_nbins, "tap_nbins")
 
         self.fps_updt_timer.timeout.connect(self.on_update_fps)
         self.display_timer.timeout.connect(self.refresh_display)
