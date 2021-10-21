@@ -289,8 +289,8 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-def pshet_amplitudes(df: pd.DataFrame, gamma: float = 2.63) -> np.ndarray:
-    """ Qualitatively computes tapping order harmonics at the sidebands.
+def pshet_coefficients(df: pd.DataFrame, gamma: float = 2.63) -> pd.DataFrame:
+    """ Qualitatively computes the coefficients of tapping order harmonics at the sidebands.
     Pshet modulation depth needs to be adjusted that J_m == J_m+1
 
     Parameters
@@ -304,19 +304,21 @@ def pshet_amplitudes(df: pd.DataFrame, gamma: float = 2.63) -> np.ndarray:
     -------
     coeffs : pd.Dataframe
         Near field amplitudes (complex) for tapping harmonics n.
+        Index is signal, row is n.
     """
     m = np.array([1, 2])    # evaluating m and m+1 sidebands
-    scales = 1/jv(m, gamma) * np.array([1, 1j])
-    # The next line requires to transpose everything.
-    # coeffs = (np.abs(df.iloc[[1, 2]]) * scales[:, np.newaxis]).sum(axis=0).unstack().T
-    nsigs = len(df.columns.get_level_values(0).drop_duplicates())
-    coeffs = (df.loc[:, (slice(None), m)] * np.tile(scales, nsigs)
-              ).groupby(level=0, axis=1).sum()
-    return coeffs
+    scales = 1/jv(m, gamma) * np.array([1, 1j])  # TODO: not sure if we really need jv here
+
+    cols = df.columns.get_level_values(0).drop_duplicates()
+    idx = df.columns.get_level_values(1).drop_duplicates()
+
+    coeffs = np.reshape([(df.loc[m, col] * scales).sum() for col in df.loc[m, :]], newshape=(len(idx), len(cols)))
+    df_output = pd.DataFrame(coeffs, columns=cols, index=idx)
+
+    return df_output
 
 
-# older stuff, kept for compatibility #######################
-
+# older stuff, kept for compatibility ##################################################################################
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
 
 

@@ -24,7 +24,7 @@ from qtlets.widgets import IntEdit, ValuedComboBox, FloatEdit
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
-from ..analysis.demod import dft_naive, shd, pshet, pshet_amplitudes
+from ..analysis.demod import dft_naive, shd, pshet, pshet_coefficients
 
 logger = logging.getLogger(__name__)
 
@@ -646,7 +646,7 @@ class FourierView(BaseView):
     def compute_pshet(self, data, names, tap_nbins, ref_nbins, gamma) -> np.ndarray:
         df = pd.DataFrame(data=data, columns=[s.name for s in names])
         amps = pshet(df, tap_nbins, ref_nbins)
-        coeffs = pshet_amplitudes(amps, gamma).to_numpy()
+        coeffs = pshet_coefficients(amps, gamma).to_numpy()
         return np.abs(coeffs)
 
     def plot(self, data, names, **kwargs):

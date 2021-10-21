@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
-    pshet_binning, pshet_ft, pshet, pshet_amplitudes, empty_bins_in
+    pshet_binning, pshet_ft, pshet, pshet_coefficients, empty_bins_in
 
 # some parameters to create test data
 shd_parameters = [
@@ -124,7 +124,6 @@ def test_shd_empty(shd_data_points, drops):
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
 
-    # TODO update handling of missing and nan filled bins
     with pytest.raises(ValueError):
         shd(test_data.drop(test_data.index[drops]).copy(), tap_nbins)
 
@@ -277,14 +276,30 @@ def test_pshet_empty(pshet_data_points, drops):
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
 
-    # TODO update handling of missing and nan filled bins
     with pytest.raises(ValueError):
         pshet(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
 
 
-@pytest.mark.parametrize('noise_data', filter(lambda n: n>100, npoints), indirect=['noise_data'])
+def test_pshet_coefficients():
+    """ Check that pshet_coefficients returns row_1 + 1j * row_2 for arrays filled with random floats.
+    """
+    # generate some test data:
+    jv = 0.46235032505684603  # value of Bessel functions J_1(2.63) = J_2(2.63)
+    random_array = np.random.random_sample((10, 20))
+    cols = pd.MultiIndex.from_product((['sig_a', 'sig_b'], range(10)))
+    df = pd.DataFrame(data=random_array * jv, columns=cols)
+    test_data = pshet_coefficients(df)
+
+    # pshet coefficients should return row_1 + 1j * row_2
+    check = random_array[1, :] + 1j * random_array[2, :]
+    check = np.reshape(check, newshape=test_data.shape)
+    assert np.allclose(test_data, check, atol=1e-4)  # there is some error introduced by jv
+
+
+# BENCHMARKING ##############################
+@pytest.mark.parametrize('noise_data', filter(lambda n: n > 100, npoints), indirect=['noise_data'])
 def test_shd_binning_benchmark(benchmark, noise_data):
-    """ """
+    """ Benchmarks the speed of shd binning for different lengths of random data sets"""
     tap_nbins = 32
     binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
 
@@ -293,9 +308,9 @@ def test_shd_binning_benchmark(benchmark, noise_data):
     assert binned_noise.shape[0] == tap_nbins
 
 
-@pytest.mark.parametrize('noise_data', filter(lambda n: n>1000, npoints), indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])
 def test_pshet_binning_benchmark(benchmark, noise_data):
-    """ """
+    """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
     tap_nbins = 32
     ref_nbins = 16
     binned_noise = benchmark(pshet_binning, noise_data.copy(), tap_nbins, ref_nbins)
@@ -304,18 +319,3 @@ def test_pshet_binning_benchmark(benchmark, noise_data):
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
     assert binned_noise.shape[1] == len(signals) * ref_nbins
-
-
-@pytest.mark.parametrize('noise_data', [5000, 10_000, 20_000, 100_000], indirect=['noise_data'])
-def test_pshetharmamps_benchmark(benchmark, noise_data):
-    """ Tests the computation of pshet harmonics in the class FourierView, which uses the pshet demodulation.
-    The time needed for demodulation is heavily dependent on the window length of data passed to the function.
-    """
-    tap_nbins = 32
-    ref_nbins = 16
-    demod = pshet(noise_data, tap_nbins, ref_nbins)
-    signals = demod.columns.get_level_values(0).drop_duplicates()
-    data = benchmark(pshet_amplitudes, df=demod)
-
-    # test for correct number of retrieved harmonics
-    assert data.shape == (tap_nbins, len(signals))
