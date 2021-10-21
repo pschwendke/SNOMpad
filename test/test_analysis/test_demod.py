@@ -3,8 +3,7 @@ import pytest
 import numpy as np
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
-    pshet_binning, pshet_ft, pshet, pshet_harmamps
-from trion.analysis.utils import empty_bins_in
+    pshet_binning, pshet_ft, pshet, pshet_amplitudes, empty_bins_in
 
 # some parameters to create test data
 shd_parameters = [
@@ -316,7 +315,7 @@ def test_pshetharmamps_benchmark(benchmark, noise_data):
     ref_nbins = 16
     demod = pshet(noise_data, tap_nbins, ref_nbins)
     signals = demod.columns.get_level_values(0).drop_duplicates()
-    data = benchmark(pshet_harmamps, df=demod)
+    data = benchmark(pshet_amplitudes, df=demod)
 
     # test for correct number of retrieved harmonics
     assert data.shape == (tap_nbins, len(signals))

@@ -4,9 +4,30 @@ from warnings import warn
 import numpy as np
 from scipy.special import jv
 import pandas as pd
-from .utils import empty_bins_in
 
 from .signals import is_tap_modulation
+
+
+def empty_bins_in(df: pd.DataFrame) -> bool:
+    """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
+    Returns True if empty bins are detected."""
+
+    # check for missing tap bins
+    for n in range(df.shape[0]):
+        if df.index[n] != n:
+            return True
+
+    # check for missing pshet bins
+    if isinstance(df.columns, pd.MultiIndex):
+        for channel in df.columns.get_level_values(0).drop_duplicates():
+            for m in range(df[channel].shape[1]):
+                if df[channel].columns[m] != m:
+                    return True
+
+    # check for empty (NAN) bins
+    if np.isnan(df).any(axis=None):
+        return True
+    return False
 
 
 def bin_index(phi, n_bins: int):
@@ -32,7 +53,7 @@ _avg_drop_cols = set(  # tap_x, tap_y, tap_p...
 )
 
 
-def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
+def shd_binning(df: pd.DataFrame, tap_nbins: int = 32) -> pd.DataFrame:
     """Perform sHD binned average on `df`.
 
     Compute the tapping phase `tap_p` from `tap_y` and `tap_x`, then partition
@@ -55,8 +76,6 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
         Dataframe containing the average per bins. Row index contains the bin
         number for tapping. Columns indicate the signal type.
     """
-    # TODO test
-    #  smoke test passed
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     # compute indices
@@ -73,8 +92,8 @@ def shd_binning(df: pd.DataFrame, tap_nbins: int = 32):
     return avg
 
 
-def shd_ft(avg: pd.DataFrame):
-    """Perform Fourier analysis for sHD demodulation.
+def shd_ft(avg: pd.DataFrame) -> pd.DataFrame:
+    """Perform Fourier analysis for shd demodulation.
 
     Parameters
     ----------
@@ -88,31 +107,24 @@ def shd_ft(avg: pd.DataFrame):
         Fourier components. Rows indicate tapping order `n`, columns indicate
         signal type.
     """
-    # todo: add to test suite before modifying
-    #  smoke test passed
     # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
     return avg.apply(np.fft.rfft, axis=0)/len(avg)
 
 
-def shd(df: pd.DataFrame, tap_nbins: int = 32):
-    """
-    Perform sHD demodulation by binning and FT.
-
+def shd(df: pd.DataFrame, tap_nbins: int = 32) -> pd.DataFrame:
+    """Perform shd demodulation by binning and FT.
     This is a function simply calls `shd_binnning` and `shd_ft` in sequence.
     """
-    # todo: add to test suite before modifying
-    #  smoke test passed
-    #  implement handling of empty bins
     avg = shd_binning(df, tap_nbins)
     if empty_bins_in(avg):
         raise ValueError("The binned DataFrame has empty bins.")
     return shd_ft(avg)
 
 
-def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
+def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16) -> pd.DataFrame:
     """Perform pshet binned average on `df`.
 
-    Partition the data points in a 2d histogram, and compute the average per
+    Bin the data points in a 2D phase space (ref and tap phase), and compute the average per
     bin. The function performs some operations in-place, therefore affecting the
     contents of `df`. To avoid this, pass a copy, ex: `pshet_binning(df.copy())`
 
@@ -134,9 +146,6 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
         reference bin number. Therefore, the histogram for `sig_a` can be
         accessed via `avg["sig_a"]`.
     """
-    # TODO test
-    #  smoke test passed
-    #  should be added to test suite before modification...
     # compute phases
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
     df["ref_p"] = np.arctan2(df["ref_y"], df["ref_x"])
@@ -149,8 +158,10 @@ def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
     return avg.unstack()
 
 
-def pshet_ft(avg: pd.DataFrame):
-    """Fourier transform an averaged pshet dataframe."""
+def pshet_ft(avg: pd.DataFrame) -> pd.DataFrame:
+    """Fourier transform an averaged pshet dataframe.
+    Returns pd.DataFrame with MultiIndex: sig and n. Rows are m.
+    """
     # TODO: check if we can use a form of `pd.Dataframe.apply`
     # normalization is the same as 1D, but divided by both lengths
     keys = avg.columns.get_level_values(0).drop_duplicates()
@@ -167,13 +178,10 @@ def pshet_ft(avg: pd.DataFrame):
     return ret
 
 
-def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16):
+def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16) -> pd.DataFrame:
+    """Perform pshet demodulation by binning and FT.
+    This is a function simply calls `pshet_binnning` and `pshet_ft` in sequence.
     """
-    Perform pshet demodulation by binning and FT.
-    Returns dict with signal names as keys as 2D np.ndarray of harmonics as values
-    """
-    # todo: test
-    #  implement handling of empty bins
     avg = pshet_binning(df, tap_nbins, ref_nbins)
     if empty_bins_in(avg):
         raise ValueError("The binned DataFrame has empty bins.")
@@ -281,8 +289,7 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-# TODO: I don't like that name...
-def pshet_harmamps(df: pd.DataFrame, gamma:float = 2.63) -> np.ndarray:
+def pshet_amplitudes(df: pd.DataFrame, gamma: float = 2.63) -> np.ndarray:
     """ Qualitatively computes tapping order harmonics at the sidebands.
     Pshet modulation depth needs to be adjusted that J_m == J_m+1
 
@@ -290,26 +297,25 @@ def pshet_harmamps(df: pd.DataFrame, gamma:float = 2.63) -> np.ndarray:
     ----------
     df: pd.Dataframe
         demodulated pshet signal as returned by pshet_ft
+    gamma: float
+        modulation depth of the reference mirror. For gamma = 2.63, J_1 = J_2, as assumed below.
 
     Returns
     -------
-    near_field : pd.Dataframe
+    coeffs : pd.Dataframe
         Near field amplitudes (complex) for tapping harmonics n.
     """
-    # TODO
-    #   TEST: pass in stupid arrays of ones, or arange(totsize).reshape(shape)
-    #   and check we are just doing the correct sum
     m = np.array([1, 2])    # evaluating m and m+1 sidebands
     scales = 1/jv(m, gamma) * np.array([1, 1j])
     # The next line requires to transpose everything.
-    #coeffs = (np.abs(df.iloc[[1, 2]]) * scales[:, np.newaxis]).sum(axis=0).unstack().T
+    # coeffs = (np.abs(df.iloc[[1, 2]]) * scales[:, np.newaxis]).sum(axis=0).unstack().T
     nsigs = len(df.columns.get_level_values(0).drop_duplicates())
     coeffs = (df.loc[:, (slice(None), m)] * np.tile(scales, nsigs)
               ).groupby(level=0, axis=1).sum()
     return coeffs
 
 
-#####  older stuff, kept for compatibility
+# older stuff, kept for compatibility #######################
 
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
 
@@ -317,7 +323,6 @@ _deprecation_warning = FutureWarning("This function is deprecated. Please use th
 def calc_phase(df, in_place=False):
     warn(_deprecation_warning)
     "Computes tap_p"
-    # todo: deprecate
     if not in_place:
         df = df.copy()
     df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
@@ -372,6 +377,5 @@ def dft_binned(phi, sig, n_bins=256):
     """
     # Somehow very fast?!
     warn(_deprecation_warning)
-    # TODO: expand to multiple signals
     df = pd.DataFrame(np.vstack([phi, sig]).T, columns=["tap_p", "sig"])
     return np.squeeze(binned_ft(binned_average(df, n_bins, compute_counts=False)).to_numpy())
