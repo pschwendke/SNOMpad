@@ -1,5 +1,6 @@
 nidaqmx
 matplotlib
+numpy
 pandas
 tqdm
 PySide2

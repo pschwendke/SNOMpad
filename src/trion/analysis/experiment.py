@@ -4,7 +4,7 @@ from typing import Iterable
 import attr
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, \
-    detection_signals, acquisition_signals, all_acquisition_signals, \
+    detection_signals, modulation_signals, all_modulation_signals, \
     all_detector_signals
 
 # TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
@@ -47,7 +47,7 @@ class Experiment:
         """
         return sorted(chain(
             detection_signals[self.detector],
-            acquisition_signals[self.acquisition]
+            modulation_signals[self.acquisition]
         ))
 
     def is_valid(self) -> bool:

@@ -3,16 +3,20 @@ import time
 from types import SimpleNamespace
 import os.path as pth
 
-from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal
-from PySide2.QtWidgets import QFileDialog
+from PySide2.QtCore import QObject, QTimer, QStateMachine, QState, Signal, Qt
+from PySide2.QtWidgets import QFileDialog, QDockWidget, QWidget, QVBoxLayout, QGridLayout, QComboBox, QHBoxLayout, \
+    QPushButton, QCheckBox
 from nidaqmx import DaqError
+from nidaqmx.system import System
 from qtlets.qtlets import HasQtlets
+from qtlets.widgets import StrEdit, FloatEdit
 
 from trion.analysis.experiment import Experiment as OriginalExperiment
 
 from trion.expt.buffer.factory import prepare_buffer, BackendType
 from trion.expt.buffer.factory import BufferConfig as OriginalBufferConfig
 from trion.expt.daq import DaqController as OriginalDaqController
+from trion.gui.utils import add_grid, ToggleButton
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +123,7 @@ class AcquisitionController(QObject):
         self.daq.link_widget(self.daq_panel.sample_rate, "sample_rate")
         self.daq.link_widget(self.daq_panel.sig_range, "sig_range")
         self.daq.link_widget(self.daq_panel.phase_range, "phase_range")
+        self.daq.link_widget(self.daq_panel.emulate_data, "emulate")
 
         # It can be dangerous to change this during the acquisition.
         # It will probably be necessary disable some of these during acquisition
@@ -189,7 +194,7 @@ class AcquisitionController(QObject):
     def read_next(self):
         # A lot is going on here...
         try:
-            n = self.daq.reader.read()
+            n = self.daq.read()
 
         except (Exception, DaqError):
             # stop otherwise we will raise this infinitely
@@ -201,8 +206,7 @@ class AcquisitionController(QObject):
         if not self.current_exp.continuous and self.n_acquired >= self.current_exp.npts:
             # this frame is complete
             # i think we should replace this by a `something.is_acquisition_complete()`
-            if (self.current_exp.frame_reps > 1 and
-                self.buffer.frame_idx < self.current_exp.frame_reps):
+            if self.current_exp.frame_reps > 1 and self.buffer.frame_idx < self.current_exp.frame_reps:
                 logger.info("Preparing next frame.")
                 self.prepare_next_frame()
             else:
@@ -240,3 +244,76 @@ class AcquisitionController(QObject):
         if filename:
             self.buffer_cfg.fname = filename
 
+
+class DaqPanel(QDockWidget):
+    def __init__(self, *args,
+                 acq_ctrl=None, buffer_cfg=None,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.acq_ctrl = acq_ctrl
+        self.buffer_cfg = buffer_cfg
+
+        back_panel = QWidget()
+        self.setWidget(back_panel)
+        back_panel.setLayout(QVBoxLayout())
+        daq_layout = QGridLayout()
+        back_panel.layout().addLayout(daq_layout)
+
+        # Populate DAQ group
+        grid = []
+        # show device name,
+        self.dev_name = QComboBox()
+        self.dev_name.addItems(System().devices.device_names)
+        grid.append([
+            "Device", self.dev_name
+        ])
+        # clock channel
+        self.sample_clock = StrEdit("", parent=self)  # TODO: use a dropdown
+        grid.append([
+            "Sample clock", self.sample_clock
+        ])
+        # sample rate
+        self.sample_rate = FloatEdit(200_000, bottom=0, top=1E6, parent=self)
+        grid.append([
+            "Sample rate", self.sample_rate, "Hz"
+        ])
+        # signal range
+        # TODO: use a dropdown
+        self.sig_range = FloatEdit(1.0, bottom=-10, top=10, parent=self)
+        grid.append([
+            "Signal range", self.sig_range, "V"
+        ])
+        # phase range
+        # TODO: use a dropdown
+        self.phase_range = FloatEdit(1, bottom=-10, top=10, parent=self)
+        grid.append([
+            "Modulation range", self.phase_range, "V"
+        ])
+        self.emulate_data = QCheckBox("")
+        self.emulate_data.setChecked(False)
+        self.emulate_data.setStatusTip("Emulate data in software")
+        grid.append([
+            "Emulate?", self.emulate_data, "",
+        ])
+
+        add_grid(grid, daq_layout)
+
+        # Button at the end
+        btn_layout = QHBoxLayout()
+        back_panel.layout().addLayout(btn_layout)
+        back_panel.layout().addStretch(1)
+        self.go_btn = ToggleButton("Start", alt_text="Stop")
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setEnabled(False)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.save_btn)
+        btn_layout.addWidget(self.go_btn)
+
+
+        # Finalize
+        self.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.setFeatures(
+            QDockWidget.DockWidgetMovable |
+            QDockWidget.DockWidgetFloatable
+        )

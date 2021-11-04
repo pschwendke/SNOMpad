@@ -1,10 +1,9 @@
+import pandas as pd
 import pytest
 import numpy as np
 
-from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet
-
-# TODO: Do we need duplicate tests for shd_ft and shd?
-#  test passing pshet data to shd functions (which one?)
+from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
+    pshet_binning, pshet_ft, pshet, pshet_coefficients, empty_bins_in
 
 # some parameters to create test data
 shd_parameters = [
@@ -118,16 +117,15 @@ def test_shd_ft_harmonics(shd_data_points):
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
-def test_shd_ft_empty(shd_data_points, drops):
-    """ Missing bins or bins filled with nans should be caught by shd_ft.
+def test_shd_empty(shd_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by shd.
     """
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
 
-    # TODO update handling of missing and nan filled bins
-    with pytest.raises(NotImplementedError):
-        shd_ft(shd_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins))
+    with pytest.raises(ValueError):
+        shd(test_data.drop(test_data.index[drops]).copy(), tap_nbins)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -141,7 +139,7 @@ def test_pshet_binning(pshet_data_points):
 
     # test shape of returned DataFrame
     assert binned_data.shape[0] == tap_nbins
-    assert binned_data.shape[1] == 2 * ref_nbins
+    assert binned_data.shape[1] == 2 * ref_nbins  # Why 2?!
     assert binned_data.index.name == 'tap_n'
     assert binned_data.columns.names[1] == 'ref_n'
     assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
@@ -214,13 +212,16 @@ def test_pshet_ft_shape(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
+    binned = pshet_binning(test_data.copy(), tap_nbins, ref_nbins)
+    ft_data = pshet_ft(binned)
+    assert type(ft_data) == pd.DataFrame
 
     # test shape of returned arrays
-    assert all('sig' in key for key in ft_data.keys())
-    for array in ft_data.values():
-        assert array.shape[0] == tap_nbins
-        assert array.shape[1] == ref_nbins / 2 + 1
+    signals = ft_data.columns.get_level_values(0).drop_duplicates()
+    assert all('sig' in key for key in signals)
+
+    assert ft_data.shape[0] == tap_nbins
+    assert ft_data.shape[1] == (ref_nbins // 2 + 1) * len(signals)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -232,13 +233,15 @@ def test_pshet_ft_harmonics(pshet_data_points):
     ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
     
     # signals, e.g. 'sig_a' are keys of ft_data
-    for key in ft_data.keys():
+    signals = ft_data.columns.get_level_values(0).drop_duplicates()
+    for key in signals:
         # tapping harmonics
+        arr = ft_data[key].to_numpy()
         for n in range(tap_nharm):
             initial_tap_phase = np.angle(tap_harm_amps[n])
             initial_tap_amp = np.abs(tap_harm_amps[n])
-            returned_tap_phase = np.arctan2(np.imag(ft_data[key][n, 0]), np.real(ft_data[key][n, 0]))
-            returned_tap_amp = np.abs(ft_data['sig_a'][n, 0])
+            returned_tap_phase = np.arctan2(np.imag(arr[n, 0]), np.real(arr[n, 0]))
+            returned_tap_amp = np.abs(arr[n, 0])
             # np.fft.rfft only returns positive amplitudes
             if n > 0:
                 returned_tap_amp *= 2
@@ -252,8 +255,8 @@ def test_pshet_ft_harmonics(pshet_data_points):
         for m in range(ref_nharm):
             initial_ref_phase = np.angle(ref_harm_amps[m])
             initial_ref_amp = np.abs(ref_harm_amps[m])
-            returned_ref_phase = np.arctan2(np.imag(ft_data[key][0][m]), np.real(ft_data[key][0][m]))
-            returned_ref_amp = np.abs(ft_data[key][0][m])
+            returned_ref_phase = np.arctan2(np.imag(arr[0][m]), np.real(arr[0][m]))
+            returned_ref_amp = np.abs(arr[0][m])
             # np.fft.rfft only returns positive amplitudes
             if m > 0:
                 returned_ref_amp *= 2
@@ -266,35 +269,53 @@ def test_pshet_ft_harmonics(pshet_data_points):
         
 @pytest.mark.parametrize('drops', [0, [31, 32, 100], [123, -1]])
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
-def test_pshet_ft_empty(pshet_data_points, drops):
-    """ Missing bins or bins filled with nans should be caught by pshet_ft.
+def test_pshet_empty(pshet_data_points, drops):
+    """ Missing bins or bins filled with nans should be caught by pshet.
     """
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
 
-    # TODO update handling of missing and nan filled bins
-    with pytest.raises(NotImplementedError):
-        pshet_ft(pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins))
+    with pytest.raises(ValueError):
+        pshet(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
 
 
-@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+def test_pshet_coefficients():
+    """ Check that pshet_coefficients returns row_1 + 1j * row_2 for arrays filled with random floats.
+    """
+    # generate some test data:
+    jv = 0.46235032505684603  # value of Bessel functions J_1(2.63) = J_2(2.63)
+    random_array = np.random.random_sample((10, 20))
+    cols = pd.MultiIndex.from_product((['sig_a', 'sig_b'], range(10)))
+    df = pd.DataFrame(data=random_array * jv, columns=cols)
+    test_data = pshet_coefficients(df)
+
+    # pshet coefficients should return row_1 + 1j * row_2
+    check = random_array[1, :] + 1j * random_array[2, :]
+    check = np.reshape(check, newshape=test_data.shape)
+    assert np.allclose(test_data, check, atol=1e-4)  # there is some error introduced by jv
+
+
+# BENCHMARKING ##############################
+@pytest.mark.parametrize('noise_data', filter(lambda n: n > 100, npoints), indirect=['noise_data'])
 def test_shd_binning_benchmark(benchmark, noise_data):
-    """ """
+    """ Benchmarks the speed of shd binning for different lengths of random data sets"""
     tap_nbins = 32
     binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
 
+    assert not empty_bins_in(binned_noise)
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
 
 
-@pytest.mark.parametrize('noise_data', npoints, indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])
 def test_pshet_binning_benchmark(benchmark, noise_data):
-    """ """
+    """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
     tap_nbins = 32
     ref_nbins = 16
     binned_noise = benchmark(pshet_binning, noise_data.copy(), tap_nbins, ref_nbins)
-
+    signals = binned_noise.columns.get_level_values(0).drop_duplicates()
+    assert not empty_bins_in(binned_noise)
     # test for correct shape, i.e. number of bins
     assert binned_noise.shape[0] == tap_nbins
-    assert binned_noise.shape[1] == 2 * ref_nbins
+    assert binned_noise.shape[1] == len(signals) * ref_nbins

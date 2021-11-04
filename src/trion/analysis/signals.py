@@ -88,12 +88,13 @@ def signal_colormap(scale=255, filename=None) -> dict:
 
 class Scan(NamedEnum):
     point = auto()
-    # approach curve?
+    # approach = auto()
+    # AFM = auto()
     # image scan, or AFM, or SNOM?
 
 
 class Demodulation(NamedEnum):
-    shd = auto()  # self-homodyne
+    shd = auto()
     pshet = auto()
     # nanospectroscopy
 
@@ -111,12 +112,12 @@ detection_signals = bidict({
 })
 all_detector_signals = frozenset(chain(*detection_signals.values()))
 
-acquisition_signals = bidict({
+modulation_signals = bidict({
     Demodulation.shd: frozenset([Signals.tap_x, Signals.tap_y]),
     Demodulation.pshet: frozenset([Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y])
 })
 
-all_acquisition_signals = frozenset(chain(*acquisition_signals.values()))
+all_modulation_signals = frozenset(chain(*modulation_signals.values()))
 
 
 def is_optical_signal(role: Signals) -> bool:

@@ -34,7 +34,7 @@ from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 
 from .cfuncs import self_cal
-from ..analysis.signals import Signals, is_optical_signal
+from ..analysis.signals import Signals, is_optical_signal, all_modulation_signals
 import warnings
 import re
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ class TrionsAnalogReader(): # for not pump-probe
     def avail_samp(self):
         return self.analog_stream.avail_samp_per_chan
 
-    def read(self, n=np.infty):
+    def read(self, n=np.infty, emulated=False):
         """Explict read, when acquisition is handled by the main script."""
         n = min(n, self.avail_samp)
         if n == 0:
@@ -133,13 +133,28 @@ class TrionsAnalogReader(): # for not pump-probe
                 tmp,
                 number_of_samples_per_channel=n
         )
+        if emulated:
+            tmp = self.emulated_data(n)
         try:
             r = self.buffer.put(tmp)
         except ValueError:
             raise
-            r = self.buffer.fill(tmp)  # todo: cleanup
         return r # arg
-    
+
+    def emulated_data(self, size):
+        """Generate emulated data with random phase and signals."""
+        out = np.clip(
+            np.random.normal(0.5, 0.1, (size, len(self.vars))),
+            0, None)
+        tap_phi = np.random.uniform(-np.pi, np.pi, size)
+        out[:, self.vars.index(Signals.tap_x)] = np.cos(tap_phi)
+        out[:, self.vars.index(Signals.tap_y)] = np.sin(tap_phi)
+        if Signals.ref_x in self.vars:
+            ref_phi = np.random.uniform(-np.pi, np.pi, size)
+            out[:, self.vars.index(Signals.ref_x)] = np.cos(ref_phi)
+            out[:, self.vars.index(Signals.ref_y)] = np.sin(ref_phi)
+        return out
+
     def stop(self):
         self.buffer.finish()
         return self
@@ -179,6 +194,7 @@ class DaqController:
     phase_range: float = attr.ib(default=1.0, kw_only=True)
     tasks: typing.Mapping[str, ni.Task] = attr.ib(factory=dict, kw_only=True)
     reader = attr.ib(init=False, default=None)
+    emulate = attr.ib(default=False)
 
     def __attrs_post_init__(self):  # well... sorry for this..
         # Just log some information.
@@ -271,6 +287,14 @@ class DaqController:
 
     def is_done(self) -> bool:
         return all(t.is_task_done() for t in self.tasks.values()) # hmm...
+
+    def read(self):
+        "Simple reading indirection."
+        data = self.reader.read(emulated=self.emulate)
+        return data
+
+
+
 
     def stop(self) -> 'DaqController':
         for t in self.tasks.values():
