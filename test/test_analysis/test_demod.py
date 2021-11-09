@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 import numpy as np
+from scipy.special import jv
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
     pshet_binning, pshet_ft, pshet, pshet_coefficients, empty_bins_in
@@ -281,19 +282,22 @@ def test_pshet_empty(pshet_data_points, drops):
 
 
 def test_pshet_coefficients():
-    """ Check that pshet_coefficients returns row_1 + 1j * row_2 for arrays filled with random floats.
+    """ Check that pshet_coefficients returns col_1 + 1j * col_2 per signal for arrays filled with random complex.
     """
-    # generate some test data:
-    jv = 0.46235032505684603  # value of Bessel functions J_1(2.63) = J_2(2.63)
-    random_array = np.random.random_sample((10, 20))
+    # generate some complex test data:
+    gamma = 2.63
+    random_sig_a = np.random.random_sample((10, 10)) * np.exp(1j)
+    random_sig_b = np.random.random_sample((10, 10)) * np.exp(1j)
     cols = pd.MultiIndex.from_product((['sig_a', 'sig_b'], range(10)))
-    df = pd.DataFrame(data=random_array * jv, columns=cols)
-    test_data = pshet_coefficients(df)
+    test_signal = np.concatenate((random_sig_a, random_sig_b), axis=1)
+    df = pd.DataFrame(data=test_signal, columns=cols)
+    test_data = pshet_coefficients(df, gamma)
 
-    # pshet coefficients should return row_1 + 1j * row_2
-    check = random_array[1, :] + 1j * random_array[2, :]
-    check = np.reshape(check, newshape=test_data.shape)
-    assert np.allclose(test_data, check, atol=1e-4)  # there is some error introduced by jv
+    # pshet coefficients should return col_1 + 1j * col_2
+    coeffs_a = np.abs(random_sig_a[:, 1]) / jv(1, gamma) + 1j * np.abs(random_sig_a[:, 2]) / jv(2, gamma)
+    coeffs_b = np.abs(random_sig_b[:, 1]) / jv(1, gamma) + 1j * np.abs(random_sig_b[:, 2]) / jv(2, gamma)
+    assert np.allclose(test_data['sig_a'], coeffs_a)
+    assert np.allclose(test_data['sig_b'], coeffs_b)
 
 
 # BENCHMARKING ##############################
