@@ -291,14 +291,14 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
 
 def pshet_coefficients(df: pd.DataFrame, gamma: float = 2.63) -> pd.DataFrame:
     """ Qualitatively computes the coefficients of tapping order harmonics at the sidebands.
-    Pshet modulation depth needs to be adjusted that J_m == J_m+1
+    Sidebands at m=1 and m=2 are evaluated.
 
     Parameters
     ----------
     df: pd.Dataframe
         demodulated pshet signal as returned by pshet_ft
     gamma: float
-        modulation depth of the reference mirror. For gamma = 2.63, J_1 = J_2, as assumed below.
+        modulation depth of the reference mirror.
 
     Returns
     -------
@@ -306,16 +306,14 @@ def pshet_coefficients(df: pd.DataFrame, gamma: float = 2.63) -> pd.DataFrame:
         Near field amplitudes (complex) for tapping harmonics n.
         Index is signal, row is n.
     """
-    m = np.array([1, 2])    # evaluating m and m+1 sidebands
-    scales = 1/jv(m, gamma) * np.array([1, 1j])  # TODO: not sure if we really need jv here
+    m = np.array([1, 2])    # evaluating sidebands at m=1 and m=2
+    scales = 1/jv(m, gamma) * np.array([1, 1j])
 
-    cols = df.columns.get_level_values(0).drop_duplicates()
-    idx = df.columns.get_level_values(1).drop_duplicates()
+    nsigs = len(df.columns.get_level_values(0).drop_duplicates())
+    coeffs = (df.loc[:, (slice(None), m)].abs() * np.tile(scales, nsigs)
+              ).groupby(level=0, axis=1).sum()
 
-    coeffs = np.reshape([(df.loc[m, col] * scales).sum() for col in df.loc[m, :]], newshape=(len(idx), len(cols)))
-    df_output = pd.DataFrame(coeffs, columns=cols, index=idx)
-
-    return df_output
+    return coeffs
 
 
 # older stuff, kept for compatibility ##################################################################################
