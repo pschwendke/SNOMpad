@@ -1,4 +1,6 @@
 # io.py: read and write utility function
+import re
+from itertools import takewhile
 from os.path import splitext
 
 import numpy as np
@@ -92,3 +94,27 @@ def export_data(filename, data, header):
             header[i] = v.value
     writer = writers[ext]
     writer(filename, data, header)
+
+
+def load_approach(fname: str) -> pd.DataFrame:
+    """Loads an approach curve as a pandas.DataFrame.
+
+    Parameters
+    ----------
+    fname : str
+        File to load.
+
+    Returns
+    -------
+    frame : pd.DataFrame
+        Approach curve.
+
+    The header of the file, containing the acquisition parameters are stored as
+    `dataframe.attrs["header"]`.
+    """
+    with open(fname, encoding="utf-8") as f:
+        meta = list(takewhile(lambda ln: ln.startswith("#"), f))
+    meta = "".join(meta)
+    frame = pd.read_table(fname, comment="#").dropna(axis="columns")
+    frame.attrs["header"] = meta
+    return frame
