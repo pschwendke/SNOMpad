@@ -5,6 +5,7 @@ from scipy.special import jv
 
 from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
     pshet_binning, pshet_ft, pshet, pshet_coefficients, empty_bins_in
+from trion.analysis.signals import Signals
 
 # some parameters to create test data
 shd_parameters = [
@@ -37,15 +38,14 @@ def test_shd_binning(shd_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    binned_data = shd_binning(test_data.copy(), tap_nbins)
+
+    data = test_data.to_numpy()
+    signals = [Signals[s] for s in test_data.columns]
+    binned_data = shd_binning(data, signals, tap_nbins)
 
     # data should be unchanged by binning
-    assert binned_data['sig_a'].equals(test_data['sig_a'])
-
-    # tap_n as index, signals as columns
-    assert binned_data.shape[0] == tap_nbins
-    assert binned_data.index.name == 'tap_n'
-    assert all('sig' in binned_data.columns[i] for i in range(binned_data.shape[1]))
+    assert np.allclose(binned_data, test_data['sig_a'])
+    assert binned_data.shape[-1] == tap_nbins
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
@@ -55,10 +55,13 @@ def test_shd_binning_shuffled(shd_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    shuffled_data = shd_binning(test_data.sample(frac=1), tap_nbins)
 
-    assert shuffled_data.shape[0] == tap_nbins
-    assert all(shuffled_data.index[i] < shuffled_data.index[i + 1] for i in range(len(shuffled_data) - 1))
+    data = test_data.sample(frac=1).to_numpy()
+    signals = [Signals[s] for s in test_data.columns]
+    shuffled_data = shd_binning(data, signals, tap_nbins)
+
+    assert np.allclose(shuffled_data, test_data['sig_a'])
+    assert shuffled_data.shape[-1] == tap_nbins
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
@@ -69,13 +72,15 @@ def test_shd_binning_empty(shd_data_points, drops):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    perforated_data = shd_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins)
+
+    data = test_data.drop(test_data.index[drops]).to_numpy()
+    signals = [Signals[s] for s in test_data.columns]
+    perforated_data = shd_binning(data, signals, tap_nbins)
 
     # the shape should be unchanged
-    assert perforated_data.shape[0] == tap_nbins
-    assert all(perforated_data.index[i] < perforated_data.index[i + 1] for i in range(len(perforated_data) - 1))
+    assert perforated_data.shape[-1] == tap_nbins
     # Nan should be inserted in missing bins
-    assert all(np.isnan(perforated_data.iloc[drops]))
+    assert np.isnan(perforated_data[:, drops]).all()
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
@@ -86,10 +91,13 @@ def test_shd_ft_shape(shd_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    ft_data = shd_ft(shd_binning(test_data.copy(), tap_nbins))
 
-    assert ft_data.shape[0] == tap_nbins // 2 + 1
-    assert all('sig' in ft_data.columns[i] for i in range(ft_data.shape[1]))
+    data = test_data.to_numpy()
+    signals = [Signals[s] for s in test_data.columns]
+    binned = shd_binning(data, signals, tap_nbins)
+    ft_data = shd_ft(binned)
+
+    assert ft_data.shape[-1] == tap_nbins // 2 + 1
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
@@ -99,13 +107,16 @@ def test_shd_ft_harmonics(shd_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-    ft_data = shd_ft(shd_binning(test_data.copy(), tap_nbins))
+    data = test_data.to_numpy()
+    signals = [Signals[s] for s in test_data.columns]
+    binned = shd_binning(data, signals, tap_nbins)
+    ft_data = shd_ft(binned)
 
     for n in range(tap_nharm):
         initial_phase = np.angle(tap_harm_amps[n])
         initial_amp = np.abs(tap_harm_amps[n])
-        returned_phase = np.arctan2(np.imag(ft_data['sig_a'][n]), np.real(ft_data['sig_a'][n]))
-        returned_amp = np.abs(ft_data['sig_a'][n])
+        returned_phase = np.arctan2(np.imag(ft_data[0][n]), np.real(ft_data[0][n]))
+        returned_amp = np.abs(ft_data[0][n])
         # np.fft.rfft only returns positive amplitudes
         if n > 0:
             returned_amp *= 2
@@ -124,9 +135,11 @@ def test_shd_empty(shd_data_points, drops):
     # retrieve parameters and test data from fixture
     params, test_data = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
+    signals = [Signals[s] for s in test_data.columns]
+    data = test_data.drop(test_data.index[drops]).to_numpy()
 
     with pytest.raises(ValueError):
-        shd(test_data.drop(test_data.index[drops]).copy(), tap_nbins)
+        shd(data, signals, tap_nbins)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -305,11 +318,12 @@ def test_pshet_coefficients():
 def test_shd_binning_benchmark(benchmark, noise_data):
     """ Benchmarks the speed of shd binning for different lengths of random data sets"""
     tap_nbins = 32
-    binned_noise = benchmark(shd_binning, noise_data.copy(), tap_nbins)
+    signals = [Signals[s] for s in noise_data.columns]
+    data = noise_data.to_numpy()
+    binned_noise = benchmark(shd_binning, data, signals, tap_nbins)
 
-    assert not empty_bins_in(binned_noise)
     # test for correct shape, i.e. number of bins
-    assert binned_noise.shape[0] == tap_nbins
+    assert binned_noise.shape[-1] == tap_nbins
 
 
 @pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])

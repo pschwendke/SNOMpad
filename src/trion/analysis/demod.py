@@ -3,9 +3,10 @@ from itertools import product
 from warnings import warn
 import numpy as np
 from scipy.special import jv
+from scipy.stats import binned_statistic
 import pandas as pd
 
-from .signals import is_tap_modulation
+from .signals import is_tap_modulation, Signals, all_detector_signals
 
 
 def empty_bins_in(df: pd.DataFrame) -> bool:
@@ -46,79 +47,34 @@ def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     return (np.arange(n_bins)+0.5) * step + lo
 
 
-_avg_drop_cols = set(  # tap_x, tap_y, tap_p...
+_avg_drop_cols = set(
     map("_".join,
         product(["tap", "ref"], ["x", "y", "p"])
         )
 )
 
 
-def shd_binning(df: pd.DataFrame, tap_nbins: int = 32) -> pd.DataFrame:
-    """Perform sHD binned average on `df`.
-
-    Compute the tapping phase `tap_p` from `tap_y` and `tap_x`, then partition
-    the data points in an histogram based on `tap_p`, and compute the average
-    per bin.
-
-    The function performs some operations in-place, therefore affecting the
-    contents of `df`. To avoid this, pass a copy, ex: `shd_binning(df.copy())`
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataframe of sample points. The columns indicate the signal type.
-    tap_nbins : int
-        Number of bins to use. Default: 32
-
-    Returns
-    -------
-    avg : pd.DataFrame
-        Dataframe containing the average per bins. Row index contains the bin
-        number for tapping. Columns indicate the signal type.
-    """
-    # compute phases
-    df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
-    # compute indices
-    df["tap_n"] = bin_index(df["tap_p"], tap_nbins)
-    # compute histogram
-    avg = df.drop(columns=_avg_drop_cols & set(df.columns)
-                  ).groupby(["tap_n"]).mean()
-    # fill missing bins with nans
-    if len(avg) != tap_nbins:
-        for i in range(tap_nbins):
-            if i not in avg.index:
-                avg.loc[i] = np.full(avg.shape[1], np.nan)
-        avg.sort_index(inplace=True)
-    return avg
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
+    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
+                                  for det_sig in all_detector_signals if det_sig in signals])
+    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
+                       data[:, [bool(s == Signals.tap_x) for s in signals]])
+    returns = binned_statistic(x=tap_p.squeeze(), values=detector_signals,
+                               statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+    binned = returns.statistic
+    return binned
 
 
-def shd_ft(avg: pd.DataFrame) -> pd.DataFrame:
-    """Perform Fourier analysis for shd demodulation.
-
-    Parameters
-    ----------
-    avg : pd.DataFrame
-        Data points averaged per bins. Rows indicate bin, columns indicate
-        signal type. Note that every bin should be present, this is not checked.
-
-    Returns
-    -------
-    shd : pd.DataFrame
-        Fourier components. Rows indicate tapping order `n`, columns indicate
-        signal type.
-    """
-    # normalization factor: step/2/np.pi, with step = 2*np.pi/len(avg)
-    return avg.apply(np.fft.rfft, axis=0)/len(avg)
+def shd_ft(binned: np.ndarray) -> np.ndarray:
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft(binned) / binned.shape[-1]
+    return ft
 
 
-def shd(df: pd.DataFrame, tap_nbins: int = 32) -> pd.DataFrame:
-    """Perform shd demodulation by binning and FT.
-    This is a function simply calls `shd_binnning` and `shd_ft` in sequence.
-    """
-    avg = shd_binning(df, tap_nbins)
-    if empty_bins_in(avg):
-        raise ValueError("The binned DataFrame has empty bins.")
-    return shd_ft(avg)
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
+    binned = shd_binning(data, signals, tap_nbins)
+    return shd_ft(binned)
 
 
 def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16) -> pd.DataFrame:
