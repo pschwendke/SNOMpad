@@ -3,7 +3,7 @@ from itertools import product
 from warnings import warn
 import numpy as np
 from scipy.special import jv
-from scipy.stats import binned_statistic
+from scipy.stats import binned_statistic, binned_statistic_2d
 import pandas as pd
 
 from .signals import is_tap_modulation, Signals, all_detector_signals
@@ -77,71 +77,39 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
     return shd_ft(binned)
 
 
-def pshet_binning(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16) -> pd.DataFrame:
-    """Perform pshet binned average on `df`.
-
-    Bin the data points in a 2D phase space (ref and tap phase), and compute the average per
-    bin. The function performs some operations in-place, therefore affecting the
-    contents of `df`. To avoid this, pass a copy, ex: `pshet_binning(df.copy())`
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataframe of sample points. The columns indicate the signal type.
-    tap_nbins : int
-        Number of bins for tapping modulation. Default: 32
-    ref_nbins : int
-        Number of bins for reference arm phase modulation. Default: 16
-
-    Returns
-    -------
-    avg : pd.DataFrame
-        Dataframe containing the average per bins. Row index contains the bin
-        number for tapping. The column index is a `MultiIndex` where level 0 is
-        the signal name as a string (ex: `"sig_a"`), and level 1 is the
-        reference bin number. Therefore, the histogram for `sig_a` can be
-        accessed via `avg["sig_a"]`.
-    """
-    # compute phases
-    df["tap_p"] = np.arctan2(df["tap_y"], df["tap_x"])
-    df["ref_p"] = np.arctan2(df["ref_y"], df["ref_x"])
-    # compute indices
-    df["tap_n"] = bin_index(df["tap_p"], tap_nbins)
-    df["ref_n"] = bin_index(df["ref_p"], ref_nbins)
-    # compute histogram
-    avg = df.drop(columns=_avg_drop_cols & set(df.columns)
-                  ).groupby(["tap_n", "ref_n"]).mean()
-    return avg.unstack()
+def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
+    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
+                                  for det_sig in all_detector_signals if det_sig in signals])
+    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
+                       data[:, [bool(s == Signals.tap_x) for s in signals]])
+    ref_p = np.arctan2(data[:, [bool(s == Signals.ref_y) for s in signals]],
+                       data[:, [bool(s == Signals.ref_x) for s in Signals]])
+    returns = binned_statistic_2d(x=tap_p.squeeze(), y=ref_p.squeeze(), values=detector_signals, statistic='mean',
+                                  bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+    binned = returns.statistic
+    return binned.transpose((-1, -2))
 
 
-def pshet_ft(avg: pd.DataFrame) -> pd.DataFrame:
-    """Fourier transform an averaged pshet dataframe.
-    Returns pd.DataFrame with MultiIndex: sig and n. Rows are m.
-    """
-    # TODO: check if we can use a form of `pd.Dataframe.apply`
-    # normalization is the same as 1D, but divided by both lengths
-    keys = avg.columns.get_level_values(0).drop_duplicates()
-    demod = [np.fft.rfft2(avg[k].to_numpy()) / avg[k].shape[0] / avg[k].shape[1]
-             for k in keys
-             ]
-    r, c = demod[0].shape
-    col_idx = pd.MultiIndex.from_product(
-        (keys, range(c))
-    )
-    ret = pd.DataFrame(
-        data=np.hstack(demod), columns=col_idx, index=range(r),
-    )
-    return ret
+def pshet_ft(binned: np.ndarray) -> np.ndarray:
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
+    return ft
 
 
-def pshet(df: pd.DataFrame, tap_nbins: int = 32, ref_nbins: int = 16) -> pd.DataFrame:
-    """Perform pshet demodulation by binning and FT.
-    This is a function simply calls `pshet_binnning` and `pshet_ft` in sequence.
-    """
-    avg = pshet_binning(df, tap_nbins, ref_nbins)
-    if empty_bins_in(avg):
-        raise ValueError("The binned DataFrame has empty bins.")
-    return pshet_ft(avg)
+def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
+    m = np.array([1, 2])
+    scales = 1 / jv(m, gamma) * np.array([1, 1j])
+
+    coefficients = (np.abs(ft[m]) * scales[:, np.newaxis]).sum(axis=0)
+    neg_coefficients = (np.abs(ft[-m]) * scales[:, np.newaxis]).sum(axis=0)
+
+    return coefficients
+
+
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
+    binned = pshet_binning(data, signals, tap_nbins, ref_nbins)
+    return pshet_ft(binned)
 
 
 def dft_lstsq(phi, sig, max_order: int):
