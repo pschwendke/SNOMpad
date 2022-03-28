@@ -83,11 +83,14 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
                        data[:, [bool(s == Signals.tap_x) for s in signals]])
     ref_p = np.arctan2(data[:, [bool(s == Signals.ref_y) for s in signals]],
-                       data[:, [bool(s == Signals.ref_x) for s in Signals]])
+                       data[:, [bool(s == Signals.ref_x) for s in signals]])
     returns = binned_statistic_2d(x=tap_p.squeeze(), y=ref_p.squeeze(), values=detector_signals, statistic='mean',
                                   bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
-    return binned.transpose((-1, -2))
+    if binned.ndim == 2:
+        return binned.T[np.newaxis, :, :]
+    elif binned.ndim == 3:
+        return binned.transpose(0, 2, 1)
 
 
 def pshet_ft(binned: np.ndarray) -> np.ndarray:
@@ -101,8 +104,8 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     m = np.array([1, 2])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
-    coefficients = (np.abs(ft[m]) * scales[:, np.newaxis]).sum(axis=0)
-    neg_coefficients = (np.abs(ft[-m]) * scales[:, np.newaxis]).sum(axis=0)
+    coefficients = (np.abs(ft[:, m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    neg_coefficients = (np.abs(ft[:, -m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
 
     return coefficients
 
@@ -211,33 +214,6 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     assert data.shape[1] == len(cols)
     amps = dft_naive(phi.to_numpy(), data.to_numpy(), np.arange(max_order))
     return pd.DataFrame(amps, columns=cols)
-
-
-def pshet_coefficients(df: pd.DataFrame, gamma: float = 2.63) -> pd.DataFrame:
-    """ Qualitatively computes the coefficients of tapping order harmonics at the sidebands.
-    Sidebands at m=1 and m=2 are evaluated.
-
-    Parameters
-    ----------
-    df: pd.Dataframe
-        demodulated pshet signal as returned by pshet_ft
-    gamma: float
-        modulation depth of the reference mirror.
-
-    Returns
-    -------
-    coeffs : pd.Dataframe
-        Near field amplitudes (complex) for tapping harmonics n.
-        Index is signal, row is n.
-    """
-    m = np.array([1, 2])    # evaluating sidebands at m=1 and m=2
-    scales = 1/jv(m, gamma) * np.array([1, 1j])
-
-    nsigs = len(df.columns.get_level_values(0).drop_duplicates())
-    coeffs = (df.loc[:, (slice(None), m)].abs() * np.tile(scales, nsigs)
-              ).groupby(level=0, axis=1).sum()
-
-    return coeffs
 
 
 # older stuff, kept for compatibility ##################################################################################

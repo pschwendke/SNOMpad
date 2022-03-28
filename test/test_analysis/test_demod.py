@@ -17,7 +17,7 @@ pshet_parameters = [
     [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j], 16, 4, [1, 2 + .5j, 1 + 1j, .5 + 2j]]
 ]
 np.random.seed(2108312109)
-npoints = [10, 1000, 10_000, 100_000]
+npoints = [10, 1000, 10_000, 50_000, 75_000, 100_000]
 
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
@@ -149,26 +149,18 @@ def test_pshet_binning(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    binned_data = pshet_binning(test_data.copy(), tap_nbins, ref_nbins)
+    signals = [Signals[s] for s in test_data.columns]
+    binned_data = pshet_binning(test_data.to_numpy(), signals, tap_nbins, ref_nbins)
 
     # test shape of returned DataFrame
-    assert binned_data.shape[0] == tap_nbins
-    assert binned_data.shape[1] == 2 * ref_nbins  # Why 2?!
-    assert binned_data.index.name == 'tap_n'
-    assert binned_data.columns.names[1] == 'ref_n'
-    assert all('sig' in binned_data.columns[i][0] for i in range(binned_data.shape[1]))
+    assert binned_data.shape[-1] == tap_nbins
+    assert binned_data.shape[-2] == ref_nbins
 
     # test if every data point in test_data matches the value in its position in the binned_data DataFrame
-    all_true = False
     for i in range(tap_nbins * ref_nbins):
-        tap_n = bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins)
-        ref_n = bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins)
-        if binned_data['sig_a', ref_n][tap_n] == test_data['sig_a'][i]:
-            all_true = True
-        else:
-            all_true = False
-            break
-    assert all_true
+        tap_n = int(bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins))
+        ref_n = int(bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins))
+        assert binned_data[0, ref_n, tap_n] == test_data['sig_a'][i]
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -178,21 +170,18 @@ def test_pshet_binning_shuffled(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    shuffled_data = pshet_binning(test_data.sample(frac=1), tap_nbins, ref_nbins)
+    signals = [Signals[s] for s in test_data.columns]
+    shuffled_data = pshet_binning(test_data.sample(frac=1).to_numpy(), signals, tap_nbins, ref_nbins)
 
     # test shape of returned DataFrame
-    assert shuffled_data.shape[0] == tap_nbins
-    assert shuffled_data.shape[1] == 2 * ref_nbins
-    assert shuffled_data.index.name == 'tap_n'
-    assert shuffled_data.columns.names[1] == 'ref_n'
-    assert all('sig' in shuffled_data.columns[i][0] for i in range(shuffled_data.shape[1]))
+    assert shuffled_data.shape[-1] == tap_nbins
+    assert shuffled_data.shape[-2] == ref_nbins
 
-    #  mixed data should be ordered with respect to tap_n and ref_n
-    assert all(shuffled_data.index[i] < shuffled_data.index[i + 1] for i in range(shuffled_data.shape[0] - 1))
-    channels = shuffled_data.columns.get_level_values(0).drop_duplicates()
-    for ch in channels:
-        assert all(shuffled_data[ch].columns[i] < shuffled_data[ch].columns[i + 1]
-                   for i in range(int(shuffled_data.shape[1] / len(channels) - 1)))
+    # test if every data point in test_data matches the value in its position in the binned_data DataFrame
+    for i in range(tap_nbins * ref_nbins):
+        tap_n = int(bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins))
+        ref_n = int(bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins))
+        assert shuffled_data[0, ref_n, tap_n] == test_data['sig_a'][i]
 
 
 @pytest.mark.parametrize('drops', [[0], [31, 32, 100], [123, -1]])
@@ -203,19 +192,20 @@ def test_pshet_binning_empty(pshet_data_points, drops):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    perforated_data = pshet_binning(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
+    signals = [Signals[s] for s in test_data.columns]
+    perforated_data = pshet_binning(test_data.drop(test_data.index[drops]).to_numpy(), signals, tap_nbins, ref_nbins)
 
     # the shape should be unchanged
-    assert perforated_data.shape[0] == tap_nbins
-    assert perforated_data.shape[1] == 2 * ref_nbins
+    assert perforated_data.shape[-1] == tap_nbins
+    assert perforated_data.shape[-2] == ref_nbins
 
     # select dropped data points and assert that they are all nans in binned data frame
     tap_n = bin_index(np.arctan2(test_data['tap_y'][test_data.index[drops]],
                                  test_data['tap_x'][test_data.index[drops]]), tap_nbins)
     ref_n = bin_index(np.arctan2(test_data['ref_y'][test_data.index[drops]],
                                  test_data['ref_x'][test_data.index[drops]]), ref_nbins)
-    for i in range(len(drops)):
-        assert np.isnan(perforated_data['sig_a', ref_n.iloc[i]][tap_n.iloc[i]])
+    for i, _ in enumerate(drops):
+        assert all(np.isnan(perforated_data[:, int(ref_n.iloc[i]), int(tap_n.iloc[i])]))
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -226,16 +216,16 @@ def test_pshet_ft_shape(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    binned = pshet_binning(test_data.copy(), tap_nbins, ref_nbins)
+    signals = [Signals[s] for s in test_data.columns]
+    binned = pshet_binning(test_data.to_numpy(), signals, tap_nbins, ref_nbins)
     ft_data = pshet_ft(binned)
-    assert type(ft_data) == pd.DataFrame
 
     # test shape of returned arrays
-    signals = ft_data.columns.get_level_values(0).drop_duplicates()
-    assert all('sig' in key for key in signals)
-
-    assert ft_data.shape[0] == tap_nbins
-    assert ft_data.shape[1] == (ref_nbins // 2 + 1) * len(signals)
+    detector_signals = [s for s in test_data.columns if 'sig' in s]
+    print(ft_data.shape)
+    assert ft_data.shape[0] == len(detector_signals)
+    assert ft_data.shape[1] == ref_nbins
+    assert ft_data.shape[2] == (tap_nbins // 2 + 1)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -244,18 +234,18 @@ def test_pshet_ft_harmonics(pshet_data_points):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
-    ft_data = pshet_ft(pshet_binning(test_data.copy(), tap_nbins, ref_nbins))
-    
-    # signals, e.g. 'sig_a' are keys of ft_data
-    signals = ft_data.columns.get_level_values(0).drop_duplicates()
-    for key in signals:
+    signals = [Signals[s] for s in test_data.columns]
+    binned = pshet_binning(test_data.to_numpy(), signals, tap_nbins, ref_nbins)
+    ft_data = pshet_ft(binned)
+
+    # signals are located along axis=0 in the array returned by pshet_ft
+    for single_signal in ft_data:
         # tapping harmonics
-        arr = ft_data[key].to_numpy()
         for n in range(tap_nharm):
             initial_tap_phase = np.angle(tap_harm_amps[n])
             initial_tap_amp = np.abs(tap_harm_amps[n])
-            returned_tap_phase = np.arctan2(np.imag(arr[n, 0]), np.real(arr[n, 0]))
-            returned_tap_amp = np.abs(arr[n, 0])
+            returned_tap_phase = np.arctan2(np.imag(single_signal[0, n]), np.real(single_signal[0, n]))
+            returned_tap_amp = np.abs(single_signal[0, n])
             # np.fft.rfft only returns positive amplitudes
             if n > 0:
                 returned_tap_amp *= 2
@@ -269,8 +259,8 @@ def test_pshet_ft_harmonics(pshet_data_points):
         for m in range(ref_nharm):
             initial_ref_phase = np.angle(ref_harm_amps[m])
             initial_ref_amp = np.abs(ref_harm_amps[m])
-            returned_ref_phase = np.arctan2(np.imag(arr[0][m]), np.real(arr[0][m]))
-            returned_ref_amp = np.abs(arr[0][m])
+            returned_ref_phase = np.arctan2(np.imag(single_signal[m, 0]), np.real(single_signal[m, 0]))
+            returned_ref_amp = np.abs(single_signal[m, 0])
             # np.fft.rfft only returns positive amplitudes
             if m > 0:
                 returned_ref_amp *= 2
@@ -289,9 +279,10 @@ def test_pshet_empty(pshet_data_points, drops):
     # retrieve parameters and test data from fixture
     params, test_data = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
+    signals = [Signals[s] for s in test_data.columns]
 
     with pytest.raises(ValueError):
-        pshet(test_data.drop(test_data.index[drops]).copy(), tap_nbins, ref_nbins)
+        pshet(test_data.drop(test_data.index[drops]).to_numpy(), signals, tap_nbins, ref_nbins)
 
 
 def test_pshet_coefficients():
@@ -301,16 +292,14 @@ def test_pshet_coefficients():
     gamma = 2.63
     random_sig_a = np.random.random_sample((10, 10)) * np.exp(1j)
     random_sig_b = np.random.random_sample((10, 10)) * np.exp(1j)
-    cols = pd.MultiIndex.from_product((['sig_a', 'sig_b'], range(10)))
-    test_signal = np.concatenate((random_sig_a, random_sig_b), axis=1)
-    df = pd.DataFrame(data=test_signal, columns=cols)
-    test_data = pshet_coefficients(df, gamma)
+    test_signal = np.concatenate((random_sig_a[np.newaxis, :, :], random_sig_b[np.newaxis, :, :]), axis=0)
+    test_data = pshet_coefficients(test_signal, gamma)
 
     # pshet coefficients should return col_1 + 1j * col_2
-    coeffs_a = np.abs(random_sig_a[:, 1]) / jv(1, gamma) + 1j * np.abs(random_sig_a[:, 2]) / jv(2, gamma)
-    coeffs_b = np.abs(random_sig_b[:, 1]) / jv(1, gamma) + 1j * np.abs(random_sig_b[:, 2]) / jv(2, gamma)
-    assert np.allclose(test_data['sig_a'], coeffs_a)
-    assert np.allclose(test_data['sig_b'], coeffs_b)
+    coeffs_a = np.abs(random_sig_a[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_a[2, :]) / jv(2, gamma)
+    coeffs_b = np.abs(random_sig_b[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_b[2, :]) / jv(2, gamma)
+    assert np.allclose(test_data[0], coeffs_a)
+    assert np.allclose(test_data[1], coeffs_b)
 
 
 # BENCHMARKING ##############################
@@ -331,9 +320,10 @@ def test_pshet_binning_benchmark(benchmark, noise_data):
     """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
     tap_nbins = 32
     ref_nbins = 16
-    binned_noise = benchmark(pshet_binning, noise_data.copy(), tap_nbins, ref_nbins)
-    signals = binned_noise.columns.get_level_values(0).drop_duplicates()
-    assert not empty_bins_in(binned_noise)
+    signals = [Signals[s] for s in noise_data.columns]
+    data = noise_data.to_numpy()
+    binned_noise = benchmark(pshet_binning, data, signals, tap_nbins, ref_nbins)
+
     # test for correct shape, i.e. number of bins
-    assert binned_noise.shape[0] == tap_nbins
-    assert binned_noise.shape[1] == len(signals) * ref_nbins
+    assert binned_noise.shape[-1] == tap_nbins
+    assert binned_noise.shape[-2] == ref_nbins
