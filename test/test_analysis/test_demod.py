@@ -160,6 +160,7 @@ def test_pshet_binning(pshet_data_points):
     for i in range(tap_nbins * ref_nbins):
         tap_n = int(bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins))
         ref_n = int(bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins))
+        # This test sometimes fails where the values are off by the sign. This is not reproducible.
         assert binned_data[0, ref_n, tap_n] == test_data['sig_a'][i]
 
 
@@ -181,6 +182,7 @@ def test_pshet_binning_shuffled(pshet_data_points):
     for i in range(tap_nbins * ref_nbins):
         tap_n = int(bin_index(np.arctan2(test_data['tap_y'][i], test_data['tap_x'][i]), tap_nbins))
         ref_n = int(bin_index(np.arctan2(test_data['ref_y'][i], test_data['ref_x'][i]), ref_nbins))
+        # This test sometimes fails where the values are off by the sign. This is not reproducible.
         assert shuffled_data[0, ref_n, tap_n] == test_data['sig_a'][i]
 
 
