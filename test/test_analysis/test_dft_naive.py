@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-from trion.analysis.demod import dft_naive, bin_midpoints, shd_naive
+from trion.analysis.demod import dft_naive, shd_naive
+from test_demod import bin_midpoints
 from string import ascii_lowercase
 
 

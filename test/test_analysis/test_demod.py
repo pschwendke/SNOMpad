@@ -3,8 +3,7 @@ import pytest
 import numpy as np
 from scipy.special import jv
 
-from trion.analysis.demod import bin_index, bin_midpoints, shd_binning, shd_ft, shd,\
-    pshet_binning, pshet_ft, pshet, pshet_coefficients, empty_bins_in
+from trion.analysis.demod import shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet, pshet_coefficients
 from trion.analysis.signals import Signals
 
 # some parameters to create test data
@@ -18,6 +17,44 @@ pshet_parameters = [
 ]
 np.random.seed(2108312109)
 npoints = [10, 1000, 10_000, 50_000, 75_000, 100_000]
+
+
+def empty_bins_in(df: pd.DataFrame) -> bool:
+    """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
+    Returns True if empty bins are detected."""
+
+    # check for missing tap bins
+    for n in range(df.shape[0]):
+        if df.index[n] != n:
+            return True
+
+    # check for missing pshet bins
+    if isinstance(df.columns, pd.MultiIndex):
+        for channel in df.columns.get_level_values(0).drop_duplicates():
+            for m in range(df[channel].shape[1]):
+                if df[channel].columns[m] != m:
+                    return True
+
+    # check for empty (NAN) bins
+    if np.isnan(df).any(axis=None):
+        return True
+    return False
+
+
+def bin_index(phi, n_bins: int):
+    """
+    Compute the phase bin index.
+    """
+    lo = -np.pi
+    step = 2*np.pi/n_bins
+    return (phi - lo)//step
+
+
+def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
+    """Compute the midpoints of phase bins"""
+    span = hi - lo
+    step = span/n_bins
+    return (np.arange(n_bins)+0.5) * step + lo
 
 
 @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])

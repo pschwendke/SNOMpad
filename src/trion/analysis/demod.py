@@ -9,51 +9,6 @@ import pandas as pd
 from .signals import is_tap_modulation, Signals, all_detector_signals
 
 
-def empty_bins_in(df: pd.DataFrame) -> bool:
-    """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
-    Returns True if empty bins are detected."""
-
-    # check for missing tap bins
-    for n in range(df.shape[0]):
-        if df.index[n] != n:
-            return True
-
-    # check for missing pshet bins
-    if isinstance(df.columns, pd.MultiIndex):
-        for channel in df.columns.get_level_values(0).drop_duplicates():
-            for m in range(df[channel].shape[1]):
-                if df[channel].columns[m] != m:
-                    return True
-
-    # check for empty (NAN) bins
-    if np.isnan(df).any(axis=None):
-        return True
-    return False
-
-
-def bin_index(phi, n_bins: int):
-    """
-    Compute the phase bin index.
-    """
-    lo = -np.pi
-    step = 2*np.pi/n_bins
-    return (phi - lo)//step
-
-
-def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
-    """Compute the midpoints of phase bins"""
-    span = hi - lo
-    step = span/n_bins
-    return (np.arange(n_bins)+0.5) * step + lo
-
-
-_avg_drop_cols = set(
-    map("_".join,
-        product(["tap", "ref"], ["x", "y", "p"])
-        )
-)
-
-
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
     detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
                                   for det_sig in all_detector_signals if det_sig in signals])
@@ -110,9 +65,9 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     return coefficients
 
 
-def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
-    binned = pshet_binning(data, signals, tap_nbins, ref_nbins)
-    return pshet_ft(binned)
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32, gamma: float = 2.63) -> np.ndarray:
+    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
+    return pshet_coefficients(ft, gamma)
 
 
 def dft_lstsq(phi, sig, max_order: int):
