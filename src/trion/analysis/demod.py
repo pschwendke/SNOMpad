@@ -1,23 +1,30 @@
-# demod.py: functions for demodulations
-from itertools import product
 from warnings import warn
 import numpy as np
 from scipy.special import jv
 from scipy.stats import binned_statistic, binned_statistic_2d
 import pandas as pd
 
-from .signals import is_tap_modulation, Signals, all_detector_signals
+from .signals import Signals, all_detector_signals
 
 
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
     detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
                                   for det_sig in all_detector_signals if det_sig in signals])
     tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
-                       data[:, [bool(s == Signals.tap_x) for s in signals]])
-    returns = binned_statistic(x=tap_p.squeeze(), values=detector_signals,
-                               statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-    binned = returns.statistic
-    return binned
+                       data[:, [bool(s == Signals.tap_x) for s in signals]]).squeeze()
+
+    if Signals.chop in signals:
+        pump_idx = np.isclose(data[:, -1], data[:, -1].max(), rtol=.05)
+        chop_idx = np.isclose(data[:, -1], data[:, -1].min(), rtol=.05)
+        pumped = binned_statistic(x=tap_p[pump_idx], values=detector_signals[pump_idx],
+                                  statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+        chopped = binned_statistic(x=tap_p[chop_idx], values=detector_signals[chop_idx],
+                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+        return pumped.statistics - chopped.statistics
+    else:
+        binned = binned_statistic(x=tap_p, values=detector_signals, statistic='mean', bins=tap_nbins,
+                                  range=[-np.pi, np.pi])
+        return binned.statistic
 
 
 def shd_ft(binned: np.ndarray) -> np.ndarray:
@@ -27,12 +34,12 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     return ft
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
     binned = shd_binning(data, signals, tap_nbins)
     return shd_ft(binned)
 
 
-def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
+def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
     detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
                                   for det_sig in all_detector_signals if det_sig in signals])
     tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
@@ -65,7 +72,7 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     return coefficients
 
 
-def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32, gamma: float = 2.63) -> np.ndarray:
+def pshet(data: np.ndarray, signals: list, tap_nbins: int, ref_nbins: int, gamma: float) -> np.ndarray:
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
     return pshet_coefficients(ft, gamma)
 
