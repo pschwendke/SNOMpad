@@ -9,12 +9,10 @@ import pandas as pd
 from .signals import is_tap_modulation, Signals, all_detector_signals
 
 
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
-    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
-                                  for det_sig in all_detector_signals if det_sig in signals])
-    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
-                       data[:, [bool(s == Signals.tap_x) for s in signals]])
-    returns = binned_statistic(x=tap_p.squeeze(), values=detector_signals,
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    returns = binned_statistic(x=tap_p, values=detector_signals,
                                statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
     binned = returns.statistic
     return binned
@@ -24,7 +22,7 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft(binned) / binned.shape[-1]
-    return ft
+    return ft.T
 
 
 def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
@@ -33,13 +31,10 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
 
 
 def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
-    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
-                                  for det_sig in all_detector_signals if det_sig in signals])
-    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
-                       data[:, [bool(s == Signals.tap_x) for s in signals]])
-    ref_p = np.arctan2(data[:, [bool(s == Signals.ref_y) for s in signals]],
-                       data[:, [bool(s == Signals.ref_x) for s in signals]])
-    returns = binned_statistic_2d(x=tap_p.squeeze(), y=ref_p.squeeze(), values=detector_signals, statistic='mean',
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
                                   bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
     if binned.ndim == 2:
@@ -59,15 +54,14 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     m = np.array([1, 2])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
-    coefficients = (np.abs(ft[:, m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-    neg_coefficients = (np.abs(ft[:, -m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-
+    coefficients = (np.abs(ft[:, m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
     return coefficients
 
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32, gamma: float = 2.63) -> np.ndarray:
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
-    return pshet_coefficients(ft, gamma)
+    return pshet_coefficients(ft, gamma).T
 
 
 def dft_lstsq(phi, sig, max_order: int):
