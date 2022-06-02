@@ -25,12 +25,12 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     return ft.T
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
     binned = shd_binning(data, signals, tap_nbins)
     return shd_ft(binned)
 
 
-def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32) -> np.ndarray:
+def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
@@ -56,12 +56,12 @@ def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
 
     coefficients = (np.abs(ft[:, m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
     neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-    return coefficients
+    return coefficients.T
 
 
-def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32, gamma: float = 2.63) -> np.ndarray:
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, gamma: float = 2.63) -> np.ndarray:
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
-    return pshet_coeff(ft, gamma).T
+    return pshet_coeff(ft, gamma)
 
 
 def dft_lstsq(phi, sig, max_order: int):
