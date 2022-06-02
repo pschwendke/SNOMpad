@@ -7,11 +7,15 @@ import pandas as pd
 from .signals import Signals, all_detector_signals
 
 
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: bool = False) -> np.ndarray:
     detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
                                   for det_sig in all_detector_signals if det_sig in signals])
     tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
                        data[:, [bool(s == Signals.tap_x) for s in signals]]).squeeze()
+
+    if balanced:
+        assert all([Signals.sig_a, Signals.sig_b]) in signals
+        detector_signals = detector_signals[:, 0] - detector_signals[:, 1]
 
     if Signals.chop in signals:
         pump_idx = np.isclose(data[:, -1], data[:, -1].max(), rtol=.05)
