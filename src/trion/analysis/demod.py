@@ -25,7 +25,7 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     return ft.T
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int = 32) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
     binned = shd_binning(data, signals, tap_nbins)
     return shd_ft(binned)
 
@@ -50,7 +50,7 @@ def pshet_ft(binned: np.ndarray) -> np.ndarray:
     return ft
 
 
-def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
+def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     m = np.array([1, 2])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
@@ -61,7 +61,7 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 32, gamma: float = 2.63) -> np.ndarray:
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
-    return pshet_coefficients(ft, gamma).T
+    return pshet_coeff(ft, gamma).T
 
 
 def dft_lstsq(phi, sig, max_order: int):

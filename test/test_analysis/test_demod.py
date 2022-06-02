@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from scipy.special import jv
 
-from trion.analysis.demod import shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet, pshet_coefficients
+from trion.analysis.demod import shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet, pshet_coeff
 from trion.analysis.signals import Signals
 
 # some parameters to create test data
@@ -325,14 +325,14 @@ def test_pshet_empty(pshet_data_points, drops):
 
 
 def test_pshet_coefficients():
-    """ Check that pshet_coefficients returns col_1 + 1j * col_2 per signal for arrays filled with random complex.
+    """ Check that pshet_coeff returns col_1 + 1j * col_2 per signal for arrays filled with random complex.
     """
     # generate some complex test data:
     gamma = 2.63
     random_sig_a = np.random.random_sample((10, 10)) * np.exp(1j)
     random_sig_b = np.random.random_sample((10, 10)) * np.exp(1j)
     test_signal = np.concatenate((random_sig_a[np.newaxis, :, :], random_sig_b[np.newaxis, :, :]), axis=0)
-    test_data = pshet_coefficients(test_signal, gamma)
+    test_data = pshet_coeff(test_signal, gamma)
 
     # pshet coefficients should return col_1 + 1j * col_2
     coeffs_a = np.abs(random_sig_a[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_a[2, :]) / jv(2, gamma)
