@@ -1,14 +1,15 @@
 import numpy as np
-import pandas as pd
 import pytest
+
+from trion.analysis.signals import Signals
 
 
 @pytest.fixture(scope='session')
-def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
+def shd_data_points(request) -> tuple[tuple, np.ndarray, list]:
     tap_nbins, tap_nharm, tap_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
 
-    Parameters
+    PARAMETERS
     ----------
     tap_nbins: int
         number of bins, also number of data points (one per bin)
@@ -17,7 +18,7 @@ def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
     tap_harm_amps: list
         list of complex amplitudes for creation of harmonics
 
-    Returns
+    RETURNS
     -------
     request.param:
         all parameters that are passed to the function, in order to be accessible in test function.
@@ -35,17 +36,18 @@ def shd_data_points(request) -> tuple[tuple, pd.DataFrame]:
     signal = np.zeros(tap_phase.shape)
     for n in range(tap_nharm):
         signal += np.abs(tap_harm_amps[n]) * np.cos(n * tap_phase + np.angle(tap_harm_amps[n]))
-    data = pd.DataFrame(np.array([signal, tap_x, tap_y]).T, columns=['sig_a', 'tap_x', 'tap_y'])
+    data = np.vstack([signal, tap_x, tap_y]).T
+    sigs = [Signals.sig_a, Signals.tap_x, Signals.tap_y]
 
-    return request.param, data
+    return request.param, data, sigs
 
 
 @pytest.fixture(scope='session')
-def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
+def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
 
-    Parameters
+    PARAMETERS
     ----------
     tap_nbins: int
         number of bins for tapping demodulation
@@ -60,7 +62,7 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
     ref_harm_amps: list
         list of complex amplitudes of harmonics of pshet modulation
 
-    Returns
+    RETURNS
     -------
     request.param:
         all parameters that are passed to the function, in order to be accessible in test function.
@@ -79,7 +81,7 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
     ref_y = np.sin(ref_phase)
 
     # data: DataFrame with one row for every point in phase space
-    signal = np.zeros((tap_nbins * ref_nbins, 6))
+    data = np.zeros((tap_nbins * ref_nbins, 6))
     for i in range(tap_nbins):
         for j in range(ref_nbins):
             row = i * ref_nbins + j
@@ -88,14 +90,14 @@ def pshet_data_points(request) -> tuple[tuple, pd.DataFrame]:
             ref_sig = sum(np.abs(ref_harm_amps[n]) * np.cos(n * ref_phase[j] + np.angle(ref_harm_amps[n]))
                           for n in range(ref_nharm))
             data_point = tap_sig * ref_sig
-            signal[row] = [data_point, -data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
-    data = pd.DataFrame(signal, columns=['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y'])
+            data[row] = [data_point, -data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
+    sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
 
-    return request.param, data
+    return request.param, data, sigs
 
 
 @pytest.fixture(scope='session')
-def noise_data(request) -> pd.DataFrame:
+def noise_data(request) -> tuple[np.ndarray, list]:
     npts = request.param
     """ Creates random (noise) data for sig_a and sig_b for n_points data points.
     tap_x,y and re_x,y are calculated for random phases.
@@ -120,7 +122,7 @@ def noise_data(request) -> pd.DataFrame:
     sig_a = np.random.uniform(-np.pi, np.pi, npts)
     sig_b = np.random.uniform(-np.pi, np.pi, npts)
 
-    data_array = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y]).T
-    data_df = pd.DataFrame(data_array, columns=['sig_a', 'sig_b', 'tap_x', 'tap_y', 'ref_x', 'ref_y'])
+    data = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y]).T
+    sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
 
-    return data_df
+    return data, sigs

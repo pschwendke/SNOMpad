@@ -529,7 +529,7 @@ class PshetView(BaseView):
 
     def plot(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        #shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        # shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
         tap_nbins = kwargs["tap_nbins"]
         ref_nbins = kwargs["ref_nbins"]
         try:
@@ -543,9 +543,9 @@ class PshetView(BaseView):
 
         else:
             self.error_text.setText("")
-            # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
-            for name, data in amps.groupby(level=0, axis=1):
-                self.images[name].setImage(np.log10(np.abs(data.to_numpy())), autoLevels=False)
+            # shape is (order, signal). Signal is the fastest index.
+            for name, data in zip(names, amps):
+                self.images[name.value].setImage(np.log10(np.abs(data)), autoLevels=False)
 
 
 class FourierView(BaseView):

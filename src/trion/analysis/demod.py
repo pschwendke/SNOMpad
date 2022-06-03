@@ -8,10 +8,27 @@ from .signals import Signals, all_detector_signals
 
 
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: bool = False) -> np.ndarray:
-    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
-                                  for det_sig in all_detector_signals if det_sig in signals])
-    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
-                       data[:, [bool(s == Signals.tap_x) for s in signals]]).squeeze()
+    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When balanced == True,
+    the difference sig_a - sig_b is binned onto phase domain.
+
+    PARAMETERS
+    ----------
+    data: np.ndarray
+        array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
+    signals: list of Signals
+        list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
+    tap_nbins: int
+        number of tapping bins
+    balanced: bool
+        true for signal acquired with balanced detection
+
+    RETURNS
+    -------
+    binned: np.ndarray
+        average signals for each bin between -pi, pi. Signals on axis=0, values on axis=1.
+    """
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
     if balanced:
         assert all([Signals.sig_a, Signals.sig_b]) in signals
@@ -32,25 +49,55 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: 
 
 
 def shd_ft(binned: np.ndarray) -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. Values should be on axis=-1
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        complex amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
+    """
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft(binned) / binned.shape[-1]
-    return ft
+    return ft.T
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
+    """ Simple combination of shd_binning and shd_ft
+    """
     binned = shd_binning(data, signals, tap_nbins)
     return shd_ft(binned)
 
 
 def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
-    detector_signals = np.vstack([data[:, [bool(s == det_sig) for s in signals]].squeeze()
-                                  for det_sig in all_detector_signals if det_sig in signals])
-    tap_p = np.arctan2(data[:, [bool(s == Signals.tap_y) for s in signals]],
-                       data[:, [bool(s == Signals.tap_x) for s in signals]])
-    ref_p = np.arctan2(data[:, [bool(s == Signals.ref_y) for s in signals]],
-                       data[:, [bool(s == Signals.ref_x) for s in signals]])
-    returns = binned_statistic_2d(x=tap_p.squeeze(), y=ref_p.squeeze(), values=detector_signals, statistic='mean',
+    """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
+
+    PARAMETERS
+    ----------
+    data: np.ndarray
+        array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
+    signals: list of Signals
+        list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
+    tap_nbins: float
+        number of tapping bins
+    ref_nbins: float
+        number of reference bins
+
+    RETURNS
+    -------
+    binned: np.ndarray
+        average signals for each bin between -pi, pi. Signals on axis=0,
+        tapping bins on axis=2, reference bins on axis=1.
+    """
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
                                   bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
     if binned.ndim == 2:
@@ -60,25 +107,52 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
 
 
 def pshet_ft(binned: np.ndarray) -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        complex amplitudes of Fourier components.
+    """
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
     return ft
 
 
-def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
+def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
+    """ Computes coefficients for tapping demodulation. Positive and negative frequencies (for non phase corrected
+    data) are not summed.
+
+    PARAMETERS
+    ----------
+    ft: np.ndarray
+        array containig Fourier amplitudes. signals on axis=0, ref on axis=1, tap on axis=2
+    gamma: float
+        modulation depth
+    RETURNS
+    -------
+    coefficients: np.ndarray
+        complex coefficients for tapping demodulation. amplitudes on axis=0, signals on axis=1
+    """
     m = np.array([1, 2])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
-    coefficients = (np.abs(ft[:, m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-    neg_coefficients = (np.abs(ft[:, -m]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    coefficients = (np.abs(ft[:, m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    # neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    return coefficients.T
 
-    return coefficients
 
-
-def pshet(data: np.ndarray, signals: list, tap_nbins: int, ref_nbins: int, gamma: float) -> np.ndarray:
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, gamma: float = 2.63) -> np.ndarray:
+    """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
+    """
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
-    return pshet_coefficients(ft, gamma)
+    return pshet_coeff(ft, gamma)
 
 
 def dft_lstsq(phi, sig, max_order: int):
