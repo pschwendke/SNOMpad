@@ -32,7 +32,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: 
 
     if balanced:
         assert all([Signals.sig_a, Signals.sig_b]) in signals
-        detector_signals = detector_signals[:, 0] - detector_signals[:, 1]
+        # detector_signals = detector_signals[:, 0] - detector_signals[:, 1]
 
     if Signals.chop in signals:
         pump_idx = np.isclose(data[:, -1], data[:, -1].max(), rtol=.05)
@@ -283,9 +283,9 @@ def bin_no(df, n_bins, in_place=False):
 def binned_average(df, n_bins, compute_counts=True):
     warn(_deprecation_warning)
     df = df.copy()
-    if not "tap_p" in df.columns:
+    if "tap_p" not in df.columns:
         calc_phase(df, in_place=True)
-    if not "bin_no" in df.columns:
+    if "bin_no" not in df.columns:
         bin_no(df, n_bins, in_place=True)
     df = df.drop(columns=[c for c in df.columns
                           if c in ("tap_x", "tap_y", "tap_p")])
