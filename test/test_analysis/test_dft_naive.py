@@ -2,13 +2,19 @@ import numpy as np
 import pandas as pd
 import pytest
 from trion.analysis.demod import dft_naive, shd_naive
-from test_demod import bin_midpoints
 from string import ascii_lowercase
 
 
 def randphi(npts):
     np.random.seed(2108312109)
     return np.random.uniform(-np.pi, np.pi, npts)
+
+
+def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
+    """Compute the midpoints of phase bins"""
+    span = hi - lo
+    step = span/n_bins
+    return (np.arange(n_bins)+0.5) * step + lo
 
 
 @pytest.fixture
