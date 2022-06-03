@@ -1,4 +1,3 @@
-import pandas as pd
 import pytest
 import numpy as np
 from scipy.special import jv
@@ -19,28 +18,6 @@ np.random.seed(2108312109)
 npoints = [10, 1000, 10_000, 50_000, 75_000, 100_000]
 
 
-# def empty_bins_in(df: pd.DataFrame) -> bool:
-#     """Checks binned 1D or 2D DataFrame for empty bins in index (1D) and column names (2D).
-#     Returns True if empty bins are detected."""
-#
-#     # check for missing tap bins
-#     for n in range(df.shape[0]):
-#         if df.index[n] != n:
-#             return True
-#
-#     # check for missing pshet bins
-#     if isinstance(df.columns, pd.MultiIndex):
-#         for channel in df.columns.get_level_values(0).drop_duplicates():
-#             for m in range(df[channel].shape[1]):
-#                 if df[channel].columns[m] != m:
-#                     return True
-#
-#     # check for empty (NAN) bins
-#     if np.isnan(df).any(axis=None):
-#         return True
-#     return False
-
-
 def bin_index(phi, n_bins: int):
     """
     Compute the phase bin index.
@@ -48,16 +25,6 @@ def bin_index(phi, n_bins: int):
     lo = -np.pi
     step = 2*np.pi/n_bins
     return (phi - lo)//step
-
-# @pytest.mark.parametrize("n_bins", [4, 7, 16, 32])
-# def test_bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
-#     # generate the bin edges
-#     edges = np.linspace(lo, hi, n_bins+1)
-#     ref = 0.5 * (edges[1:]+edges[:-1])
-#     centers = bin_midpoints(n_bins, lo, hi)
-#     assert centers.ndim == 1
-#     assert centers.shape == (n_bins,)
-#     assert np.allclose(centers, ref)
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])

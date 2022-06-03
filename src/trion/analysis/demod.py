@@ -1,12 +1,11 @@
 # demod.py: functions for demodulations
-from itertools import product
 from warnings import warn
 import numpy as np
 from scipy.special import jv
 from scipy.stats import binned_statistic, binned_statistic_2d
 import pandas as pd
 
-from .signals import is_tap_modulation, Signals, all_detector_signals
+from .signals import Signals, all_detector_signals
 
 
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
@@ -130,7 +129,7 @@ def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
     coefficients = (np.abs(ft[:, m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-    neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    # neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
     return coefficients.T
 
 
