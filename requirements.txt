@@ -11,3 +11,4 @@ toml
 h5py
 pytest
 pytest-benchmark
+xarray
