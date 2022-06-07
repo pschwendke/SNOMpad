@@ -24,7 +24,7 @@ from qtlets.widgets import IntEdit, ValuedComboBox, FloatEdit
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis import signals
 from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
-from ..analysis.demod import dft_naive, shd, pshet, pshet_coefficients
+from ..analysis.demod import dft_naive, shd, pshet, pshet_binning, pshet_ft
 
 logger = logging.getLogger(__name__)
 
@@ -454,13 +454,7 @@ class ShdView(BaseView):
                 amps = calc_naive(data[-win_len:, :], self.orders, self.x_idx,
                                   self.y_idx, self.input_indices)
             elif shd_algo == shd_algorithm.bin:
-                df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
-                amps = np.abs(
-                    shd(
-                        df,
-                        tap_nbins
-                    ).to_numpy()
-                )[:len(self.orders), :]
+                amps = np.abs(shd(data[-win_len:, :], names, tap_nbins))[:len(self.orders), :]
         except ValueError as e:
             if data.shape[0] == 0:
                 pass
@@ -535,12 +529,12 @@ class PshetView(BaseView):
 
     def plot(self, data, names, **kwargs):
         win_len = kwargs["window_size"]
-        #shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
+        # shd_algo = kwargs.get("shd_algorithm", shd_algorithm.dft)
         tap_nbins = kwargs["tap_nbins"]
         ref_nbins = kwargs["ref_nbins"]
-        df = pd.DataFrame(data=data[-win_len:, :], columns=[s.name for s in names])
         try:
-            amps = pshet(df, tap_nbins, ref_nbins)
+            binned = pshet_binning(data[-win_len:, :], names, tap_nbins, ref_nbins)
+            amps = pshet_ft(binned)
         except ValueError as e:
             if data.shape[0] == 0:
                 pass
@@ -549,9 +543,9 @@ class PshetView(BaseView):
 
         else:
             self.error_text.setText("")
-            # columns are signals, ie: shape is (order, signal). Signal is the fastest index.
-            for name, data in amps.groupby(level=0, axis=1):
-                self.images[name].setImage(np.log10(np.abs(data.to_numpy())), autoLevels=False)
+            # shape is (order, signal). Signal is the fastest index.
+            for name, data in zip(names, amps):
+                self.images[name.value].setImage(np.log10(np.abs(data)), autoLevels=False)
 
 
 class FourierView(BaseView):
@@ -634,19 +628,11 @@ class FourierView(BaseView):
                           self.y_idx, self.input_indices)
 
     def compute_shd_binning(self, data, names, tap_nbins):
-        df = pd.DataFrame(data=data, columns=[s.name for s in names])
-        amps = np.abs(
-            shd(
-                df,
-                tap_nbins
-            ).to_numpy()
-        )
+        amps = np.abs(shd(data, names, tap_nbins))
         return amps
 
     def compute_pshet(self, data, names, tap_nbins, ref_nbins, gamma) -> np.ndarray:
-        df = pd.DataFrame(data=data, columns=[s.name for s in names])
-        amps = pshet(df, tap_nbins, ref_nbins)
-        coeffs = pshet_coefficients(amps, gamma).to_numpy()
+        coeffs = pshet(data, names, tap_nbins, ref_nbins, gamma)
         return np.abs(coeffs)
 
     def plot(self, data, names, **kwargs):
