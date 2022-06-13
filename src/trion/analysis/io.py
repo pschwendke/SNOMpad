@@ -1,14 +1,16 @@
 # io.py: read and write utility function
 import re
-from itertools import takewhile
-from os.path import splitext
-
 import numpy as np
 import pandas as pd
-from copy import copy
-from .signals import Signals
-
+import xarray as xr
 import logging
+
+from itertools import takewhile
+from os.path import splitext
+from copy import copy
+from gwyfile.objects import GwyContainer, GwyDataField
+
+from .signals import Signals
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +95,46 @@ def export_data(filename, data, header):
         if isinstance(v, Signals):
             header[i] = v.value
     writer = writers[ext]
-    writer(filename, data, header)
+    writer(filename, data.astype('float32'), header)
+
+
+def export_gwy(filename: str, data: xr.Dataset):
+    """ Exports xr.Dataset as gwyddion file. xr.DataArrays become separate channels. DataArray attributes are saved
+    as metadata. Attributes must include x,y_size and x,y_offset. x,y_offset is defined as the top left corner
+    of the image, with coordinate values increasing downwards and to the right.
+
+    Parameters
+    ----------
+    filename: str
+        filename of gwyddion file. Should end on '.gwy'
+    data: xr.Dataset
+        xr.Dataset of xr.DataArrays of x/y data
+    """
+    container = GwyContainer()
+    metadata = data.attrs
+    metastrings = {k: str(v) for k, v in metadata.items()}
+    metacontainer = GwyContainer(metastrings)
+
+    for i, (t, d) in enumerate(data.data_vars.items()):
+        image_data = d.values.astype('float64')  # only double precision floats in gwy files
+        assert image_data.ndim == 2
+        z_unit = ''
+        if d.attrs['z_unit']:
+            z_unit = d.attrs['z_unit']
+        container['/' + str(i) + '/data/title'] = t
+        container['/' + str(i) + '/data'] = GwyDataField(image_data,
+                                                         xreal=metadata['x_size'],
+                                                         yreal=metadata['y_size'],
+                                                         xoff=metadata['x_offset'],
+                                                         yoff=metadata['y_offset'],
+                                                         si_unit_xy='m',
+                                                         si_unit_z=z_unit,
+                                                         )
+        container['/' + str(i) + '/base/palette'] = 'Warm'
+        container['/' + str(i) + '/meta'] = metacontainer
+
+    container['/filename'] = filename
+    container.tofile(filename)
 
 
 def load_approach(fname: str) -> pd.DataFrame:

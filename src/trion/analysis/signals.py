@@ -88,9 +88,11 @@ def signal_colormap(scale=255, filename=None) -> dict:
 
 class Scan(NamedEnum):
     point = auto()
-    # approach = auto()
+    stepped_retraction = auto()
+    stepped_image = auto()
+    continuous_retraction = auto()
+    continuous_image = auto()
     # AFM = auto()
-    # image scan, or AFM, or SNOM?
 
 
 class Demodulation(NamedEnum):

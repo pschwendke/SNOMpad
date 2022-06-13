@@ -27,7 +27,7 @@ The possible variables are:
 * `tap_y` : Cantilever deflection quadrature "Y", always used,
 * `ref_x` : Reference mirror modulation signal "X", in psHet mode,
 * `ref_y` : Reference mirror modulation signal "Y", in psHet mode,
-* `chop` : Chopper status, float, for pump-probe.
+* `chop` : Chopper status, bool, for pump-probe.
 
 ### Positions (parameters)
 * `afm_x` : AFM position x (nm),
