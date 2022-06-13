@@ -212,6 +212,16 @@ def test_pshet_binning_empty(pshet_data_points, drops):
         assert all(np.isnan(perforated_data[:, int(ref_n[i]), int(tap_n[i])]))
 
 
+def test_pshet_binning_balanced():
+    # TODO
+    pass
+
+
+def test_pshet_binning_chop():
+    # TODO
+    pass
+
+
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_shape(pshet_data_points):
     """ Test the shape of the DataFrame returned by pshet_ft.
