@@ -27,16 +27,19 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: 
     binned: np.ndarray
         average signals for each bin between -pi, pi. Signals on axis=0, values on axis=1.
     """
-    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    if balanced:
+        assert Signals.sig_a in signals and Signals.sig_b in signals
+        # TODO: this only produces the difference:
+        detector_signals = data[:, signals.index(Signals.sig_a)] - data[:, signals.index(Signals.sig_b)]
+    else:
+        detector_signals = [data[:, signals.index(det_sig)] for det_sig in signals if det_sig in all_detector_signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
-    if balanced:
-        assert all([Signals.sig_a, Signals.sig_b]) in signals
-        # detector_signals = detector_signals[:, 0] - detector_signals[:, 1]
-
     if Signals.chop in signals:
-        pump_idx = np.isclose(data[:, -1], data[:, -1].max(), rtol=.05)
-        chop_idx = np.isclose(data[:, -1], data[:, -1].min(), rtol=.05)
+        pump_idx = np.isclose(data[:, signals.index(Signals.chop)],
+                              data[:, signals.index(Signals.chop)].max(), rtol=.05)
+        chop_idx = np.isclose(data[:, signals.index(Signals.chop)],
+                              data[:, signals.index(Signals.chop)].min(), rtol=.05)
         pumped = binned_statistic(x=tap_p[pump_idx], values=detector_signals[pump_idx],
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
         chopped = binned_statistic(x=tap_p[chop_idx], values=detector_signals[chop_idx],

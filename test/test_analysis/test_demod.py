@@ -75,6 +75,16 @@ def test_shd_binning_empty(shd_data_points, drops):
     assert np.isnan(perforated_data[:, drops]).all()
 
 
+def test_shd_binning_balanced():
+    # TODO
+    pass
+
+
+def test_shd_binning_chop():
+    # TODO
+    pass
+
+
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_ft_shape(shd_data_points):
     """ Test the shape of the DataFrame returned by shd_ft.
