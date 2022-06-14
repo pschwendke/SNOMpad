@@ -7,7 +7,7 @@ import pandas as pd
 from .signals import Signals, all_detector_signals
 
 
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: bool = False) -> np.ndarray:
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
     """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When balanced == True,
     the difference sig_a - sig_b is binned onto phase domain.
 
@@ -19,20 +19,13 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, balanced: 
         list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
     tap_nbins: int
         number of tapping bins
-    balanced: bool
-        true for signal acquired with balanced detection
 
     RETURNS
     -------
     binned: np.ndarray
         average signals for each bin between -pi, pi. Signals on axis=0, values on axis=1.
     """
-    if balanced:
-        assert Signals.sig_a in signals and Signals.sig_b in signals
-        # TODO: this only produces the difference:
-        detector_signals = [data[:, signals.index(Signals.sig_a)] - data[:, signals.index(Signals.sig_b)]]
-    else:
-        detector_signals = [data[:, signals.index(det_sig)] for det_sig in signals if det_sig in all_detector_signals]
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in signals if det_sig in all_detector_signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
     if Signals.chop in signals:

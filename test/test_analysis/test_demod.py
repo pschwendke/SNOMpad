@@ -75,11 +75,6 @@ def test_shd_binning_empty(shd_data_points, drops):
     assert np.isnan(perforated_data[:, drops]).all()
 
 
-def test_shd_binning_balanced():
-    # TODO
-    pass
-
-
 def test_shd_binning_chop():
     # TODO
     pass
