@@ -29,15 +29,15 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
     if Signals.chop in signals:
-        pump_idx = np.isclose(data[:, signals.index(Signals.chop)],
-                              data[:, signals.index(Signals.chop)].max(), rtol=.05)
-        chop_idx = np.isclose(data[:, signals.index(Signals.chop)],
-                              data[:, signals.index(Signals.chop)].min(), rtol=.05)
+        chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
+        pump_idx = chop_sig > chop_sig.max() * .8
+        chop_idx = chop_sig < chop_sig.min() * .8
+
         pumped = binned_statistic(x=tap_p[pump_idx], values=[s[pump_idx] for s in detector_signals],
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
         chopped = binned_statistic(x=tap_p[chop_idx], values=[s[chop_idx] for s in detector_signals],
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-        return pumped.statistics - chopped.statistics
+        return pumped.statistic - chopped.statistic
     else:
         binned = binned_statistic(x=tap_p, values=detector_signals, statistic='mean', bins=tap_nbins,
                                   range=[-np.pi, np.pi])
@@ -103,10 +103,10 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
 
     if Signals.chop in signals:
-        pump_idx = np.isclose(data[:, signals.index(Signals.chop)],
-                              data[:, signals.index(Signals.chop)].max(), rtol=.05)
-        chop_idx = np.isclose(data[:, signals.index(Signals.chop)],
-                              data[:, signals.index(Signals.chop)].min(), rtol=.05)
+        chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
+        pump_idx = chop_sig > chop_sig.max() * .8
+        chop_idx = chop_sig < chop_sig.min() * .8
+
         pumped = binned_statistic_2d(x=tap_p[pump_idx], y=ref_p[pump_idx],
                                      values=[s[pump_idx] for s in detector_signals],
                                      statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])

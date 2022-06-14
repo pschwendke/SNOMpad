@@ -15,7 +15,7 @@ pshet_parameters = [
     [32, 4, [1, 1 + 1j, 2 + 2j, .5 + 3j], 16, 4, [1, 2 + .5j, 1 + 1j, .5 + 2j]]
 ]
 np.random.seed(2108312109)
-npoints = [10, 1000, 10_000, 50_000, 75_000, 100_000]
+npoints = [5000, 10_000, 50_000, 75_000, 100_000]
 
 
 def bin_index(phi, n_bins: int):
@@ -76,8 +76,39 @@ def test_shd_binning_empty(shd_data_points, drops):
 
 
 def test_shd_binning_chop():
-    # TODO
-    pass
+    tap_nbins = 64
+    tap_phase = np.arange(-np.pi, np.pi, 2 * np.pi / tap_nbins)
+    tap_phase += np.pi / tap_nbins
+    phases_chopped = np.vstack([np.cos(tap_phase), np.sin(tap_phase)]).T
+    phases_unchopped = phases_chopped.copy()
+
+    sig_a_chopped, sig_a_unchopped, sig_b_chopped, sig_b_unchopped = np.random.uniform(size=4)
+    sig_a_chopped *= np.ones(tap_nbins)
+    sig_a_unchopped *= np.ones(tap_nbins)
+    sig_b_chopped *= np.ones(tap_nbins)
+    sig_b_unchopped *= np.ones(tap_nbins)
+    chop_chopped = np.random.uniform(size=tap_nbins) * .01
+    chop_unchopped = np.ones(tap_nbins) - np.random.uniform(size=tap_nbins) * .01
+
+    # for only sig_a
+    data = np.hstack([np.hstack([sig_a_chopped, sig_a_unchopped])[:, np.newaxis],
+                      np.vstack([phases_chopped, phases_unchopped]),
+                      np.hstack([chop_chopped, chop_unchopped])[:, np.newaxis]])
+    np.random.shuffle(data)
+    signals = [Signals.sig_a, Signals.tap_x, Signals.tap_y, Signals.chop]
+    binned = shd_binning(data, signals, tap_nbins)
+    assert np.allclose(binned, sig_a_unchopped-sig_a_chopped)
+
+    # for sig_a and sig_b
+    data = np.hstack([np.hstack([sig_a_chopped, sig_a_unchopped])[:, np.newaxis],
+                      np.hstack([sig_b_chopped, sig_b_unchopped])[:, np.newaxis],
+                      np.vstack([phases_chopped, phases_unchopped]),
+                      np.hstack([chop_chopped, chop_unchopped])[:, np.newaxis]])
+    np.random.shuffle(data)
+    signals = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.chop]
+    binned = shd_binning(data, signals, tap_nbins)
+    assert np.allclose(binned[0], sig_a_unchopped - sig_a_chopped)
+    assert np.allclose(binned[1], sig_b_unchopped - sig_b_chopped)
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
@@ -308,15 +339,23 @@ def test_pshet_coeff():
 
 
 # BENCHMARKING ##############################
-@pytest.mark.parametrize('noise_data', filter(lambda n: n > 100, npoints), indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', [[n, False] for n in npoints], indirect=['noise_data'])
 def test_shd_binning_benchmark(benchmark, noise_data):
-    """ Benchmarks the speed of shd binning for different lengths of random data sets"""
-    tap_nbins = 32
+    """ Benchmarks the speed of shd_binning for different lengths of random data sets"""
+    tap_nbins = 64
     data,  signals = noise_data
     benchmark(shd_binning, data, signals, tap_nbins)
 
 
-@pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])
+@pytest.mark.parametrize('noise_data', [[n, True] for n in npoints], indirect=['noise_data'])
+def test_shd_binning_chop_benchmark(benchmark, noise_data):
+    """ Benchmarks shd_binning with random data including chopping"""
+    tap_nbins = 64
+    data, signals = noise_data
+    benchmark(shd_binning, data, signals, tap_nbins)
+
+
+@pytest.mark.parametrize('noise_data', [[n, False] for n in npoints], indirect=['noise_data'])
 def test_pshet_binning_benchmark(benchmark, noise_data):
     """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
     tap_nbins = 32
