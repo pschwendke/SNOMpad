@@ -30,8 +30,10 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
 
     if Signals.chop in signals:
         chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
-        pump_idx = chop_sig > chop_sig.max() * .8
-        chop_idx = chop_sig < chop_sig.min() * .8
+        #  ToDo: the threshold needs to be redone. This is just provisional.
+        threshold = (chop_sig.max() + chop_sig.min()) / 2
+        pump_idx = chop_sig > threshold
+        chop_idx = chop_sig <= threshold
 
         pumped = binned_statistic(x=tap_p[pump_idx], values=[s[pump_idx] for s in detector_signals],
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
@@ -104,15 +106,17 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
 
     if Signals.chop in signals:
         chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
-        pump_idx = chop_sig > chop_sig.max() * .8
-        chop_idx = chop_sig < chop_sig.min() * .8
+        #  ToDo: the threshold needs to be redone. This is just provisional.
+        threshold = (chop_sig.max() + chop_sig.min()) / 2
+        pump_idx = chop_sig > threshold
+        chop_idx = chop_sig <= threshold
 
         pumped = binned_statistic_2d(x=tap_p[pump_idx], y=ref_p[pump_idx],
-                                     values=[s[pump_idx] for s in detector_signals],
-                                     statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+                                     values=[s[pump_idx] for s in detector_signals], statistic='mean',
+                                     bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         chopped = binned_statistic_2d(x=tap_p[chop_idx], y=ref_p[chop_idx],
-                                      values=[s[chop_idx] for s in detector_signals],
-                                      statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+                                      values=[s[chop_idx] for s in detector_signals], statistic='mean',
+                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = pumped.statistic - chopped.statistic
     else:
         returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
