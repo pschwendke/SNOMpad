@@ -8,7 +8,8 @@ import pandas as pd
 from .signals import Signals, all_detector_signals
 
 
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
+# SHD DEMODULATION #####################################################################################################
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, theta_C: float = 0) -> np.ndarray:
     """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included.
 
     PARAMETERS
@@ -19,6 +20,8 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
         list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
     tap_nbins: int
         number of tapping bins
+    theta_C: float
+        phase of contact for tapping modulation. Used for phase correction
 
     RETURNS
     -------
@@ -27,6 +30,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     """
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    tap_p = (tap_p - theta_C + np.pi) % (2 * np.pi) - np.pi
     returns = binned_statistic(x=tap_p, values=detector_signals,
                                statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
     binned = returns.statistic
@@ -52,14 +56,17 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     return ft.T
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, theta_C: float = 0) -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
     """
-    binned = shd_binning(data, signals, tap_nbins)
+    binned = shd_binning(data, signals, tap_nbins, theta_C)
     return shd_ft(binned)
 
 
-def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
+# PSHET DEMODULATION ###################################################################################################
+def pshet_binning(data: np.ndarray, signals: list,
+                  tap_nbins: int = 64, ref_nbins: int = 64,
+                  theta_C: float = 0, theta_0: float = 0) -> np.ndarray:
     """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
 
     PARAMETERS
@@ -72,6 +79,10 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
         number of tapping bins
     ref_nbins: float
         number of reference bins
+    theta_C: float
+        phase of contact for tapping modulation. Used for phase correction
+    theta_0: float
+        Phase offset of the reference mirror modulation. Used for phase correction
 
     RETURNS
     -------
@@ -82,6 +93,8 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    tap_p = (tap_p - theta_C + np.pi) % (2 * np.pi) - np.pi
+    ref_p = (ref_p - theta_0 + np.pi) % (2 * np.pi) - np.pi
     returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
                                   bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
@@ -129,17 +142,18 @@ def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
 
     coefficients = (np.abs(ft[:, m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
-    # neg_coefficients = (np.abs(ft[:, -m, :]) * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
     return coefficients.T
 
 
-def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, gamma: float = 2.63) -> np.ndarray:
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
+          theta_C: float = 0, theta_0: float = 0, gamma: float = 2.63) -> np.ndarray:
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
     """
-    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins))
+    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins, theta_C, theta_0))
     return pshet_coeff(ft, gamma)
 
 
+# NAIVE DISCRETE FT DEMODULATION #######################################################################################
 def dft_lstsq(phi, sig, max_order: int):
     assert phi.ndim == 1
     assert max_order > 1
@@ -241,7 +255,7 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
     return pd.DataFrame(amps, columns=cols)
 
 
-# older stuff, kept for compatibility ##################################################################################
+# OLDER STUFF # FOR COMPATIBILITY ######################################################################################
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
 
 
