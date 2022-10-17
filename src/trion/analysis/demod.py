@@ -8,8 +8,44 @@ import pandas as pd
 from .signals import Signals, all_detector_signals
 
 
+def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
+    """Compute the midpoints of phase bins"""
+    span = hi - lo
+    step = span/n_bins
+    return (np.arange(n_bins)+0.5) * step + lo
+
+
+# MODULATION PHASE OFFSETS #############################################################################################
+def phase_offset(binned: np.ndarray, axis=-1) -> float:
+    """Determine phase shift required to make FT real.
+
+    Parameters
+    ----------
+    binned : np.ndarray, real
+        Binned date. Real.
+    axis : int
+        Axis to perform FT. Use `tap_p` for `theta_C`, `ref_p` for `theta_0`.
+
+    Returns
+    -------
+    phi : float
+        Phase required to make FT real.
+
+    Note
+    ----
+    Operate on the appropriate axis to determine the phase offsets from the
+    binned data. For binned with shape (M, tap_nbins
+    """
+    # TODO: compare sign with the behavior of the binning functions below.
+    spec = np.fft.rfft(binned, axis=axis)
+    phi = np.angle(spec.take(1, axis=axis))
+    phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.
+    return phi
+
+
 # SHD DEMODULATION #####################################################################################################
-def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, theta_C: float = 0) -> np.ndarray:
+def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64,
+                theta_C: float = 0) -> np.ndarray:
     """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included.
 
     PARAMETERS
@@ -30,6 +66,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, theta_C: f
     """
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    # TODO: check performance. Can be accelerated by performing phase shift in fourier domain
     tap_p = (tap_p - theta_C + np.pi) % (2 * np.pi) - np.pi
     returns = binned_statistic(x=tap_p, values=detector_signals,
                                statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
@@ -93,6 +130,7 @@ def pshet_binning(data: np.ndarray, signals: list,
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    # TODO: check performance. Can be accelerated by performing phase shift in fourier domain
     tap_p = (tap_p - theta_C + np.pi) % (2 * np.pi) - np.pi
     ref_p = (ref_p - theta_0 + np.pi) % (2 * np.pi) - np.pi
     returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
@@ -117,6 +155,7 @@ def pshet_ft(binned: np.ndarray) -> np.ndarray:
     ft: np.ndarray
         complex amplitudes of Fourier components.
     """
+    # TODO: check phase shifting behavior and compare with result of: FT, shift by theta_C, real, FT, shift theta_0, real
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
