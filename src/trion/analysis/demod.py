@@ -36,11 +36,10 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     Operate on the appropriate axis to determine the phase offsets from the
     binned data. For binned with shape (M, tap_nbins
     """
-    # TODO: compare sign with the behavior of the binning functions below.
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
     phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.
-    return phi
+    return - phi
 
 
 # SHD DEMODULATION #####################################################################################################
