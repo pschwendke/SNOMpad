@@ -90,7 +90,7 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
             ref_sig = sum(np.abs(ref_harm_amps[n]) * np.cos(n * ref_phase[j] + np.angle(ref_harm_amps[n]))
                           for n in range(ref_nharm))
             data_point = tap_sig * ref_sig
-            data[row] = [data_point, -data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
+            data[row] = [data_point, data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
     sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
 
     return request.param, data, sigs
