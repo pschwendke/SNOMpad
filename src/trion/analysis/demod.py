@@ -173,7 +173,7 @@ def pshet_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
     return np.real(ft)
 
 
-def pshet_coeff(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
+def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
     """ Computes coefficients for tapping demodulation.
 
     PARAMETERS
@@ -207,7 +207,7 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
     """
     ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins), phase_correction)
-    return pshet_coeff(ft, gamma)
+    return pshet_coefficients(ft, gamma)
 
 
 # NAIVE DISCRETE FT DEMODULATION #######################################################################################
