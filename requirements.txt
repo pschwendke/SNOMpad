@@ -13,3 +13,7 @@ h5py
 pytest
 pytest-benchmark
 xarray
+
+gwyfile
+lmfit
+setuptools
