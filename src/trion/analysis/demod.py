@@ -38,7 +38,7 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
-    phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.
+    phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.  # Why does this work ???
     return phi
 
 
@@ -68,7 +68,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     return binned
 
 
-def shd_ft(binned: np.ndarray, theta_C: float = 0) -> np.ndarray:
+def shd_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
     """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
     It is assumed that binned data is either correctly phased (theta_C = 0), or that the offset value is given.
     Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
@@ -78,8 +78,8 @@ def shd_ft(binned: np.ndarray, theta_C: float = 0) -> np.ndarray:
     ----------
     binned: np.ndarray
         array of values for fft. Values should be on axis=-1
-    theta_C: float
-        theta_tap offset as determined by phase_offset()
+    phase_correction: bool
+        When True, phases are corrected after fft with phase offset determined by phase_offset()
 
     RETURNS
     -------
@@ -89,16 +89,20 @@ def shd_ft(binned: np.ndarray, theta_C: float = 0) -> np.ndarray:
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft(binned, axis=-1) / binned.shape[-1]
-    phase_correction = (theta_C + np.pi + np.pi/binned.shape[-1])
-    ft = np.real(np.exp(- 1j * np.arange(ft.shape[-1]) * phase_correction) * ft)
-    return ft.T
+
+    # phase corrections: symmetry (offset in 1st harmonic), pi phase shift due to binning and fft offset
+    tap_offset = phase_offset(binned, axis=-1)
+    tap_offset = np.arange(ft.shape[-1]) * (tap_offset + np.pi)
+    ft *= np.exp(- 1j * phase_correction * tap_offset)
+
+    return np.real(ft.T)
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, theta_C: float = 0) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, phase_correction: bool = False) -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
     """
     binned = shd_binning(data, signals, tap_nbins)
-    return shd_ft(binned, theta_C)
+    return shd_ft(binned, phase_correction)
 
 
 # PSHET DEMODULATION ###################################################################################################
@@ -131,7 +135,7 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     return binned.transpose(0, 2, 1)
 
 
-def pshet_ft(binned: np.ndarray, theta_C: float = 0, theta_0: float = 0) -> np.ndarray:
+def pshet_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
     """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
     It is assumed that binned data is either correctly phased (theta_C = theta_0 = 0), or that the values are given.
     Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
@@ -142,10 +146,8 @@ def pshet_ft(binned: np.ndarray, theta_C: float = 0, theta_0: float = 0) -> np.n
     ----------
     binned: np.ndarray
         array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
-    theta_C: float
-        theta_tap offset as determined by phase_offset()
-    theta_0: float
-        theta_ref offset as determined by phase_offset()
+    phase_correction: bool
+        When True, phases are corrected after fft with phase offset determined by phase_offset()
 
     RETURNS
     -------
@@ -155,18 +157,23 @@ def pshet_ft(binned: np.ndarray, theta_C: float = 0, theta_0: float = 0) -> np.n
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
 
+    tap_offset = phase_offset(binned, axis=-1)
     ft = np.fft.rfft(binned, axis=-1) / binned.shape[-1]
-    phase_correction = np.arange(ft.shape[-1]) * (theta_C + np.pi + np.pi / binned.shape[-1])
-    ft = np.real(np.exp(- 1j * phase_correction) * ft)
+    # phase correction = n (theta_C + pi)  ## pi correction for binning and fft phase offset
+    tap_offset = np.arange(ft.shape[-1])[np.newaxis, np.newaxis, :] * (tap_offset[:, :, np.newaxis] + np.pi)
+    ft *= np.exp(- 1j * phase_correction * tap_offset)
+    ft = np.real(ft)
 
+    ref_offset = phase_offset(ft, axis=-2)
     ft = np.fft.rfft(ft, axis=-2) / ft.shape[-2]
-    phase_correction = np.arange(ft.shape[-2]) * (theta_0 + np.pi + np.pi / binned.shape[-2])
-    ft = np.real(np.exp(- 1j * phase_correction)[:, np.newaxis] * ft)
+    # phase correction = m (theta_0 + pi)
+    ref_offset = np.arange(ft.shape[-2])[np.newaxis, :, np.newaxis] * (ref_offset[:, np.newaxis, :] + np.pi)
+    ft *= np.exp(- 1j * phase_correction * ref_offset)
 
-    return ft
+    return np.real(ft)
 
 
-def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
+def pshet_coeff(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
     """ Computes coefficients for tapping demodulation.
 
     PARAMETERS
@@ -175,23 +182,31 @@ def pshet_coeff(ft: np.ndarray, gamma: float = 2.63) -> np.ndarray:
         array containig Fourier amplitudes. signals on axis=0, ref on axis=1, tap on axis=2
     gamma: float
         modulation depth
+    psi_R: float
+        offset in optical phase between sig and ref beam, determined by fitting reference modulation at phase of contact
+    m: int
+        sidebands to be evaluated are m and m+1
+
     RETURNS
     -------
     coefficients: np.ndarray
-        complex coefficients for tapping demodulation. amplitudes on axis=0, signals on axis=1
+        complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
     """
-    m = np.array([1, 2])
+    m = np.array([m, m+1])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
-
     coefficients = (ft[:, m, :] * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+
+    phase = np.exp(1j * (psi_R + m[0] * np.pi / 2))
+    coefficients *= phase
+
     return coefficients.T
 
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
-          theta_C: float = 0, theta_0: float = 0, gamma: float = 2.63) -> np.ndarray:
+          phase_correction: bool = False, gamma: float = 2.63) -> np.ndarray:
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
     """
-    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins), theta_C, theta_0)
+    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins), phase_correction)
     return pshet_coeff(ft, gamma)
 
 
