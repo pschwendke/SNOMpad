@@ -35,8 +35,9 @@ def sort_chopped(chop: np.ndarray) -> tuple:
 
 
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
-    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When balanced == True,
-    the difference sig_a - sig_b is binned onto phase domain.
+    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When Signals.chop is included in signals
+        chopped and pumped are binned sepparately and the difference normalized by the chopped signal (probe only) is
+        returned.
 
     PARAMETERS
     ----------
@@ -52,25 +53,24 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     binned: np.ndarray
         average signals for each bin between -pi, pi. Signals on axis=0, values on axis=1.
     """
-    detector_signals = [data[:, signals.index(det_sig)] for det_sig in signals if det_sig in all_detector_signals]
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
     if Signals.chop in signals:
-        chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
-        #  ToDo: the threshold needs to be redone. This is just provisional.
-        threshold = (chop_sig.max() + chop_sig.min()) / 2
-        pump_idx = chop_sig > threshold
-        chop_idx = chop_sig <= threshold
-
-        pumped = binned_statistic(x=tap_p[pump_idx], values=[s[pump_idx] for s in detector_signals],
+        chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+        pumped = binned_statistic(x=tap_p[pumped_idx], values=[s[pumped_idx] for s in detector_signals],
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-        chopped = binned_statistic(x=tap_p[chop_idx], values=[s[chop_idx] for s in detector_signals],
+        chopped = binned_statistic(x=tap_p[chopped_idx], values=[s[chopped_idx] for s in detector_signals],
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-        return pumped.statistic - chopped.statistic
+
+        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+        return binned
+
     else:
-        binned = binned_statistic(x=tap_p, values=detector_signals, statistic='mean', bins=tap_nbins,
-                                  range=[-np.pi, np.pi])
-        return binned.statistic
+        returns = binned_statistic(x=tap_p, values=detector_signals,
+                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+        binned = returns.statistic
+        return binned
 
 
 def shd_ft(binned: np.ndarray) -> np.ndarray:
@@ -99,9 +99,10 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
     return shd_ft(binned)
 
 
-def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
-                  balanced: bool = False) -> np.ndarray:
+def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
     """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
+        When Signals.chop is included in signals chopped and pumped are binned sepparately and the difference
+        normalized by the chopped signal (probe only) is returned.
 
     PARAMETERS
     ----------
@@ -113,8 +114,6 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
         number of tapping bins
     ref_nbins: float
         number of reference bins
-    balanced: bool
-        true for signal acquired with balanced detection
 
     RETURNS
     -------
@@ -122,38 +121,25 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
         average signals for each bin between -pi, pi. Signals on axis=0,
         tapping bins on axis=2, reference bins on axis=1.
     """
-    if balanced:
-        assert Signals.sig_a in signals and Signals.sig_b in signals
-        # TODO: this only produces the difference:
-        detector_signals = [data[:, signals.index(Signals.sig_a)] - data[:, signals.index(Signals.sig_b)]]
-    else:
-        detector_signals = [data[:, signals.index(det_sig)] for det_sig in signals if det_sig in all_detector_signals]
+    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
 
     if Signals.chop in signals:
-        chop_sig = data[:, signals.index(Signals.chop)] - np.mean(data[:, signals.index(Signals.chop)])
-        #  ToDo: the threshold needs to be redone. This is just provisional.
-        threshold = (chop_sig.max() + chop_sig.min()) / 2
-        pump_idx = chop_sig > threshold
-        chop_idx = chop_sig <= threshold
-
-        pumped = binned_statistic_2d(x=tap_p[pump_idx], y=ref_p[pump_idx],
-                                     values=[s[pump_idx] for s in detector_signals], statistic='mean',
+        chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+        pumped = binned_statistic_2d(x=tap_p[pumped_idx], y=ref_p[pumped_idx],
+                                     values=[s[pumped_idx] for s in detector_signals], statistic='mean',
                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
-        chopped = binned_statistic_2d(x=tap_p[chop_idx], y=ref_p[chop_idx],
-                                      values=[s[chop_idx] for s in detector_signals], statistic='mean',
+        chopped = binned_statistic_2d(x=tap_p[chopped_idx], y=ref_p[chopped_idx],
+                                      values=[s[chopped_idx] for s in detector_signals], statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
-        binned = pumped.statistic - chopped.statistic
+        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
     else:
         returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
 
-    if binned.ndim == 2:
-        return binned.T[np.newaxis, :, :]
-    elif binned.ndim == 3:
-        return binned.transpose(0, 2, 1)
+    return binned.transpose(0, 2, 1)
 
 
 def pshet_ft(binned: np.ndarray) -> np.ndarray:
