@@ -125,7 +125,9 @@ class NeaSNOM:
         self.scan.set_ScanAngle(angle)
         self.scan.set_SamplingTime(sampling_time)
         if serpent:
-            self.scan.SetSerpentScan()
+            self.scan.set_ResolutionRows(y_res * 5)
+            self.scan.TakeRows = 1
+            self.scan.SkipRows = 4
 
     def start(self):
         image = self.scan.Start()

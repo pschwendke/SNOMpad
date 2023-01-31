@@ -155,10 +155,7 @@ class NoiseScan(BaseScan):
     def __init__(self, signals: Iterable[Signals], sampling_seconds: float,
                  x_target=None, y_target=None, npts: int = 5_000, setpoint: int = 0.8):
         super().__init__(signals, mod=Demodulation.shd)
-        if x_target is None or y_target is None:
-            self.x_target, self.y_target = self.afm.nea_mic.PositionX, self.afm.nea_mic.PositionY
-        else:
-            self.x_target, self.y_target = x_target, y_target
+        self.x_target, self.y_target = x_target, y_target
         self.npts = npts
         self.setpoint = setpoint
 
@@ -186,6 +183,8 @@ class NoiseScan(BaseScan):
 
     def prepare(self):
         super().prepare()
+        if self.x_target is None or self.y_target is None:
+            self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
         self.afm.prepare_image(self.mod, self.x_target, self.y_target, self.x_size, self.y_size,
                                self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
 
@@ -208,6 +207,7 @@ class NoiseScan(BaseScan):
             while not self.afm.scan.IsCompleted:
                 print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
 
+                # ToDo: maybe an ExtendingArrayBuffer of sufficient size would be better. skip the loop.
                 n_read = excess
                 while n_read < self.npts:
                     sleep(.001)
@@ -247,3 +247,5 @@ class NoiseScan(BaseScan):
                 v.attrs['z_unit'] = ''
         self.export()
         logger.info('Scan complete')
+
+        return self.afm_data

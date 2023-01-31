@@ -91,8 +91,21 @@ class Experiment:
 class Measurement(ABC):
     """ Base class to load, demodulate and export acquired data.
     """
-    def __init__(self, ds: xr.Dataset):
+    def __init__(self, ds: xr.Dataset, directory):
         self.afm_data = ds
+        self.directory = directory
+        try:
+            self.afm_data = self.afm_data['__xarray_dataarray_variable__']
+        except KeyError:
+            pass
+        self.signals = [Signals[s] for s in self.afm_data.attrs['signals']]
+        self.modulation = Demodulation[self.afm_data.attrs['modulation']]
+
+        # TODO delete this when merged into develop (should be set in BaseScan)
+        if 'name' not in self.afm_data.attrs.keys():
+            name = self.afm_data.attrs['date'].replace('T', '_').replace(':', '').replace('-', '')
+            name += '_' + self.afm_data.attrs['acquisition_mode']
+            self.afm_data.attrs['name'] = name
 
     @abstractmethod
     def demod(self):
@@ -109,8 +122,8 @@ class Measurement(ABC):
 
 
 class Image(Measurement):
-    def __init__(self, ds: xr.Dataset):
-        super().__init__(ds)
+    def __init__(self, ds: xr.Dataset, directory=''):
+        super().__init__(ds, directory)
 
     def demod(self):
         pass
@@ -123,8 +136,8 @@ class Image(Measurement):
 
 
 class Retraction(Measurement):
-    def __init__(self, ds: xr.Dataset):
-        super().__init__(ds)
+    def __init__(self, ds: xr.Dataset, directory=''):
+        super().__init__(ds, directory)
 
     def demod(self):
         pass
@@ -137,8 +150,8 @@ class Retraction(Measurement):
 
 
 class Noise(Measurement):
-    def __init__(self, ds: xr.Dataset):
-        super().__init__(ds)
+    def __init__(self, ds: xr.Dataset, directory=''):
+        super().__init__(ds, directory)
         self.z_spectrum = None
         self.z_frequencies = None
         self.amp_spectrum = None
@@ -147,28 +160,29 @@ class Noise(Measurement):
         self.optical_frequencies = None
 
     def demod(self):
-        nea_data = self.afm_data.values().flatten()
+        nea_data = self.afm_data['Z'].values.flatten()
+        nea_data = nea_data[~np.isnan(nea_data)]  # for some reason NANs appear at the end
         integration_seconds = self.afm_data.attrs['afm_sampling_milliseconds'] * 1e-3
         n = len(nea_data)
-        self.z_spectrum = np.fft.rfft(nea_data, n)
+        self.z_spectrum = np.abs(np.fft.rfft(nea_data, n))
         self.z_frequencies = np.fft.rfftfreq(n, integration_seconds)
 
-        signals = [Signals[s] for s in self.afm_data['signals']]
+        signals = [Signals[s] for s in self.afm_data.attrs['signals']]
         if Signals.tap_x in signals:
             npz = np.load(self.afm_data.attrs['daq_data_filename'])
-            daq_data = np.vstack([i for i in npz.items()]).T
+            daq_data = np.vstack([i for i in npz.values()]).T
             tap_x = daq_data[:, signals.index(Signals.tap_x)]
             tap_y = daq_data[:, signals.index(Signals.tap_y)]
             tap_p = np.arctan2(tap_y, tap_x)
             amplitude = tap_x / np.cos(tap_p)
             n = len(amplitude)
             dt_seconds = 5e-6  # time between DAQ samples
-            self.amp_spectrum = np.fft.rfft(amplitude, n)
-            self.amp_frequencies = np.fft.rfft(n, dt_seconds)
+            self.amp_spectrum = np.abs(np.fft.rfft(amplitude, n))
+            self.amp_frequencies = np.fft.rfftfreq(n, dt_seconds)
 
             if Signals.sig_a in signals:
                 sig_a = daq_data[:, signals.index(Signals.sig_a)]
-                self.optical_spectrum = np.fft.rfft(sig_a, n)
+                self.optical_spectrum = np.abs(np.fft.rfft(sig_a, n))
                 self.optical_frequencies = np.fft.rfftfreq(n, dt_seconds)
 
     def plot(self):
@@ -176,15 +190,15 @@ class Noise(Measurement):
 
     def export(self):
         if self.z_spectrum is not None:
-            filename = f'{self.afm_data.attrs["date"]}_z_spectrum.npz'
+            filename = self.afm_data.attrs['name'] + '.npz'
             data = np.vstack([self.z_frequencies, self.z_spectrum]).T
             export_data(filename, data, ['t', 'z'])
         if self.amp_spectrum is not None:
-            filename = f'{self.afm_data.attrs["date"]}_afm_amplitude_spectrum.npz'
+            filename = self.afm_data.attrs['name'] + '.npz'
             data = np.vstack([self.amp_frequencies, self.amp_spectrum]).T
             export_data(filename, data, ['t', 'amplitude'])
         if self.optical_spectrum is not None:
-            filename = f'{self.afm_data.attrs["date"]}_optical_spectrum.npz'
+            filename = self.afm_data.attrs['name'] + '.npz'
             data = np.vstack([self.optical_frequencies, self.optical_spectrum]).T
             export_data(filename, data, ['t', 'sig_a'])
 
@@ -212,12 +226,17 @@ def load(filename: str) -> Measurement:
     """ Loads scan from .nc file and returns Measurement object. The function is agnostic to scan type.
     """
     scan = xr.load_dataset(filename)
-    scan_type = Scan[scan.attrs['acquisition_mode']]
+    directory = '/'.join(filename.split('/')[:-1]) + '/'
+    try:
+        scan_type = Scan[scan.attrs['acquisition_mode']]
+    except KeyError:
+        scan_type = Scan[scan['__xarray_dataarray_variable__'].attrs['acquisition_mode']]
+
     if scan_type in [Scan.stepped_retraction, Scan.continuous_retraction]:
-        return Retraction(scan)
-    elif scan_type in[Scan.stepped_image, Scan.continuous_image]:
-        return Image(scan)
+        return Retraction(scan, directory)
+    elif scan_type in [Scan.stepped_image, Scan.continuous_image]:
+        return Image(scan, directory)
     elif scan_type == Scan.noise_sampling:
-        return Noise(scan)
+        return Noise(scan, directory)
     else:
         raise NotImplementedError
