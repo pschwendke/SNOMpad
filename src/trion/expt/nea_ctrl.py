@@ -70,7 +70,6 @@ class NeaSNOM:
     def disconnect(self):
         logger.info('Disconnecting microscope')
         self.stop()
-        self.nea_mic.GotoTipPosition(50, 50, 1e-3)
         self.nea_client.Disconnect()
 
     def set_pshet(self, mod: Demodulation):
