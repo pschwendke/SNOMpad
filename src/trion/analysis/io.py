@@ -1,5 +1,4 @@
 # io.py: read and write utility function
-import re
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -15,6 +14,7 @@ from .signals import Signals
 logger = logging.getLogger(__name__)
 
 
+# EXPORTING DATA TO NPZ, NPY, CSV ######################################################################################
 def export_npz(filename, data, header, compress=True):
     """
     Export a single point data table as an npz archive.
@@ -98,6 +98,7 @@ def export_data(filename, data, header):
     writer(filename, data.astype('float32'), header)
 
 
+# READING AND WRITING GWYDDION FORMA ###################################################################################
 def export_gwy(filename: str, data: xr.Dataset):
     """ Exports xr.Dataset as gwyddion file. xr.DataArrays become separate channels. DataArray attributes are saved
     as metadata. Attributes must include x,y_size and x,y_offset. x,y_offset is defined as the top left corner
@@ -117,17 +118,24 @@ def export_gwy(filename: str, data: xr.Dataset):
 
     for i, (t, d) in enumerate(data.data_vars.items()):
         image_data = d.values.astype('float64')  # only double precision floats in gwy files
-        assert image_data.ndim == 2
-        z_unit = ''
-        if d.attrs['z_unit']:
+        if image_data.ndim != 2:
+            raise RuntimeError(f'Expected 2-dimensional data, got dimension {image_data.ndim} instead')
+        try:
             z_unit = d.attrs['z_unit']
+        except KeyError:
+            z_unit = ''
+        try:
+            xy_unit = metadata['xy_unit']
+        except KeyError:
+            xy_unit = 'm'
+
         container['/' + str(i) + '/data/title'] = t
         container['/' + str(i) + '/data'] = GwyDataField(image_data,
                                                          xreal=metadata['x_size'],
                                                          yreal=metadata['y_size'],
                                                          xoff=metadata['x_offset'],
                                                          yoff=metadata['y_offset'],
-                                                         si_unit_xy='m',
+                                                         si_unit_xy=xy_unit,
                                                          si_unit_z=z_unit,
                                                          )
         container['/' + str(i) + '/base/palette'] = 'Warm'
@@ -137,6 +145,77 @@ def export_gwy(filename: str, data: xr.Dataset):
     container.tofile(filename)
 
 
+def load_gsf(filename):
+    """Reads gwyddion gsf files Gwyddion Simple Field 1.0
+
+    The script looks for XRes and YRes, calculates the length of binary data and cuts that from the end.
+    Metadata is read separately until zero padding is reached (raises ValueError).
+
+    Parameters
+    ----------
+    filename: string
+
+    Returns
+    -------
+    data: numpy array
+        array of shape (XRes, YRes) containing image data
+    metadata: dictionary
+        dictionary values are strings
+    """
+    metadata = {}
+    data = None
+    XRes = None
+    YRes = None
+    with open(filename, 'rb') as file:
+        first_line = file.readline().decode('utf8')
+        if first_line != 'Gwyddion Simple Field 1.0\n':
+            logger.error(f'Expected "Gwyddion Simple Field 1.0", got "{first_line}" instead')
+
+        # first determine the size of the binary (data) section
+        while XRes is None or YRes is None:
+            try:
+                name, value = file.readline().decode('utf8').split('=')
+                logging.debug(f'reading header: {name}: {value}')
+                if name == 'XRes':
+                    XRes = int(value)
+                if name == 'YRes':
+                    YRes = int(value)
+            except ValueError as e:
+                logging.error('While looking for XRes, YRex the following exception occurred:\n' + str(e))
+                break
+            except UnicodeDecodeError as e:
+                logging.error('While looking for XRes, YRex the following exception occurred:\n' + str(e))
+                break
+        binary_size = XRes * YRes * 4  # 4: binary is somehow indexed in bytes
+        # and read the binary data
+        bindata = file.read()[-binary_size:]
+
+    # open the file again to parse the metadata
+    with open(filename, 'rb') as file:  # ToDo: Can't this be done in the previous while loop?
+        file.readline()
+        for line in file.read()[:-binary_size].split(b'\n'):
+            logging.debug(f'metadata: {line}')
+            try:
+                name, value = line.decode('utf8').split('=')
+                metadata[name] = value
+            except ValueError:
+                logging.debug('ValueError while reading metadata (expected)')
+                break
+            except UnicodeDecodeError as e:
+                logging.error('While parsing metadata the following exception occurred:\n' + str(e))
+                break
+
+    if len(bindata) == XRes * YRes * 4:
+        logging.debug('binary data found ... decoding to np.array')
+        data = np.frombuffer(bindata, dtype=np.float32)
+        data = data.reshape(YRes, XRes)
+    else:
+        logging.error('binary data not found or of the wrong shape')
+
+    return data, metadata
+
+
+# LOAD DATA ACQUIRED WITH NEASCAN ######################################################################################
 def load_approach(fname: str) -> pd.DataFrame:
     """Loads an approach curve as a pandas.DataFrame.
 
