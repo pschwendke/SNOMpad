@@ -129,7 +129,7 @@ def export_gwy(filename: str, data: xr.Dataset):
         except KeyError:
             xy_unit = 'm'
 
-        container['/' + str(i) + '/data/title'] = t
+        container['/' + str(i) + '/data/title'] = t  # ToDo this somehow does not work for the first channel
         container['/' + str(i) + '/data'] = GwyDataField(image_data,
                                                          xreal=metadata['x_size'],
                                                          yreal=metadata['y_size'],

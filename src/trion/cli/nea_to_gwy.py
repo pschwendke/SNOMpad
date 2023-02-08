@@ -163,10 +163,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='load all image files saved by NeaSCAN during one image acquisition,'
                     'and save them to one .gwy file.',
-        usage='nea_to_gwy.py [-h] input [-output] [-v]'
+        usage='nea_to_gwy.py [-h] input [-o] [-v]'
     )
     parser.add_argument('input', help='directory containing all .gsf files saved by NeaSCAN')
-    parser.add_argument('-output', default='', help='output file name of .gwy file')
+    parser.add_argument('-o', '--output', default='', help='output file name of .gwy file')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='increase verbosity level')
 
     args = parser.parse_args()
