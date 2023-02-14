@@ -6,6 +6,7 @@ from scipy.stats import binned_statistic, binned_statistic_2d
 import pandas as pd
 
 from .signals import Signals, all_detector_signals
+from .modelling import pshet_fitmodulation
 
 
 def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
@@ -101,8 +102,9 @@ def shd_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
 def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, phase_correction: bool = False) -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
     """
-    binned = shd_binning(data, signals, tap_nbins)
-    return shd_ft(binned, phase_correction)
+    binned = shd_binning(data=data, signals=signals, tap_nbins=tap_nbins)
+    ft = shd_ft(binned=binned, phase_correction=phase_correction)
+    return ft
 
 
 # PSHET DEMODULATION ###################################################################################################
@@ -203,11 +205,40 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m:
 
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
-          phase_correction: bool = False, gamma: float = 2.63) -> np.ndarray:
+          phase_correction: bool = False, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
     """
-    ft = pshet_ft(pshet_binning(data, signals, tap_nbins, ref_nbins), phase_correction)
-    return pshet_coefficients(ft, gamma)
+    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+    ft = pshet_ft(binned=binned, phase_correction=phase_correction)
+    coefficients = pshet_coefficients(ft=ft, gamma=gamma, psi_R=psi_R, m=m)
+
+    if phase_correction:
+        return coefficients
+    else:
+        return np.abs(coefficients)
+
+
+def pshet_fitted(data: np.ndarray, signals: list, demod_params: dict, tap_nbins: int = 64, ref_nbins: int = 64,
+                 m: int = 1) -> np.ndarray:
+    """ Uses pshet_fitmodulation to determine best values for gamma and psi_R. Coefficients are phase-corrected.
+    demod_params is used to store fit parameters between data samples.
+    """
+    if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
+        # initial guesses
+        demod_params['rho'] = .45
+        demod_params['gamma'] = 2.63
+        demod_params['psi_R'] = 0
+        demod_params['offset'] = 0
+        demod_params['theta_0'] = 1.5
+
+    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+    demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
+    pshet_fitmodulation(binned=binned, fit_params=demod_params)
+
+    ft = pshet_ft(binned=binned, phase_correction=True)
+    coefficients = pshet_coefficients(ft=ft, gamma=demod_params['gamma'], psi_R=demod_params['psi_R'], m=m)
+
+    return coefficients
 
 
 # NAIVE DISCRETE FT DEMODULATION #######################################################################################
