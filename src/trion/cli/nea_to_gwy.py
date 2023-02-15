@@ -143,14 +143,20 @@ def load_neascan_image(folder: str) -> xr.Dataset:
     """ Takes directory of NeaSCAN image (the one where all .gsf files are located), combines the .gsf files,
     and parses the metadata .txt file. A Dataset with image data and metadata as attributes is returned
     """
-    if folder[-1] == '/':
+    if folder[-1] == '/':  # redundant if called by nea_to_gwy.py
         folder = folder[:-1]
     channels = ['Z', 'R-Z', 'M1A', 'R-M1A', 'M1P', 'R-M1P', 'O0A', 'R-O0A', 'O1A', 'O1P', 'R-O1A', 'R-O1P',
                 'O2A', 'O2P', 'R-O2A', 'R-O2P', 'O3A', 'O3P', 'R-O3A', 'R-O3P', 'O4A', 'O4P', 'R-O4A', 'R-O4P']
 
-    filenames = [glob(folder + f'/* {c} raw.gsf')[0] for c in channels]  # takes first one, but there should be only one
-    ds = load_images(filenames, channels)
     metadata = load_metadata(glob(folder + '/*.txt')[0])  # takes first text file, but again there should be no other
+    filenames = []
+    names = []
+    for c in channels:
+        g = glob(folder + f'/* {c} raw.gsf')
+        if g:  # not all channels are necessarily saved
+            filenames.append(g[0])  # takes first one, but there should be only one
+            names.append(c)
+    ds = load_images(filenames=filenames, names=names)
     ds.attrs = {**ds.attrs, **metadata}
 
     return ds
@@ -175,6 +181,8 @@ if __name__ == '__main__':
     logger.debug('arguments: ' + str(args))
 
     input_folder = args.input
+    if input_folder[-1] == '/':
+        input_folder = input_folder[:-1]
     output_filename = args.output
 
     if output_filename == '':
