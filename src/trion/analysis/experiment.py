@@ -169,7 +169,7 @@ class Noise(Measurement):
 
         signals = [Signals[s] for s in self.afm_data.attrs['signals']]
         if Signals.tap_x in signals:
-            npz = np.load(self.afm_data.attrs['daq_data_filename'])
+            npz = np.load(self.directory + self.afm_data.attrs['daq_data_filename'])
             daq_data = np.vstack([i for i in npz.values()]).T
             tap_x = daq_data[:, signals.index(Signals.tap_x)]
             tap_y = daq_data[:, signals.index(Signals.tap_y)]
