@@ -8,7 +8,7 @@ import logging
 from itertools import takewhile
 from os.path import splitext
 from copy import copy
-from gwyfile.objects import GwyContainer, GwyDataField
+from gwyfile.objects import GwyContainer, GwyDataField, GwySIUnit
 
 from .signals import Signals
 
@@ -127,8 +127,8 @@ def export_gwy(filename: str, data: xr.Dataset):
                                                          yreal=metadata['y_size'],
                                                          xoff=metadata['x_offset'],
                                                          yoff=metadata['y_offset'],
-                                                         si_unit_xy='m',
-                                                         si_unit_z=z_unit,
+                                                         si_unit_xy=GwySIUnit(unitstr='m'),
+                                                         si_unit_z=GwySIUnit(unitstr=z_unit),
                                                          )
         container['/' + str(i) + '/base/palette'] = 'Warm'
         container['/' + str(i) + '/meta'] = metacontainer

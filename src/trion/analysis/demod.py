@@ -1,3 +1,6 @@
+# ToDo: standardize names of variables
+#  note standards in README (with equations, maybe pdf example)
+
 # demod.py: functions for demodulations
 from warnings import warn
 import numpy as np
