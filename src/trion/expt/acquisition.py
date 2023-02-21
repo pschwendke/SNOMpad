@@ -1,3 +1,7 @@
+# ToDo: standardize units
+#  standardize names of parameters
+#  note standards in README
+
 # acquisition scripts
 import numpy as np
 import xarray as xr
@@ -184,7 +188,7 @@ class SteppedRetraction(SteppedScan):
             AFM setpoint when engaged
         """
         super().__init__(signals, mod)
-        self.afm_sampling_time = 50  # /ms
+        self.afm_sampling_milliseconds = 50  # /ms
         self.acquisition_mode = Scan.stepped_retraction
         self.z_size = z_size
         self.z_res = z_res
@@ -201,7 +205,7 @@ class SteppedRetraction(SteppedScan):
             logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
             self.afm.goto_xy(self.x_target, self.y_target)
         targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
-        self.afm.prepare_retraction(self.mod, self.z_size, self.z_res, self.afm_sampling_time)
+        self.afm.prepare_retraction(self.mod, self.z_size, self.z_res, self.afm_sampling_milliseconds)
         self.afm.engage(self.setpoint)
 
         try:
@@ -243,7 +247,7 @@ class SteppedRetraction(SteppedScan):
                                      coords={'px': np.arange(self.z_res), 'ch': names})
         self.export()
 
-        logging.info('Done')
+        logging.info('Scan complete')
         return self.afm_data
 
 
@@ -321,13 +325,13 @@ class SteppedImage(SteppedScan):
         self.afm_data = xr.Dataset(afm_data)
         self.export()
 
-        logging.info('Done')
+        logging.info('Scan complete')
         return self.afm_data
 
 
 class ContinuousRetraction(ContinuousScan):
     def __init__(self, signals: Iterable[Signals], mod: Demodulation, z_size: float = 0.2, npts: int = 5_000,
-                 x_target=None, y_target=None, setpoint: int = 0.8, z_res: int = 200, afm_sampling_time: int = 300):
+                 x_target=None, y_target=None, setpoint: int = 0.8, z_res: int = 200, afm_sampling_milliseconds: int = 300):
         """
         Parameters
         ----------
@@ -347,7 +351,7 @@ class ContinuousRetraction(ContinuousScan):
             AFM setpoint when engaged
         z_res: int
             number of pixels of utilized NeaScan approach curve routine
-        afm_sampling_time: int
+        afm_sampling_milliseconds: int
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
         """
         super().__init__(signals, mod)
@@ -358,7 +362,7 @@ class ContinuousRetraction(ContinuousScan):
         self.y_target = y_target
         self.setpoint = setpoint
         self.npts = npts
-        self.afm_sampling_time = afm_sampling_time
+        self.afm_sampling_milliseconds = afm_sampling_milliseconds
 
     def start(self):
         self.prepare()
@@ -366,7 +370,7 @@ class ContinuousRetraction(ContinuousScan):
             if self.x_target is not None and self.y_target is not None:
                 logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
                 self.afm.goto_xy(self.x_target, self.y_target)
-            self.afm.prepare_retraction(self.mod, self.z_size, self.z_res, self.afm_sampling_time)
+            self.afm.prepare_retraction(self.mod, self.z_size, self.z_res, self.afm_sampling_milliseconds)
             self.afm.engage(self.setpoint)
             tracked_data, _ = self.acquire()
         finally:
@@ -375,13 +379,13 @@ class ContinuousRetraction(ContinuousScan):
         self.afm_data = tracked_data
         self.export()
 
-        logger.info('Done')
+        logger.info('Scan complete')
         return self.afm_data
 
 
 class ContinuousImage(ContinuousScan):
     def __init__(self, signals: Iterable[Signals], mod: Demodulation, x_center: float, y_center: float, x_res: int,
-                 y_res: int, x_size: float, y_size: float, afm_sampling_time: float, afm_angle: float = 0,
+                 y_res: int, x_size: float, y_size: float, afm_sampling_milliseconds: float, afm_angle: float = 0,
                  npts: int = 5_000, setpoint: int = 0.8):
         """
         Parameters
@@ -402,7 +406,7 @@ class ContinuousImage(ContinuousScan):
             size of image in x direction (in micrometres)
         y_size: float
             size of image in y direction (in micrometres)
-        afm_sampling_time: int
+        afm_sampling_milliseconds: int
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
         afm_angle: float
             rotation of the scan frame (in degrees)
@@ -420,7 +424,7 @@ class ContinuousImage(ContinuousScan):
         self.x_center = x_center
         self.y_center = y_center
         self.afm_angle = afm_angle
-        self.afm_sampling_time = afm_sampling_time
+        self.afm_sampling_milliseconds = afm_sampling_milliseconds
         self.setpoint = setpoint
         self.npts = npts
 
@@ -428,7 +432,7 @@ class ContinuousImage(ContinuousScan):
         self.prepare()
         try:
             self.afm.prepare_image(self.mod, self.x_center, self.y_center, self.x_size, self.y_size,
-                                   self.x_res, self.y_res, self.afm_angle, self.afm_sampling_time)
+                                   self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds)
             self.afm.engage(self.setpoint)
             tracked_data, nea_data = self.acquire()
         finally:
@@ -445,5 +449,5 @@ class ContinuousImage(ContinuousScan):
         self.afm_data['tracked_data'] = tracked_data
         self.export()
 
-        logger.info('Done')
+        logger.info('Scan complete')
         return self.afm_data

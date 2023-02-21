@@ -13,7 +13,5 @@ h5py
 pytest
 pytest-benchmark
 xarray
-
+pyserial
 gwyfile
-lmfit
-setuptools
