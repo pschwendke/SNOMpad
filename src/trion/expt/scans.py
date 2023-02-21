@@ -75,6 +75,7 @@ class BaseScan(ABC):
                 self.afm_data.attrs[k] = v
 
         if self.acquisition_mode in [Scan.stepped_image, Scan.continuous_image]:
+            # ToDo: check if units are still in accordance to NeaSNOM object
             self.afm_data.attrs['x_offset'] = (self.x_center - self.x_size / 2) * 1E-6
             self.afm_data.attrs['y_offset'] = (self.y_center - self.y_size / 2) * 1E-6
 
