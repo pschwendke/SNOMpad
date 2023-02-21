@@ -16,8 +16,37 @@ def reference_modulation(theta, rho, gamma, theta_0, psi_R):
     return ret
 
 
+def tapping_modulation(theta, theta_C):
+    ret = np.zeros(len(theta))
+    amps = [.1, -.03, -.001, .001]
+    offset = 1
+    for i, a in enumerate(amps):
+        ret += a * (np.cos((i+1) * (theta - theta_C)))
+    return ret + offset
+
+
+def shd_signal(theta: np.ndarray, theta_C: float = 1.6) -> np.ndarray:
+    """ Modeling of tapping modulation in shd mode. theta_C is the phase of contact.
+    """
+    sig = tapping_modulation(theta=theta, theta_C=theta_C)
+    sig *= sig.conj()
+    return sig
+
+
+def pshet_signal(theta_tap: np.ndarray, theta_ref: np.ndarray, theta_C: float = 1.6, theta_0: float = 1.8,
+                 psi_R: float = 3, rho: float = .45, gamma: float = 2.63) -> np.ndarray:
+    """ Modeling of tapping and pshet modulation in pshet mode. Returns 2D phase domain, a simple superposition of
+    both modulations. The tap_p dependency of psi_R is neglected.
+    """
+    sig_tap = tapping_modulation(theta=theta_tap, theta_C=theta_C)
+    sig_ref = reference_modulation(theta=theta_ref, rho=rho, gamma=gamma, theta_0=theta_0, psi_R=psi_R)
+    superposition = sig_tap[np.newaxis, :] + sig_ref[:, np.newaxis]
+    sig = superposition * superposition.conj()
+    return sig
+
+
 # FITTING FUNCTIONS ####################################################################################################
-def pshet_fitmodulation(binned: np.ndarray, fit_params: dict) -> tuple[float]:
+def pshet_fitmodulation(binned: np.ndarray, fit_params: dict):
     """ only performed on first signal, i.e. data[0, :, :]
     fit_params should include rho, gamma, theta_0, psi_R, offset, tap_offset
     """
