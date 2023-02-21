@@ -10,10 +10,10 @@ attrs
 bidict
 toml
 h5py
-pytest
-pytest-benchmark
+pytest  # should pytest go in the requirements? probably not...
+pytest-benchmark  # same here
 xarray
-
 gwyfile
 lmfit
 setuptools
+pyserial
