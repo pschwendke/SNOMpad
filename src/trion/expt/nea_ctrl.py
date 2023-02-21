@@ -1,3 +1,5 @@
+# ToDo: standardize units
+
 import sys
 import clr
 import logging
@@ -38,7 +40,7 @@ class NeaSNOM:
         # returns an instance of a microscope neaMIC and the connection to the SDK nea_client
         self.scan = None
         self.tracked_channels = None
-        self.tip_velocity = 5.                # tip velocity when moving to target position
+        self.tip_velocity = 5.                # tip velocity when moving to target position (um/s)
         self.nea_client = neaSDK.Connection('nea-server')               # Open up connection to microscope
         self.nea_mic = self.nea_client.Connect()                # Define the Microscope
         sleep(0.1)                              # Short delay makes things work fine (?)
@@ -48,6 +50,9 @@ class NeaSNOM:
         logger.debug("Client Version: " + self.nea_mic.ClientVersion)    # get Client Version
         logger.debug("Server Version: " + self.nea_mic.ServerVersion)    # get Server Version
 
+    def __del__(self):
+        self.disconnect()
+
     def engage(self, setpoint: float = 0.8):
         logger.info('Engaging sample')
         if not self.nea_mic.IsInContact:
@@ -56,6 +61,7 @@ class NeaSNOM:
         sleep(5)
 
     def goto_xy(self, x, y):
+        # ToDo: units
         assert 0 < x < 100, 'x coordinate out of bounds (0 < x < 100)'
         assert 0 < y < 100, 'y coordinate out of bounds (0 < y < 100)'
         reached = self.nea_mic.GotoTipPosition(x, y, self.tip_velocity)
@@ -83,6 +89,8 @@ class NeaSNOM:
         self.nea_mic.CancelCurrentProcedure()
 
     def prepare_retraction(self, mod: Demodulation, z_size: float, z_res: int, afm_sampling_time: float):
+        # ToDo: units
+        #  write doc string
         self.tracked_channels = ['Z', 'M1A', 'M1P']
         assert mod in [Demodulation.pshet, Demodulation.shd], f'{mod.value} is not implemented'
 
@@ -96,6 +104,8 @@ class NeaSNOM:
         self.scan.set_SamplingTime(afm_sampling_time)
 
     def prepare_image(self, mod: Demodulation, x_center, y_center, x_size, y_size, x_res, y_res, angle, sampling_time):
+        # ToDo: units
+        #  write doc string
         self.tracked_channels = ['Z', 'R-Z', 'M1A', 'R-M1A', 'M1P', 'R-M1P']
         assert mod in [Demodulation.pshet, Demodulation.shd], f'{mod.value} is not implemented'
 
@@ -125,9 +135,9 @@ class NeaSNOM:
 
     def get_current(self):
         """
-        returns tuple (x, y, z, amp, phase)
+        returns tuple (x, y, z, amp, phase). Units are m and degrees.
         """
-        x = self.nea_mic.TipPositionX * 1E-6  # all in m
+        x = self.nea_mic.TipPositionX * 1E-6
         y = self.nea_mic.TipPositionY * 1E-6
         z = self.nea_mic.GetChannel('Z').CurrentValue * 1E-6
         amp = self.nea_mic.GetChannel('M1A').CurrentValue * 1E-9

@@ -1,3 +1,7 @@
+# ToDo: standardize units
+#  standardize names of parameters
+#  note standards in README
+
 # acquisition scripts
 import numpy as np
 import xarray as xr
