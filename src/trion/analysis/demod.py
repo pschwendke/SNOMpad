@@ -40,6 +40,7 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
     phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.  # Why does this work ???
+    phi = phi.flatten().mean()  # Output should be a float. However, is this stable?
     return phi
 
 
@@ -161,15 +162,13 @@ def pshet_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
 
     tap_offset = phase_offset(binned, axis=-1)
     ft = np.fft.rfft(binned, axis=-1) / binned.shape[-1]
-    # phase correction = n (theta_C + pi)  ## pi correction for binning and fft phase offset
-    tap_offset = np.arange(ft.shape[-1])[np.newaxis, np.newaxis, :] * (tap_offset[:, :, np.newaxis] + np.pi)
+    tap_offset = np.arange(ft.shape[-1])[np.newaxis, np.newaxis, :] * (tap_offset + np.pi)
     ft *= np.exp(- 1j * phase_correction * tap_offset)
     ft = np.real(ft)
 
     ref_offset = phase_offset(ft, axis=-2)
     ft = np.fft.rfft(ft, axis=-2) / ft.shape[-2]
-    # phase correction = m (theta_0 + pi)
-    ref_offset = np.arange(ft.shape[-2])[np.newaxis, :, np.newaxis] * (ref_offset[:, np.newaxis, :] + np.pi)
+    ref_offset = np.arange(ft.shape[-2])[np.newaxis, :, np.newaxis] * (ref_offset + np.pi)
     ft *= np.exp(- 1j * phase_correction * ref_offset)
 
     return np.real(ft)
