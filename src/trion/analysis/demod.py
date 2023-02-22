@@ -1,5 +1,4 @@
 # ToDo: standardize names of variables
-#  note standards in README (with equations, maybe pdf example)
 
 # demod.py: functions for demodulations
 from warnings import warn
@@ -12,7 +11,7 @@ from .signals import Signals, all_detector_signals
 from .modelling import pshet_fitmodulation
 
 
-# UTILITY: BINNING, FFT, PHASING #######################################################################################
+# UTILITY: BINNING # FFT # PHASING #####################################################################################
 def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     """Compute the midpoints of phase bins"""
     span = hi - lo
@@ -279,6 +278,9 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
     coefficients: np.ndarray
         complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
     """
+    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+    ft = pshet_ft(binned=binned, tap_correction=tap_correction, ref_correction=ref_correction)
+
     if type(demod_params) is dict:  # if psi_R and gamma should be determined through fitting
         if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
             # initial guesses
@@ -292,9 +294,8 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
         pshet_fitmodulation(binned=binned, fit_params=demod_params)
         psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
 
-    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-    ft = pshet_ft(binned=binned, tap_correction=tap_correction, ref_correction=ref_correction)
     coefficients = pshet_coefficients(ft=ft, gamma=gamma, psi_R=psi_R, m=m)
+
     return coefficients
 
 
