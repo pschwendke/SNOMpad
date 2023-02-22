@@ -9,6 +9,7 @@ from .signals import Signals, all_detector_signals
 from .modelling import pshet_fitmodulation
 
 
+# UTILITY: BINNING, FFT, PHASING #######################################################################################
 def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     """Compute the midpoints of phase bins"""
     span = hi - lo
@@ -16,7 +17,6 @@ def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
     return (np.arange(n_bins)+0.5) * step + lo
 
 
-# MODULATION PHASE OFFSETS #############################################################################################
 def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """Determine phase shift required to make FT real.
 
@@ -42,6 +42,51 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     phi = phi - (phi > 0) * np.pi  # shift all results to positive quadrant.  # Why does this work ???
     phi = phi.flatten().mean()  # Output should be a float. However, is this stable?
     return phi
+
+
+def phased_ft(array: np.ndarray, axis: int, correction) -> np.ndarray:
+    """ Computes real fft of array along given axis. correction determines the type of phase correction.
+
+    Parameters
+    ----------
+    array: np.ndarray
+    axis: int
+    correction: str or None or float
+        If correction is None, the coefficients are rotated by 0°.
+        If correction == 'fft', phase_offset() is used to determine the phase correction.
+        If correction is float, the value is used for phase correction.
+
+    Returns
+    -------
+    np.real(ft)
+
+    """
+    if np.any(np.isnan(array)):
+        raise ValueError("The array array has empty bins.")
+
+    ft = np.fft.rfft(array, axis=axis) / array.shape[axis]
+
+    if correction == 'fft':
+        # phase correction: symmetry (offset in 1st harmonic), pi phase shift due to binning and fft offset
+        phase = -1 * (phase_offset(array, axis=axis) + np.pi)
+    elif correction is None:
+        phase = 0
+    elif type(correction) is float:
+        phase = correction  # You might want to flip the sign. Check this when using.
+    else:
+        raise NotImplementedError
+
+    shape = array.shape[axis] // 2 + 1
+    if array.ndim == 2:  # shd
+        phase *= np.arange(shape)
+    elif array.ndim == 3 and axis == -1:  # pshet tap axis
+        phase = np.arange(shape)[np.newaxis, np.newaxis, :] * phase
+    elif array.ndim == 3 and axis == -2:  # pshet ref axis
+        phase = np.arange(shape)[np.newaxis, :, np.newaxis] * phase
+
+    ft *= np.exp(1j * phase)
+
+    return np.real(ft)
 
 
 # SHD DEMODULATION #####################################################################################################
@@ -70,41 +115,46 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     return binned
 
 
-def shd_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
-    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
-    It is assumed that binned data is either correctly phased (theta_C = 0), or that the offset value is given.
-    Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
-    Only real values of fft are returned.
+def shd_ft(binned: np.ndarray, tap_correction='fft') -> np.ndarray:
+    """ Passes binned phase domain to phased_ft() to compute Fourier components.
 
     PARAMETERS
     ----------
     binned: np.ndarray
         array of values for fft. Values should be on axis=-1
-    phase_correction: bool
-        When True, phases are corrected after fft with phase offset determined by phase_offset()
+    tap_correction: str or None or float
+        Type or value of phase correction, see phased_ft()
 
     RETURNS
     -------
     ft: np.ndarray
         real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
     """
-    if np.any(np.isnan(binned)):
-        raise ValueError("The binned array has empty bins.")
-    ft = np.fft.rfft(binned, axis=-1) / binned.shape[-1]
-
-    # phase corrections: symmetry (offset in 1st harmonic), pi phase shift due to binning and fft offset
-    tap_offset = phase_offset(binned, axis=-1)
-    tap_offset = np.arange(ft.shape[-1]) * (tap_offset + np.pi)
-    ft *= np.exp(- 1j * phase_correction * tap_offset)
-
-    return np.real(ft.T)
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    return np.real(ft).T
 
 
-def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, phase_correction: bool = False) -> np.ndarray:
+def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='fft') -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
+
+    Parameters
+    ----------
+    data: np.ndarray
+        array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
+    signals: list of Signals
+        list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
+    tap_nbins: int
+        number of tapping bins
+    tap_correction: str or None or float
+        Type or value of phase correction, see phased_ft()
+
+    Returns
+    -------
+    ft: np.ndarray
+        real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
     """
     binned = shd_binning(data=data, signals=signals, tap_nbins=tap_nbins)
-    ft = shd_ft(binned=binned, phase_correction=phase_correction)
+    ft = shd_ft(binned=binned, tap_correction=tap_correction)
     return ft
 
 
@@ -138,7 +188,7 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     return binned.transpose(0, 2, 1)
 
 
-def pshet_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
+def pshet_ft(binned: np.ndarray, tap_correction='fft', ref_correction='fft') -> np.ndarray:
     """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
     It is assumed that binned data is either correctly phased (theta_C = theta_0 = 0), or that the values are given.
     Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
@@ -149,29 +199,19 @@ def pshet_ft(binned: np.ndarray, phase_correction: bool = False) -> np.ndarray:
     ----------
     binned: np.ndarray
         array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
-    phase_correction: bool
-        When True, phases are corrected after fft with phase offset determined by phase_offset()
+    tap_correction: str or None or float
+        Type or value of phase correction along axis=-1, see phased_ft()
+    ref_correction: str or None or float
+        Type or value of phase correction along axis=-2, see phased_ft()
 
     RETURNS
     -------
     ft: np.ndarray
         real amplitudes of Fourier components.
     """
-    if np.any(np.isnan(binned)):
-        raise ValueError("The binned array has empty bins.")
-
-    tap_offset = phase_offset(binned, axis=-1)
-    ft = np.fft.rfft(binned, axis=-1) / binned.shape[-1]
-    tap_offset = np.arange(ft.shape[-1])[np.newaxis, np.newaxis, :] * (tap_offset + np.pi)
-    ft *= np.exp(- 1j * phase_correction * tap_offset)
-    ft = np.real(ft)
-
-    ref_offset = phase_offset(ft, axis=-2)
-    ft = np.fft.rfft(ft, axis=-2) / ft.shape[-2]
-    ref_offset = np.arange(ft.shape[-2])[np.newaxis, :, np.newaxis] * (ref_offset + np.pi)
-    ft *= np.exp(- 1j * phase_correction * ref_offset)
-
-    return np.real(ft)
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
+    return ft
 
 
 def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
@@ -203,40 +243,55 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m:
     return coefficients.T
 
 
-def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
-          phase_correction: bool = False, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
+def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, demod_params=None,
+          tap_correction='fft', ref_correction='fft', gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
+
+    Parameters
+    ----------
+    data: np.ndarray
+        array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
+    signals: list of Signals
+        list of Signals (e.g. Signals.sig_a, Signals.tap_x). Must have same order as along axis=1 in data.
+    tap_nbins: float
+        number of tapping bins
+    ref_nbins: float
+        number of reference bins
+    tap_correction: str or None or float
+        Type or value of phase correction along axis=-1, see phased_ft()
+    ref_correction: str or None or float
+        Type or value of phase correction along axis=-2, see phased_ft()
+    gamma: float
+        modulation depth
+    psi_R: float
+        offset in optical phase between sig and ref beam, determined by fitting reference modulation at phase of contact
+    m: int
+        sidebands to be evaluated are m and m+1
+    demod_params
+        Parameter for fitting function (until now). Pass dictionary to use pshet_fitmodulation()
+        to determine psi_R and gamma
+
+    Returns
+    -------
+    coefficients: np.ndarray
+        complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
     """
+    if type(demod_params) is dict:  # if psi_R and gamma should be determined through fitting
+        if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
+            # initial guesses
+            demod_params['rho'] = .45
+            demod_params['gamma'] = 2.63
+            demod_params['psi_R'] = 0
+            demod_params['offset'] = 0
+            demod_params['theta_0'] = 1.5
+        binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+        demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
+        pshet_fitmodulation(binned=binned, fit_params=demod_params)
+        psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
+
     binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-    ft = pshet_ft(binned=binned, phase_correction=phase_correction)
+    ft = pshet_ft(binned=binned, tap_correction=tap_correction, ref_correction=ref_correction)
     coefficients = pshet_coefficients(ft=ft, gamma=gamma, psi_R=psi_R, m=m)
-
-    if phase_correction:
-        return coefficients
-    else:
-        return np.abs(coefficients)
-
-
-def pshet_fitted(data: np.ndarray, signals: list, demod_params: dict, tap_nbins: int = 64, ref_nbins: int = 64,
-                 m: int = 1) -> np.ndarray:
-    """ Uses pshet_fitmodulation to determine best values for gamma and psi_R. Coefficients are phase-corrected.
-    demod_params is used to store fit parameters between data samples.
-    """
-    if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
-        # initial guesses
-        demod_params['rho'] = .45
-        demod_params['gamma'] = 2.63
-        demod_params['psi_R'] = 0
-        demod_params['offset'] = 0
-        demod_params['theta_0'] = 1.5
-
-    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-    demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
-    pshet_fitmodulation(binned=binned, fit_params=demod_params)
-
-    ft = pshet_ft(binned=binned, phase_correction=True)
-    coefficients = pshet_coefficients(ft=ft, gamma=demod_params['gamma'], psi_R=demod_params['psi_R'], m=m)
-
     return coefficients
 
 
