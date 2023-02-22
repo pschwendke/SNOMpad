@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 from scipy.special import jv
 
-from trion.analysis.demod import shd_binning, shd_ft, shd, pshet_binning, pshet_ft, pshet, pshet_coeff
+from trion.analysis.demod import phase_offset, phased_ft, shd_binning, shd_ft, shd
+from trion.analysis.demod import pshet_binning, pshet_ft, pshet_coefficients, pshet
 from trion.analysis.signals import Signals, all_detector_signals
 
 # some parameters to create test data
@@ -26,6 +27,50 @@ def bin_index(phi, n_bins: int):
     lo = -np.pi
     step = 2*np.pi/n_bins
     return (phi - lo)//step
+
+
+def test_phase_offset_1d():
+    """ Unit test for phase_offset(). Test the phase of a shifted cosine wave
+    """
+    nbins = 10_000  # not very accurate this function is
+    phi = np.linspace(0, 2 * np.pi, nbins)
+
+    # without phase
+    phase_in = 0
+    sig = np.cos(phi - phase_in)
+    phase_out = - phase_offset(sig) + np.pi / nbins
+    assert np.isclose(phase_out, phase_in, atol=1e-4)
+
+    # with phase
+    phase_in = 1
+    sig = np.cos(phi - phase_in)
+    phase_out = - phase_offset(sig) + np.pi / nbins
+    assert np.isclose(phase_out, phase_in, atol=1e-4)
+
+
+def test_phase_offset_2d():
+    """ Unit test for phase_offset(). Test the phase of shifted cosine waves
+    """
+    nbins = 1_000  # not very accurate this function is
+    phi = np.linspace(0, 2 * np.pi, nbins)
+
+    # without phases
+    phase_in_1 = 0
+    phase_in_2 = 0
+    sig = np.cos(phi - phase_in_1)[np.newaxis, :] + np.cos(phi - phase_in_2)[:, np.newaxis]
+    phase_out_1 = - phase_offset(sig, axis=-1) + np.pi / nbins
+    phase_out_2 = - phase_offset(sig, axis=-2) + np.pi / nbins
+    assert np.isclose(phase_out_1, phase_in_1, atol=1e-3)
+    assert np.isclose(phase_out_2, phase_in_2, atol=1e-3)
+
+    # with phases
+    phase_in_1 = 1
+    phase_in_2 = 2
+    sig = np.cos(phi - phase_in_1)[np.newaxis, :] + np.cos(phi - phase_in_2)[:, np.newaxis]
+    phase_out_1 = - phase_offset(sig, axis=-1) + np.pi / nbins
+    phase_out_2 = - phase_offset(sig, axis=-2) + np.pi / nbins
+    assert np.isclose(phase_out_1, phase_in_1, atol=1e-3)
+    assert np.isclose(phase_out_2, phase_in_2, atol=1e-3)
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
