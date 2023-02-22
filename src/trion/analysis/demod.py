@@ -11,14 +11,7 @@ from .signals import Signals, all_detector_signals
 from .modelling import pshet_fitmodulation
 
 
-# UTILITY: BINNING # FFT # PHASING #####################################################################################
-def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
-    """Compute the midpoints of phase bins"""
-    span = hi - lo
-    step = span/n_bins
-    return (np.arange(n_bins)+0.5) * step + lo
-
-
+# UTILITY: FFT # PHASING ###############################################################################################
 def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """Determine phase shift required to make FT real.
 
@@ -403,6 +396,14 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
 
 # OLDER STUFF # FOR COMPATIBILITY ######################################################################################
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
+
+
+def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
+    """Compute the midpoints of phase bins"""
+    warn(_deprecation_warning)
+    span = hi - lo
+    step = span/n_bins
+    return (np.arange(n_bins)+0.5) * step + lo
 
 
 def calc_phase(df, in_place=False):
