@@ -39,7 +39,7 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     return phi
 
 
-def phased_ft(array: np.ndarray, axis: int, correction) -> np.ndarray:
+def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
     """ Computes real fft of array along given axis. correction determines the type of phase correction.
 
     Parameters
@@ -49,6 +49,7 @@ def phased_ft(array: np.ndarray, axis: int, correction) -> np.ndarray:
     correction: str or None or float
         If correction is None, the coefficients are rotated by 0°.
         If correction == 'fft', phase_offset() is used to determine the phase correction.
+            A binned phase domain is assumed, binning offset of pi and half a bin are corrected
         If correction is float, the value is used for phase correction.
 
     Returns
@@ -59,13 +60,12 @@ def phased_ft(array: np.ndarray, axis: int, correction) -> np.ndarray:
     if np.any(np.isnan(array)):
         raise ValueError("The array array has empty bins.")
 
-    ft = np.fft.rfft(array, axis=axis) / array.shape[axis]
+    ft = np.fft.rfft(array, axis=axis, norm='forward')
 
     if correction == 'fft':
-        # phase correction: pi due to binning and fft offset - symmetry (offset in 1st harmonic) + half a bin
-        phase = np.pi - (phase_offset(array, axis=axis) - (np.pi / array.shape[axis]))
-    elif type(correction) is float:
-        phase = correction  # You might want to flip the sign. Check this when using.
+        phase = - phase_offset(array, axis=axis)
+    elif type(correction) in [float, int]:
+        phase = - correction  # You might want to flip the sign. Check this when using.
     elif correction is None:
         return np.real(ft)
     else:
@@ -78,7 +78,7 @@ def phased_ft(array: np.ndarray, axis: int, correction) -> np.ndarray:
     elif array.ndim == 3 and axis == -2:  # pshet ref axis
         phase = np.arange(ft.shape[axis])[np.newaxis, :, np.newaxis] * phase
 
-    ft *= np.exp(-1j * phase)
+    ft *= np.exp(1j * phase)
     return np.real(ft)
 
 

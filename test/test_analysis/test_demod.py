@@ -32,50 +32,105 @@ def bin_index(phi, n_bins: int):
 def test_phase_offset_1d():
     """ Unit test for phase_offset(). Test the phase of a shifted cosine wave
     """
-    nbins = 10_000  # not very accurate this function is
-    phi = np.linspace(0, 2 * np.pi, nbins)
+    npts = 100
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
 
     # without phase
     phase_in = 0
-    sig = np.cos(phi - phase_in)
-    phase_out = - phase_offset(sig) + np.pi / nbins
-    assert np.isclose(phase_out, phase_in, atol=1e-4)
+    sig = np.cos(phi + phase_in)
+    phase_out = phase_offset(sig)
+    assert np.isclose(phase_out, phase_in)
 
     # with phase
     phase_in = 1
-    sig = np.cos(phi - phase_in)
-    phase_out = - phase_offset(sig) + np.pi / nbins
-    assert np.isclose(phase_out, phase_in, atol=1e-4)
+    sig = np.cos(phi + phase_in)
+    phase_out = phase_offset(sig)
+    assert np.isclose(phase_out, phase_in)
 
 
 def test_phase_offset_2d():
     """ Unit test for phase_offset(). Test the phase of shifted cosine waves
     """
-    nbins = 1_000  # not very accurate this function is
-    phi = np.linspace(0, 2 * np.pi, nbins)
+    npts = 100
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
 
     # without phases
     phase_in_1 = 0
     phase_in_2 = 0
-    sig = np.cos(phi - phase_in_1)[np.newaxis, :] + np.cos(phi - phase_in_2)[:, np.newaxis]
-    phase_out_1 = - phase_offset(sig, axis=-1) + np.pi / nbins
-    phase_out_2 = - phase_offset(sig, axis=-2) + np.pi / nbins
-    assert np.isclose(phase_out_1, phase_in_1, atol=1e-3)
-    assert np.isclose(phase_out_2, phase_in_2, atol=1e-3)
+    sig = np.cos(phi + phase_in_1)[np.newaxis, :] + np.cos(phi + phase_in_2)[:, np.newaxis]
+    phase_out_1 = phase_offset(sig, axis=-1)
+    phase_out_2 = phase_offset(sig, axis=-2)
+    assert np.isclose(phase_out_1, phase_in_1)
+    assert np.isclose(phase_out_2, phase_in_2)
 
     # with phases
     phase_in_1 = 1
     phase_in_2 = 2
-    sig = np.cos(phi - phase_in_1)[np.newaxis, :] + np.cos(phi - phase_in_2)[:, np.newaxis]
-    phase_out_1 = - phase_offset(sig, axis=-1) + np.pi / nbins
-    phase_out_2 = - phase_offset(sig, axis=-2) + np.pi / nbins
-    assert np.isclose(phase_out_1, phase_in_1, atol=1e-3)
-    assert np.isclose(phase_out_2, phase_in_2, atol=1e-3)
+    sig = np.cos(phi + phase_in_1)[np.newaxis, :] + np.cos(phi + phase_in_2)[:, np.newaxis]
+    phase_out_1 = phase_offset(sig, axis=-1)
+    phase_out_2 = phase_offset(sig, axis=-2)
+    assert np.isclose(phase_out_1, phase_in_1)
+    assert np.isclose(phase_out_2, phase_in_2)
+
+
+def test_phased_ft_shape_1d():
+    """ Unit test for phased_ft(). fft should be done on right axis on 1D arrays.
+    """
+    npts = 100
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    sig = np.cos(phi)
+    ft = phased_ft(sig)
+    assert np.isclose(ft[1], 0.5)
+
+
+def test_phased_ft_shape_2d():
+    """ Unit test for phased_ft(). fft should be done on right axis on 2D arrays.
+    """
+    npts = 100
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    sig = np.cos(phi)[np.newaxis, :] + np.cos(phi)[:, np.newaxis]
+    # axis = -1
+    ft = phased_ft(sig, axis=-1)
+    assert np.isclose(ft[:, 1], 0.5).all()
+    assert np.isclose(ft[1, 2:], 0).all()
+    # axis = -2
+    ft = phased_ft(sig, axis=-2)
+    assert np.isclose(ft[2:, 1], 0).all()
+    assert np.isclose(ft[1, :], 0.5).all()
+
+
+def test_phased_ft_float():
+    """ Unit test for phased_ft(). Transformed 1D and 2D arrays should be rotated by given angle.
+    The 2D case is tested on axis = -1
+    """
+    npts = 100
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    # phase = 90° => real part goes to zero
+    phase = np.pi / 2
+    sig = np.cos(phi + phase)[np.newaxis, :] + np.zeros(npts)[:, np.newaxis]
+    ft = phased_ft(sig, axis=-1)
+    assert np.isclose(ft, 0).all()
+    # now with correction as function argument
+    sig = np.cos(phi + phase)[np.newaxis, :] + np.zeros(npts)[:, np.newaxis]
+    ft = phased_ft(sig, axis=-1, correction=phase)
+    assert np.isclose(ft[:, 1], 0.5).all()
+
+
+def test_phased_ft_fft():
+    """ Unit test for phased_ft(). Transformed 1D and 2D arrays should phased corrected using phase_offset().
+    The 2D case is tested on axis = -1
+    """
+    npts = 1000
+    phi = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    phase = 1
+    sig = np.cos(phi + phase)[np.newaxis, :] + np.zeros(npts)[:, np.newaxis]
+    ft = phased_ft(sig, axis=-1, correction='fft')
+    assert np.isclose(ft[:, 1], 0.5).all()
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_binning(shd_data_points):
-    """ Unit test for shd_binning. Testing binning and shape of returned DataFrame.
+    """ Unit test for shd_binning(). Testing binning and shape of returned DataFrame.
     """
     # retrieve parameters and test data from fixture
     params, data, signals = shd_data_points
@@ -311,7 +366,7 @@ def test_pshet_coeff():
     random_sig_a = np.random.random_sample((10, 10)) * np.exp(1j)
     random_sig_b = np.random.random_sample((10, 10)) * np.exp(1j)
     test_signal = np.concatenate((random_sig_a[np.newaxis, :, :], random_sig_b[np.newaxis, :, :]), axis=0)
-    test_data = pshet_coeff(test_signal, gamma)
+    test_data = pshet_coefficients(test_signal, gamma)
 
     # pshet coefficients should return col_1 + 1j * col_2
     coeffs_a = np.abs(random_sig_a[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_a[2, :]) / jv(2, gamma)
