@@ -58,7 +58,7 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
 
     """
     if np.any(np.isnan(array)):
-        raise ValueError("The array array has empty bins.")
+        raise ValueError("The array has empty bins.")
 
     ft = np.fft.rfft(array, axis=axis, norm='forward')
 
@@ -108,25 +108,6 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     return binned
 
 
-def shd_ft(binned: np.ndarray, tap_correction='fft') -> np.ndarray:
-    """ Passes binned phase domain to phased_ft() to compute Fourier components.
-
-    PARAMETERS
-    ----------
-    binned: np.ndarray
-        array of values for fft. Values should be on axis=-1
-    tap_correction: str or None or float
-        Type or value of phase correction, see phased_ft()
-
-    RETURNS
-    -------
-    ft: np.ndarray
-        real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
-    """
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    return np.real(ft).T
-
-
 def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='fft') -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
 
@@ -147,8 +128,8 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='ff
         real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
     """
     binned = shd_binning(data=data, signals=signals, tap_nbins=tap_nbins)
-    ft = shd_ft(binned=binned, tap_correction=tap_correction)
-    return ft
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    return ft.T
 
 
 # PSHET DEMODULATION ###################################################################################################
@@ -179,32 +160,6 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
                                   bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
     return binned.transpose(0, 2, 1)
-
-
-def pshet_ft(binned: np.ndarray, tap_correction='fft', ref_correction='fft') -> np.ndarray:
-    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
-    It is assumed that binned data is either correctly phased (theta_C = theta_0 = 0), or that the values are given.
-    Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
-    Only real values of fft are returned.
-
-
-    PARAMETERS
-    ----------
-    binned: np.ndarray
-        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
-    tap_correction: str or None or float
-        Type or value of phase correction along axis=-1, see phased_ft()
-    ref_correction: str or None or float
-        Type or value of phase correction along axis=-2, see phased_ft()
-
-    RETURNS
-    -------
-    ft: np.ndarray
-        real amplitudes of Fourier components.
-    """
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
-    return ft
 
 
 def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
@@ -270,7 +225,8 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
         complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
     """
     binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-    ft = pshet_ft(binned=binned, tap_correction=tap_correction, ref_correction=ref_correction)
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
 
     if type(demod_params) is dict:  # if psi_R and gamma should be determined through fitting
         if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
@@ -394,6 +350,53 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
 
 # OLDER STUFF # FOR COMPATIBILITY ######################################################################################
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
+
+
+def pshet_ft(binned: np.ndarray, tap_correction='fft', ref_correction='fft') -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+    It is assumed that binned data is either correctly phased (theta_C = theta_0 = 0), or that the values are given.
+    Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
+    Only real values of fft are returned.
+
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
+    tap_correction: str or None or float
+        Type or value of phase correction along axis=-1, see phased_ft()
+    ref_correction: str or None or float
+        Type or value of phase correction along axis=-2, see phased_ft()
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        real amplitudes of Fourier components.
+    """
+    warn(_deprecation_warning)
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
+    return ft
+
+
+def shd_ft(binned: np.ndarray, tap_correction='fft') -> np.ndarray:
+    """ Passes binned phase domain to phased_ft() to compute Fourier components.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. Values should be on axis=-1
+    tap_correction: str or None or float
+        Type or value of phase correction, see phased_ft()
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
+    """
+    warn(_deprecation_warning)
+    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    return np.real(ft).T
 
 
 def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
