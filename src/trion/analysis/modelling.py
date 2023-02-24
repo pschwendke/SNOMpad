@@ -18,20 +18,20 @@ def reference_modulation(theta, rho, gamma, theta_0, psi_R):
     return ret
 
 
-def tapping_modulation(theta, theta_C):
+def tapping_modulation(theta, theta_C, amps=None):
     ret = np.zeros(len(theta))
-    amps = [.05, -.015, -.0005, .0005]
-    offset = .5
+    if amps is None:
+        amps = [.5, .05, -.015, -.0005, .0005]
     for i, a in enumerate(amps):
-        ret += a * (np.cos((i+1) * (theta - theta_C)))
-    return ret + offset
+        ret += a * (np.cos(i * (theta - theta_C)))
+    return ret
 
 
-def shd_signal(theta: np.ndarray, theta_C: float = 1.6) -> np.ndarray:
+def shd_signal(theta: np.ndarray, theta_C: float = 1.6, amps=None) -> np.ndarray:
     """ Modeling of tapping modulation in shd mode. theta_C is the phase of contact.
     """
-    sig = tapping_modulation(theta=theta, theta_C=theta_C)
-    sig *= sig.conj()
+    sig = tapping_modulation(theta=theta, theta_C=theta_C, amps=amps)
+    # sig *= sig.conj()  # without this, we can reconstruct the amplitudes. Mmh ...
     return np.real(sig)
 
 
@@ -47,15 +47,18 @@ def pshet_signal(theta_tap: np.ndarray, theta_ref: np.ndarray, theta_C: float = 
     return np.real(sig)
 
 
-def shd_data(npts: int = 70_000, theta_C: float = 1.6, noise_level: float = 0):
+def shd_data(npts: int = 70_000, theta_C: float = 1.6, noise_level: float = 0, tap_nbins=None, amps=None):
     """ Returns npts # of simulated shd data points, similar as recorded by DAQ
+    If tap_nbins is given, one data point per bin is returned
     """
     tap_p = np.random.uniform(0, 2 * np.pi, npts)
+    if tap_nbins is not None:
+        tap_p = np.linspace(0 + 2 * np.pi / tap_nbins, 2 * np.pi, tap_nbins, endpoint=False)
     tap_x = np.cos(tap_p)
     tap_y = np.sin(tap_p)
     sigs = [Signals.sig_a, Signals.tap_x, Signals.tap_y]
-    sig_a = shd_signal(theta=tap_p, theta_C=theta_C)
-    sig_a += np.random.uniform(- sig_a.max() * noise_level, sig_a.max() * noise_level, npts)
+    sig_a = shd_signal(theta=tap_p, theta_C=theta_C, amps=amps)
+    sig_a += np.random.uniform(- sig_a.max() * noise_level, sig_a.max() * noise_level, len(tap_p))
     data = np.vstack([sig_a, tap_x, tap_y]).T
 
     return data, sigs

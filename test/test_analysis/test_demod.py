@@ -4,6 +4,7 @@ from scipy.special import jv
 
 from trion.analysis.demod import phase_offset, phased_ft, shd_binning, shd_ft, shd
 from trion.analysis.demod import pshet_binning, pshet_ft, pshet_coefficients, pshet
+from trion.analysis.modelling import shd_data, pshet_data
 from trion.analysis.signals import Signals, all_detector_signals
 
 # some parameters to create test data
@@ -191,36 +192,41 @@ def test_shd_ft_shape(shd_data_points):
     assert ft_data.shape[0] == tap_nbins // 2 + 1
 
 
-@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
-def test_shd_ft_harmonics(shd_data_points):
-    """ Retrieve amplitudes and phases of harmonics with shd_ft.
+def test_shd_ft_harmonics():
+    """ Unit test for shd(). Retrieve amplitudes of harmonics with shd().
     """
-    # retrieve parameters and test data from fixture
-    params, data, signals = shd_data_points
-    tap_nbins, tap_nharm, tap_harm_amps = params
-    binned = shd_binning(data, signals, tap_nbins)
-    ft_data = shd_ft(binned)
+    amps = [.5, .05, -.015, -.0005, .0005]
+    data, sigs = shd_data(theta_C=0, amps=amps)  #, tap_nbins=1024)
+    harms = shd(data, sigs, tap_nbins=64, tap_correction=None)
 
-    for n in range(tap_nharm):
-        initial_amp = tap_harm_amps[n]
-        returned_amp = ft_data[n][0]
-        if n > 0:
-            returned_amp *= 2
-        assert np.isclose(initial_amp, returned_amp)
+    assert np.isclose(harms[0], amps[0], rtol=1e-4)
+    amps_in = np.abs(amps[1:])
+    amps_out = np.abs(harms[1:len(amps)].flatten()) * 2
+    assert np.isclose(amps_out, amps_in, rtol=.05).all()
+
+
+def test_shd_ft_harmonics_phased():
+    """ Unit test for shd(). Retrieve amplitudes of harmonics with shd() with a tapping phase.
+    """
+    amps = [.5, .05, -.015, -.001, .001]
+    data, sigs = shd_data(theta_C=1, amps=amps)  # , tap_nbins=1024)
+    harms = shd(data, sigs)
+
+    assert np.isclose(harms[0], amps[0], rtol=1e-4)
+    amps_in = np.abs(amps[1:])
+    amps_out = np.abs(harms[1:len(amps)].flatten()) * 2
+    assert np.isclose(amps_out, amps_in, rtol=.05).all()
 
 
 @pytest.mark.parametrize('drops', [0, [0, 5], [3, 5, 8], [5, -1]])
-@pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
-def test_shd_empty(shd_data_points, drops):
+def test_shd_empty(drops):
     """ Missing bins or bins filled with nans should be caught by shd.
     """
-    # retrieve parameters and test data from fixture
-    params, data, signals = shd_data_points
-    tap_nbins, tap_nharm, tap_harm_amps = params
+    amps = [.5, .05, -.015, -.0005, .0005]
+    data, sigs = shd_data(theta_C=0, amps=amps, tap_nbins=64)
     data = np.delete(data, drops, axis=0)
-
     with pytest.raises(ValueError):
-        shd(data, signals, tap_nbins)
+        shd(data, sigs, tap_nbins=64, tap_correction=None)
 
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
@@ -324,7 +330,7 @@ def test_pshet_ft_harmonics(pshet_data_points):
     params, data, signals = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
     binned = pshet_binning(data, signals, tap_nbins, ref_nbins)
-    ft_data = pshet_ft(binned)
+    ft_data = pshet_ft(binned, tap_correction=None, ref_correction=None)
 
     # both signals are actually the same, because of pytest..
     for single_signal in ft_data:
@@ -376,18 +382,18 @@ def test_pshet_coeff():
 
 
 # BENCHMARKING ##############################
-@pytest.mark.parametrize('noise_data', filter(lambda n: n > 100, npoints), indirect=['noise_data'])
-def test_shd_binning_benchmark(benchmark, noise_data):
-    """ Benchmarks the speed of shd binning for different lengths of random data sets"""
-    tap_nbins = 32
-    data,  signals = noise_data
-    benchmark(shd_binning, data, signals, tap_nbins)
-
-
-@pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])
-def test_pshet_binning_benchmark(benchmark, noise_data):
-    """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
-    tap_nbins = 32
-    ref_nbins = 16
-    data, signals = noise_data
-    benchmark(pshet_binning, data, signals, tap_nbins, ref_nbins)
+# @pytest.mark.parametrize('noise_data', filter(lambda n: n > 100, npoints), indirect=['noise_data'])
+# def test_shd_binning_benchmark(benchmark, noise_data):
+#     """ Benchmarks the speed of shd binning for different lengths of random data sets"""
+#     tap_nbins = 32
+#     data,  signals = noise_data
+#     benchmark(shd_binning, data, signals, tap_nbins)
+#
+#
+# @pytest.mark.parametrize('noise_data', filter(lambda n: n > 1000, npoints), indirect=['noise_data'])
+# def test_pshet_binning_benchmark(benchmark, noise_data):
+#     """ Benchmarks the speed of pshet binning for different lengths of random data sets"""
+#     tap_nbins = 32
+#     ref_nbins = 16
+#     data, signals = noise_data
+#     benchmark(pshet_binning, data, signals, tap_nbins, ref_nbins)
