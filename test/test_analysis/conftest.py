@@ -99,18 +99,13 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
 @pytest.fixture(scope='session')
 def noise_data(request) -> tuple[np.ndarray, list]:
     npts = request.param
-    """ Creates random (noise) data for sig_a and sig_b for n_points data points.
-    tap_x,y and re_x,y are calculated for random phases.
+    """ Creates random (noise) data for sig_a and sig_b for npts data points.
+    tap_x,y and ref_x,y are calculated for random phases.
     
     Parameters
     ----------
     npts: int
         number of data points in returned DataFrame
-
-    Returns
-    -------
-    data_df: pd.DataFrame
-        Channels as columns and data points as rows.
     """
     # creating some noise data
     tap_phase = np.random.uniform(-np.pi, np.pi, npts)

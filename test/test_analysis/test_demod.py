@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 from scipy.special import jv
 
-from trion.analysis.demod import phase_offset, phased_ft, shd_binning, shd_ft, shd
-from trion.analysis.demod import pshet_binning, pshet_ft, pshet_coefficients, pshet
+from trion.analysis.demod import phase_offset, phased_ft, shd_binning, shd
+from trion.analysis.demod import pshet_binning, pshet_coefficients, pshet
 from trion.analysis.modelling import shd_data, pshet_data
 from trion.analysis.signals import Signals, all_detector_signals
 
@@ -19,6 +19,9 @@ pshet_parameters = [
 ]
 np.random.seed(2108312109)
 npoints = [10, 1000, 10_000, 50_000, 75_000, 100_000]
+
+# ToDo: Rewrite tests when chopping is introduced to demod.py
+#  Revisit signal modelling
 
 
 def bin_index(phi, n_bins: int):
@@ -178,25 +181,22 @@ def test_shd_binning_empty(shd_data_points, drops):
 
 
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
-def test_shd_ft_shape(shd_data_points):
-    """ Test the shape of the DataFrame returned by shd_ft.
-    This test assumes that shd_binning is working as expected.
+def test_shd_shape(shd_data_points):
+    """ Test the shape of the DataFrame returned by shd.
     """
     # retrieve parameters and test data from fixture
     params, data, signals = shd_data_points
     tap_nbins, tap_nharm, tap_harm_amps = params
-
-    binned = shd_binning(data, signals, tap_nbins)
-    ft_data = shd_ft(binned)
+    ft_data = shd(data=data, signals=signals, tap_nbins=tap_nbins, tap_correction=None)
 
     assert ft_data.shape[0] == tap_nbins // 2 + 1
 
 
-def test_shd_ft_harmonics():
+def test_shd_harmonics():
     """ Unit test for shd(). Retrieve amplitudes of harmonics with shd().
     """
     amps = [.5, .05, -.015, -.0005, .0005]
-    data, sigs = shd_data(theta_C=0, amps=amps)  #, tap_nbins=1024)
+    data, sigs = shd_data(theta_C=0, amps=amps)
     harms = shd(data, sigs, tap_nbins=64, tap_correction=None)
 
     assert np.isclose(harms[0], amps[0], rtol=1e-4)
@@ -205,11 +205,11 @@ def test_shd_ft_harmonics():
     assert np.isclose(amps_out, amps_in, rtol=.05).all()
 
 
-def test_shd_ft_harmonics_phased():
+def test_shd_harmonics_phased():
     """ Unit test for shd(). Retrieve amplitudes of harmonics with shd() with a tapping phase.
     """
     amps = [.5, .05, -.015, -.001, .001]
-    data, sigs = shd_data(theta_C=1, amps=amps)  # , tap_nbins=1024)
+    data, sigs = shd_data(theta_C=1, amps=amps)
     harms = shd(data, sigs)
 
     assert np.isclose(harms[0], amps[0], rtol=1e-4)
@@ -307,14 +307,14 @@ def test_pshet_binning_empty(pshet_data_points, drops):
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_shape(pshet_data_points):
-    """ Test the shape of the DataFrame returned by pshet_ft.
-    This test assumes that pshet_binning is working as expected.
+    """ Test the shape of pshet data returned by phased_ft.
     """
     # retrieve parameters and test data from fixture
     params, data, signals = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
     binned = pshet_binning(data, signals, tap_nbins, ref_nbins)
-    ft_data = pshet_ft(binned)
+    ft_data = phased_ft(array=binned, axis=-1, correction=None)
+    ft_data = phased_ft(array=ft_data, axis=-2, correction=None)
 
     # test shape of returned arrays
     detector_signals = [s for s in signals if s in all_detector_signals]
@@ -325,12 +325,15 @@ def test_pshet_ft_shape(pshet_data_points):
 
 @pytest.mark.parametrize('pshet_data_points', pshet_parameters, indirect=['pshet_data_points'])
 def test_pshet_ft_harmonics(pshet_data_points):
-    """ Retrieve amplitudes and phases of harmonics with phset_ft"""
+    # TODO: this still fails
+    """ Retrieve amplitudes and phases of harmonics with phased_ft"""
     # retrieve parameters and test data from fixture
     params, data, signals = pshet_data_points
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = params
     binned = pshet_binning(data, signals, tap_nbins, ref_nbins)
-    ft_data = pshet_ft(binned, tap_correction=None, ref_correction=None)
+    # Correct for binning phase error:
+    ft_data = phased_ft(array=binned, axis=-1, correction=np.pi + np.pi/tap_nbins)
+    ft_data = phased_ft(array=ft_data, axis=-2, correction=np.pi + np.pi/ref_nbins)
 
     # both signals are actually the same, because of pytest..
     for single_signal in ft_data:
@@ -340,7 +343,7 @@ def test_pshet_ft_harmonics(pshet_data_points):
             returned_tap_amp = single_signal[0, n]
             if n > 0:
                 returned_tap_amp *= 2
-            assert np.isclose(initial_tap_amp, np.real(returned_tap_amp))
+            assert np.isclose(initial_tap_amp, returned_tap_amp)
 
         # pshet harmonics
         for m in range(ref_nharm):
@@ -364,19 +367,24 @@ def test_pshet_empty(pshet_data_points, drops):
         pshet(np.delete(data, drops, axis=0), signals, tap_nbins, ref_nbins)
 
 
-def test_pshet_coeff():
-    """ Check that pshet_coeff returns col_1 + 1j * col_2 per signal for arrays filled with random complex.
+def test_pshet_coefficients():
+    """ Check that pshet_coefficients() returns m_1 + 1j * m_2 per signal for arrays filled with random complex.
     """
     # generate some complex test data:
     gamma = 2.63
+    psi_R = 1
     random_sig_a = np.random.random_sample((10, 10)) * np.exp(1j)
     random_sig_b = np.random.random_sample((10, 10)) * np.exp(1j)
     test_signal = np.concatenate((random_sig_a[np.newaxis, :, :], random_sig_b[np.newaxis, :, :]), axis=0)
-    test_data = pshet_coefficients(test_signal, gamma)
+    test_data = pshet_coefficients(ft=test_signal, gamma=gamma, psi_R=psi_R)
 
-    # pshet coefficients should return col_1 + 1j * col_2
-    coeffs_a = np.abs(random_sig_a[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_a[2, :]) / jv(2, gamma)
-    coeffs_b = np.abs(random_sig_b[1, :]) / jv(1, gamma) + 1j * np.abs(random_sig_b[2, :]) / jv(2, gamma)
+    # pshet coefficients should return m_1 + 1j * m_2
+    coeffs_a = random_sig_a[1, :] / jv(1, gamma) + 1j * random_sig_a[2, :] / jv(2, gamma)
+    coeffs_b = random_sig_b[1, :] / jv(1, gamma) + 1j * random_sig_b[2, :] / jv(2, gamma)
+    # a phase is added by pshet_coefficients()
+    phase = np.exp(1j * (psi_R + np.pi / 2))
+    coeffs_a *= phase
+    coeffs_b *= phase
     assert np.allclose(test_data[:, 0], coeffs_a)
     assert np.allclose(test_data[:, 1], coeffs_b)
 
