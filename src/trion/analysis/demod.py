@@ -162,7 +162,7 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     return binned.transpose(0, 2, 1)
 
 
-def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
+def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, m: int = 1) -> np.ndarray:
     """ Computes coefficients for tapping demodulation.
 
     PARAMETERS
@@ -192,7 +192,7 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 0, m:
 
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, demod_params=None,
-          tap_correction='fft', ref_correction='fft', gamma: float = 2.63, psi_R: float = 0, m: int = 1) -> np.ndarray:
+          tap_correction='fft', ref_correction='fft', gamma: float = 2.63, psi_R: float = 1.6, m: int = 1) -> np.ndarray:
     """ Simple combination of pshet_binning, pshet_ft, and pshet_coeff
 
     Parameters
