@@ -90,7 +90,7 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
             ref_sig = sum(np.abs(ref_harm_amps[n]) * np.cos(n * ref_phase[j] + np.angle(ref_harm_amps[n]))
                           for n in range(ref_nharm))
             data_point = tap_sig * ref_sig
-            data[row] = [data_point, -data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
+            data[row] = [data_point, data_point, tap_x[i], tap_y[i], ref_x[j], ref_y[j]]
     sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
 
     return request.param, data, sigs
@@ -100,17 +100,12 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
 def noise_data(request) -> tuple[np.ndarray, list]:
     npts, chopped = request.param
     """ Creates random (noise) data for sig_a and sig_b for n_points data points.
-    tap_x,y and re_x,y are calculated for random phases.
+    tap_x,y and ref_x,y are calculated for random phases.
     
     Parameters
     ----------
     npts: int
         number of data points in returned DataFrame
-
-    Returns
-    -------
-    data_df: pd.DataFrame
-        Channels as columns and data points as rows.
     """
     # creating some noise data
     tap_phase = np.random.uniform(-np.pi, np.pi, npts)

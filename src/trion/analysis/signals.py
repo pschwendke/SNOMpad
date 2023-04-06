@@ -92,7 +92,7 @@ class Scan(NamedEnum):
     stepped_image = auto()
     continuous_retraction = auto()
     continuous_image = auto()
-    # AFM = auto()
+    noise_sampling = auto()
 
 
 class Demodulation(NamedEnum):
