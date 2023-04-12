@@ -104,8 +104,8 @@ class QPopupLogDlg(QMessageBox):
         super().__init__(*a, **kw)
         lyout = self.layout()
         spacer = QSpacerItem(400, 0,
-                                   hPolicy=QSizePolicy.Minimum,
-                                   vPolicy=QSizePolicy.MinimumExpanding)
+                                   hData=QSizePolicy.Minimum,
+                                   vData=QSizePolicy.MinimumExpanding)
         lyout.addItem(spacer, lyout.rowCount(), 0, 1, lyout.columnCount())
 
     def showLog(self, msg, record):

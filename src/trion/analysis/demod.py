@@ -406,6 +406,46 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
 
 
+def shd_ft(binned: np.ndarray) -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. Values should be on axis=-1
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        complex amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
+    """
+    warn(_deprication_warning)
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft(binned) / binned.shape[-1]
+    return ft.T
+
+
+def pshet_ft(binned: np.ndarray) -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        complex amplitudes of Fourier components.
+    """
+    warn(_deprication_warning)
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
+    return ft
+
+
 def calc_phase(df, in_place=False):
     warn(_deprecation_warning)
     "Computes tap_p"
