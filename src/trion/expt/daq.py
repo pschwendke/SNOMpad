@@ -49,7 +49,7 @@ default_channel_map = {
     Signals.tap_y: "ai3",
     Signals.ref_x: "ai4",
     Signals.ref_y: "ai5",
-    # chop is to be determined
+    Signals.chop: "ai6"
 }
 
 

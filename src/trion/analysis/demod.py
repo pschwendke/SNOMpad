@@ -1,10 +1,10 @@
 # ToDo: standardize names of variables
 
-# demod.py: functions for demodulations
 from warnings import warn
 import numpy as np
 from scipy.special import jv
 from scipy.stats import binned_statistic, binned_statistic_2d
+from lmfit.models import GaussianModel
 import pandas as pd
 
 from .signals import Signals, all_detector_signals
@@ -82,9 +82,37 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
     return np.real(ft)
 
 
+def sort_chopped(chop: np.ndarray) -> tuple:
+    """ Takes optical chop signal, returns boolean indices of chopped and pumped shots
+    """
+    hi_sig = chop[chop > np.median(chop)]
+    lo_sig = chop[chop < np.median(chop)]
+    model = GaussianModel()
+
+    # fit gaussian to chop signal for pumped shots
+    values, edges = np.histogram(hi_sig, bins=100)
+    A = values.max()
+    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
+                       method='leastsqr')
+    hilim = result.best_values['center'] - 3 * result.best_values['sigma']
+    pumped = chop > hilim
+
+    # fit gaussian to chop signal for chopped shots
+    values, edges = np.histogram(lo_sig, bins=100)
+    A = values.max()
+    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
+                       method='leastsqr')
+    lolim = result.best_values['center'] + 3 * result.best_values['sigma']
+    chopped = chop < lolim
+
+    return chopped, pumped
+
+
 # SHD DEMODULATION #####################################################################################################
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndarray:
-    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included.
+    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When Signals.chop is included in signals
+        chopped and pumped are binned sepparately and the difference normalized by the chopped signal (probe only) is
+        returned.
 
     PARAMETERS
     ----------
@@ -102,16 +130,28 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
     """
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
-    returns = binned_statistic(x=tap_p, values=detector_signals,
-                               statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-    binned = returns.statistic
-    return binned
+
+    if Signals.chop in signals:
+        chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+        pumped = binned_statistic(x=tap_p[pumped_idx], values=[s[pumped_idx] for s in detector_signals],
+                                  statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+        chopped = binned_statistic(x=tap_p[chopped_idx], values=[s[chopped_idx] for s in detector_signals],
+                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+
+        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+        return binned
+
+    else:
+        returns = binned_statistic(x=tap_p, values=detector_signals,
+                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
+        binned = returns.statistic
+        return binned
 
 
 def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='fft') -> np.ndarray:
     """ Simple combination of shd_binning and shd_ft
 
-    Parameters
+    PARAMETERS
     ----------
     data: np.ndarray
         array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
@@ -122,7 +162,7 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='ff
     tap_correction: str or None or float
         Type or value of phase correction, see phased_ft()
 
-    Returns
+    RETURNS
     -------
     ft: np.ndarray
         real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
@@ -135,6 +175,8 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, tap_correction='ff
 # PSHET DEMODULATION ###################################################################################################
 def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64) -> np.ndarray:
     """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
+        When Signals.chop is included in signals chopped and pumped are binned sepparately and the difference
+        normalized by the chopped signal (probe only) is returned.
 
     PARAMETERS
     ----------
@@ -156,9 +198,21 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
-    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
-                                  bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
-    binned = returns.statistic
+
+    if Signals.chop in signals:
+        chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+        pumped = binned_statistic_2d(x=tap_p[pumped_idx], y=ref_p[pumped_idx],
+                                     values=[s[pumped_idx] for s in detector_signals], statistic='mean',
+                                     bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+        chopped = binned_statistic_2d(x=tap_p[chopped_idx], y=ref_p[chopped_idx],
+                                      values=[s[chopped_idx] for s in detector_signals], statistic='mean',
+                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+    else:
+        returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
+                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+        binned = returns.statistic
+
     return binned.transpose(0, 2, 1)
 
 
@@ -352,59 +406,44 @@ def shd_naive(df: pd.DataFrame, max_order: int) -> pd.DataFrame:
 _deprecation_warning = FutureWarning("This function is deprecated. Please use the `shd` and `pshet` set of functions.")
 
 
-def pshet_ft(binned: np.ndarray, tap_correction='fft', ref_correction='fft') -> np.ndarray:
+def shd_ft(binned: np.ndarray) -> np.ndarray:
     """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
-    It is assumed that binned data is either correctly phased (theta_C = theta_0 = 0), or that the values are given.
-    Phase offset due to pi phase shift through binning, and because of bin width are also corrected.
-    Only real values of fft are returned.
-
-
-    PARAMETERS
-    ----------
-    binned: np.ndarray
-        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
-    tap_correction: str or None or float
-        Type or value of phase correction along axis=-1, see phased_ft()
-    ref_correction: str or None or float
-        Type or value of phase correction along axis=-2, see phased_ft()
-
-    RETURNS
-    -------
-    ft: np.ndarray
-        real amplitudes of Fourier components.
-    """
-    warn(_deprecation_warning)
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
-    return ft
-
-
-def shd_ft(binned: np.ndarray, tap_correction='fft') -> np.ndarray:
-    """ Passes binned phase domain to phased_ft() to compute Fourier components.
 
     PARAMETERS
     ----------
     binned: np.ndarray
         array of values for fft. Values should be on axis=-1
-    tap_correction: str or None or float
-        Type or value of phase correction, see phased_ft()
 
     RETURNS
     -------
     ft: np.ndarray
-        real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
+        complex amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
     """
     warn(_deprecation_warning)
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    return np.real(ft).T
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft(binned) / binned.shape[-1]
+    return ft.T
 
 
-def bin_midpoints(n_bins, lo=-np.pi, hi=np.pi):
-    """Compute the midpoints of phase bins"""
+def pshet_ft(binned: np.ndarray) -> np.ndarray:
+    """ Performs fft on array on binned data. Empty bins (NANs) raise ValueError.
+
+    PARAMETERS
+    ----------
+    binned: np.ndarray
+        array of values for fft. tapping bins on axis=-1, reference bins on axis=-2
+
+    RETURNS
+    -------
+    ft: np.ndarray
+        complex amplitudes of Fourier components.
+    """
     warn(_deprecation_warning)
-    span = hi - lo
-    step = span/n_bins
-    return (np.arange(n_bins)+0.5) * step + lo
+    if np.any(np.isnan(binned)):
+        raise ValueError("The binned array has empty bins.")
+    ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
+    return ft
 
 
 def calc_phase(df, in_place=False):
@@ -430,9 +469,9 @@ def bin_no(df, n_bins, in_place=False):
 def binned_average(df, n_bins, compute_counts=True):
     warn(_deprecation_warning)
     df = df.copy()
-    if not "tap_p" in df.columns:
+    if "tap_p" not in df.columns:
         calc_phase(df, in_place=True)
-    if not "bin_no" in df.columns:
+    if "bin_no" not in df.columns:
         bin_no(df, n_bins, in_place=True)
     df = df.drop(columns=[c for c in df.columns
                           if c in ("tap_x", "tap_y", "tap_p")])

@@ -98,8 +98,8 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
 
 @pytest.fixture(scope='session')
 def noise_data(request) -> tuple[np.ndarray, list]:
-    npts = request.param
-    """ Creates random (noise) data for sig_a and sig_b for npts data points.
+    npts, chopped = request.param
+    """ Creates random (noise) data for sig_a and sig_b for n_points data points.
     tap_x,y and ref_x,y are calculated for random phases.
     
     Parameters
@@ -116,8 +116,14 @@ def noise_data(request) -> tuple[np.ndarray, list]:
     ref_y = np.sin(ref_phase)
     sig_a = np.random.uniform(-np.pi, np.pi, npts)
     sig_b = np.random.uniform(-np.pi, np.pi, npts)
+    chop = np.random.uniform(size=npts)
 
-    data = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y]).T
-    sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
+    if chopped:
+        data = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y, chop]).T
+        sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y, Signals.chop]
+
+    else:
+        data = np.array([sig_a, sig_b, tap_x, tap_y, ref_x, ref_y]).T
+        sigs = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y]
 
     return data, sigs

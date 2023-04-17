@@ -180,6 +180,49 @@ def test_shd_binning_empty(shd_data_points, drops):
     assert np.isnan(perforated_data[:, drops]).all()
 
 
+def test_shd_binning_chop():
+    """ shd_binning should bin chopped and pumped signals separately and return normalised difference.
+    Sometimes, this test fails randomly. This is not reproducible.
+    """
+    tap_nbins = 1024
+    tap_phase = np.arange(-np.pi, np.pi, 2 * np.pi / tap_nbins)
+    tap_phase += np.pi / tap_nbins
+    phases_chopped = np.vstack([np.cos(tap_phase), np.sin(tap_phase)]).T
+    phases_pumped = phases_chopped.copy()
+
+    sig_a_chopped, sig_a_pumped, sig_b_chopped, sig_b_pumped = np.random.uniform(size=4)
+    sig_a_chopped *= np.ones(tap_nbins)
+    sig_a_pumped *= np.ones(tap_nbins)
+    sig_b_chopped *= np.ones(tap_nbins)
+    sig_b_pumped *= np.ones(tap_nbins)
+    chop_chopped = np.abs(np.random.normal(loc=.1, scale=.01, size=tap_nbins))
+    chop_pumped = np.abs(np.random.normal(loc=.9, scale=.01, size=tap_nbins))
+    chop_chopped[chop_chopped > .12] = .1  # avoid empty bins
+    chop_pumped[chop_pumped < .88] = .9
+
+    # for only sig_a
+    data = np.hstack([np.hstack([sig_a_chopped, sig_a_pumped])[:, np.newaxis],
+                      np.vstack([phases_chopped, phases_pumped]),
+                      np.hstack([chop_chopped, chop_pumped])[:, np.newaxis]])
+    np.random.shuffle(data)
+    signals = [Signals.sig_a, Signals.tap_x, Signals.tap_y, Signals.chop]
+    binned = shd_binning(data, signals, tap_nbins)
+    expected_a = (sig_a_pumped - sig_a_chopped) / sig_a_chopped
+    assert np.allclose(binned, expected_a)
+
+    # for sig_a and sig_b
+    data = np.hstack([np.hstack([sig_a_chopped, sig_a_pumped])[:, np.newaxis],
+                      np.hstack([sig_b_chopped, sig_b_pumped])[:, np.newaxis],
+                      np.vstack([phases_chopped, phases_pumped]),
+                      np.hstack([chop_chopped, chop_pumped])[:, np.newaxis]])
+    np.random.shuffle(data)
+    signals = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.chop]
+    binned = shd_binning(data, signals, tap_nbins)
+    expected_b = (sig_b_pumped - sig_b_chopped) / sig_b_chopped
+    assert np.allclose(binned[0], expected_a)
+    assert np.allclose(binned[1], expected_b)
+
+
 @pytest.mark.parametrize('shd_data_points', shd_parameters, indirect=['shd_data_points'])
 def test_shd_shape(shd_data_points):
     """ Test the shape of the DataFrame returned by shd.
