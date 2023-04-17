@@ -419,7 +419,7 @@ def shd_ft(binned: np.ndarray) -> np.ndarray:
     ft: np.ndarray
         complex amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
     """
-    warn(_deprication_warning)
+    warn(_deprecation_warning)
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft(binned) / binned.shape[-1]
@@ -439,7 +439,7 @@ def pshet_ft(binned: np.ndarray) -> np.ndarray:
     ft: np.ndarray
         complex amplitudes of Fourier components.
     """
-    warn(_deprication_warning)
+    warn(_deprecation_warning)
     if np.any(np.isnan(binned)):
         raise ValueError("The binned array has empty bins.")
     ft = np.fft.rfft2(binned) / binned.shape[-1] / binned.shape[-2]
