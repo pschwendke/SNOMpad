@@ -2,14 +2,15 @@ import numpy as np
 import xarray as xr
 import attr
 
+from tqdm import tqdm
 from itertools import chain
 from typing import Iterable
 from abc import ABC, abstractmethod
 
-from trion.analysis.signals import Scan, Demodulation, Detector, Signals, \
-    detection_signals, modulation_signals, all_modulation_signals, \
-    all_detector_signals
+from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from trion.analysis.io import export_data
+from trion.analysis.demod import shd, pshet
+
 
 # TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
 #   and one to specify the analysis (ie: so we can acquire pshet channels, but analyze only the sHD part...
@@ -138,12 +139,97 @@ class Image(Measurement):
 class Retraction(Measurement):
     def __init__(self, ds: xr.Dataset, directory=''):
         super().__init__(ds, directory)
+        self.harmonics = None
+        self.z = None
+        self.m1a = None
+        self.m1p = None
 
-    def demod(self):
-        pass
+        # TODO delete this when merged into develop (should be set in BaseScan)
+        if 'name' not in self.afm_data.attrs.keys():
+            name = self.afm_data.attrs['date'].replace('T', '_').replace(':', '').replace('-', '')
+            name += '_' + self.afm_data.attrs['acquisition_mode']
+            self.afm_data.attrs['name'] = name
 
-    def plot(self):
-        pass
+    def demod(self, tap_nbins: int = 64, ref_nbins: int = 64, combine_px=None):
+        if not combine_px and self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction':
+            combine_px = 1
+        elif not combine_px and self.afm_data.attrs['acquisition_mode'] == 'continuous_retraction':
+            combine_px = 8
+        max_order = int(tap_nbins // 2 + 1)
+        z_res = len(self.afm_data['px']) // combine_px
+        self.harmonics = np.zeros((z_res, max_order, 1), dtype=complex)
+
+        # read tracked AFM data
+        if self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction':
+            self.z = self.afm_data.values[:, list(self.afm_data['ch'].values).index('z_target')]  # single_point() is buggy
+            self.m1a = (self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A_pre')] +
+                        self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A_post')]) / 2
+            self.m1p = (self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P_pre')] +
+                        self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P_post')]) / 2
+        elif self.afm_data.attrs['acquisition_mode'] == 'continuous_retraction':
+            self.z = self.afm_data.values[:, list(self.afm_data['ch'].values).index('Z')]
+            self.m1a = self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A')]
+            self.m1p = self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P')]
+        else:
+            raise NotImplementedError
+        # and reshape to given z-resolution
+        self.z = self.z[:z_res * combine_px].reshape((z_res, combine_px)).mean(axis=1)
+        self.m1a = self.m1a[:z_res*combine_px].reshape((z_res, combine_px)).mean(axis=1)
+        self.m1p = self.m1p[:z_res*combine_px].reshape((z_res, combine_px)).mean(axis=1)
+
+        data_buffer = []
+        for p in tqdm(self.afm_data['px'].values):
+            filename = f'{self.afm_data.attrs["data_folder"]}/pixel_{p:05d}.npz'
+            npz = np.load(self.directory + filename)
+            data_buffer.append(np.vstack([i for i in npz.values()]).T)
+            if p % combine_px == 0 and (p > 0 or self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction'):
+                data = np.vstack(data_buffer)
+                if self.modulation == Demodulation.shd:
+                    coefficients = shd(data=data, signals=self.signals, tap_nbins=tap_nbins)
+                elif self.modulation == Demodulation.pshet:
+                    coefficients = pshet(data=data, signals=self.signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+                else:
+                    raise NotImplementedError
+                self.harmonics[int(p / combine_px) - 1] = coefficients
+                data_buffer = []
+
+    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, show=True, save=True):
+        import matplotlib.pyplot as plt
+        if self.harmonics is None:
+            self.demod()
+        if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
+            orders = np.arange(max_order)
+
+        fig, ax1 = plt.subplots()
+        x = (self.z - self.z.min()) * 1e9
+
+        if afm_amp:
+            ax2 = ax1.twinx()
+            y = self.m1a / self.m1a.max()
+            ax2.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='gray')
+            ax2.tick_params(right=False, labelright=False)
+            ax2.legend(loc='upper right')
+
+        if afm_phase:
+            ax3 = ax1.twinx()
+            ax3.plot(x, self.m1p, color='C1', marker='.', ms=3, lw=.5)
+            ax3.set_ylabel('AFM phase (rad)', color='C1')
+
+        for o in orders:
+            y = np.real(self.harmonics[:, o].squeeze())
+            y /= np.abs(y).max()
+            ax1.plot(x, y, marker='.', lw=1, label=str(o), color=f'C{o}')
+
+        ax1.set_ylabel('optical amplitude (normalized)')
+        ax1.set_xlabel('dz (nm)')
+        ax1.legend(loc='lower right')
+
+        if save:
+            plt.savefig(f'{self.afm_data.attrs["name"]}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{self.afm_data.attrs["name"]}.svg')
+        if show:
+            plt.show()
+        plt.close()
 
     def export(self):
         pass
@@ -203,30 +289,12 @@ class Noise(Measurement):
             export_data(filename, data, ['t', 'sig_a'])
 
 
-# def load_image(filename: str) -> Image:
-#     """ Loads stepped or continuous images from .nc files saved after acquisition, and returns an Image object
-#     """
-#     pass
-#
-#
-# def load_retraction(filename: str) -> Retraction:
-#     """ Loads stepped or continuous retraction curves from .nc files saved after acquisition,
-#     and returns a Retraction object
-#     """
-#     pass
-#
-#
-# def load_noise(filename: str) -> Noise:
-#     """ Loads AFM noise sampling from .nc files saved after acquisition, and returns a Noise object
-#     """
-#     afm_data = xr.load_dataset(filename)
-
-
 def load(filename: str) -> Measurement:
     """ Loads scan from .nc file and returns Measurement object. The function is agnostic to scan type.
     """
     scan = xr.load_dataset(filename)
     directory = '/'.join(filename.split('/')[:-1]) + '/'
+    directory = directory[1:]  # ToDo leading '/' does not work. make this nice.
     try:
         scan_type = Scan[scan.attrs['acquisition_mode']]
     except KeyError:
