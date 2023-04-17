@@ -85,12 +85,12 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
 def sort_chopped(chop: np.ndarray) -> tuple:
     """ Takes optical chop signal, returns boolean indices of chopped and pumped shots
     """
-    upper = chop[chop > np.median(chop)]
-    lower = chop[chop < np.median(chop)]
+    hi_sig = chop[chop > np.median(chop)]
+    lo_sig = chop[chop < np.median(chop)]
     model = GaussianModel()
 
     # fit gaussian to chop signal for pumped shots
-    values, edges = np.histogram(upper, bins=100)
+    values, edges = np.histogram(hi_sig, bins=100)
     A = values.max()
     result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
                        method='leastsqr')
@@ -98,7 +98,7 @@ def sort_chopped(chop: np.ndarray) -> tuple:
     pumped = chop > hilim
 
     # fit gaussian to chop signal for chopped shots
-    values, edges = np.histogram(lower, bins=100)
+    values, edges = np.histogram(lo_sig, bins=100)
     A = values.max()
     result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
                        method='leastsqr')
