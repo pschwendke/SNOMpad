@@ -104,7 +104,7 @@ class Measurement(ABC):
 
         # TODO delete this when merged into develop (should be set in BaseScan)
         if 'name' not in self.afm_data.attrs.keys():
-            name = self.afm_data.attrs['date'].replace('T', '_').replace(':', '').replace('-', '')
+            name = self.afm_data.attrs['date'].replace('-', '').replace('T', '-').replace(':', '')
             name += '_' + self.afm_data.attrs['acquisition_mode']
             self.afm_data.attrs['name'] = name
 
