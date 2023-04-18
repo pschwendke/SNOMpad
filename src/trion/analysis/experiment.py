@@ -294,7 +294,7 @@ def load(filename: str) -> Measurement:
     """
     scan = xr.load_dataset(filename)
     directory = '/'.join(filename.split('/')[:-1]) + '/'
-    directory = directory[1:]  # ToDo leading '/' does not work. make this nice.
+    # directory = directory[1:]  # ToDo: does this work on a windows machine ???
     try:
         scan_type = Scan[scan.attrs['acquisition_mode']]
     except KeyError:
