@@ -52,7 +52,7 @@ class Signals(SortableEnum, NamedEnum):
     ref_x = auto()
     ref_y = auto()
     ref_p = auto()
-    # chop = auto()
+    chop = auto()
 
 
 def signal_colormap(scale=255, filename=None) -> dict:
