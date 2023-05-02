@@ -21,11 +21,11 @@ from trion.analysis.demod import shd, pshet
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
 
-callback_interval = 200  # ms
+callback_interval = 150  # ms
 buffer_size = 300_000
 harm_plot_size = 50  # number of values on x-axis when plotting harmonics
-raw_plot_size = 1_000  # number of raw data samples that are displayed at one point in time
-raw_plot_tail = 300  # number of raw data samples that are added every acquisition cycle (callback interval)
+raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
+raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
 max_harm = 8  # highest harmonics that is plotted
 buffer = None  # global variable, so that it can be shared across threads
 
