@@ -17,3 +17,5 @@ pyserial
 gwyfile
 lmfit
 setuptools
+bokeh
+colorcet
