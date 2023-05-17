@@ -8,7 +8,6 @@ import numpy as np
 import sys
 import threading
 from time import sleep, perf_counter
-from itertools import chain
 from scipy.stats import binned_statistic, binned_statistic_2d
 
 import colorcet as cc
@@ -16,7 +15,7 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from trion.analysis.signals import Demodulation, Signals, Detector, modulation_signals, detection_signals
+from trion.analysis.signals import Signals
 from trion.analysis.demod import shd, pshet
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
@@ -28,6 +27,16 @@ raw_plot_tail = 670  # number of raw data samples that are added every acquisiti
 raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
 max_harm = 8  # highest harmonics that is plotted
 buffer = None  # global variable, so that it can be shared across threads
+signals = [
+    Signals.sig_a,
+    # Signals.sig_b,
+    Signals.tap_x,
+    Signals.tap_y,
+    Signals.ref_x,
+    Signals.ref_y,
+    Signals.chop
+]
+harm_scaling = np.zeros(max_harm+1)
 
 
 # SIMPLE ACQUISITION IN BACKGROUND #####################################################################################
@@ -45,7 +54,8 @@ class Acquisitor:
     def acquisition_loop(self):
         """ when 'GO' button is active
         """
-        global buffer
+        global buffer, harm_scaling
+        harm_scaling = np.zeros(max_harm + 1)
         buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
         daq = DaqController(dev='Dev1', clock_channel='pfi0')
         daq.setup(buffer=buffer)
@@ -71,24 +81,24 @@ def update():
             ref_nbins = ref_input.value
             t = perf_counter()
             data = buffer.get(n=npts_input.value)
-            rtn = 0
-            rtn += update_harmonics(data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-            rtn += update_raw_and_phase(data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-            update_message_box(rtn, t=t)
+            rtn = update_harmonics(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+            update_raw_and_phase(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+            update_message_box(msg=rtn, t=t)
         except Exception as e:
-            raise
             update_message_box(str(e))
+            raise
         
     
 def update_harmonics(data, tap_nbins, ref_nbins):
     global harm_scaling
     rtn_value = 0
     try:
-        if pshet_button.active is False:
-            coefficients = shd(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chop_button.active)
-        elif pshet_button.active is True:
+        if pshet_button.active is True:
             coefficients = np.abs(pshet(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins,
                                         chopped=chop_button.active))
+        else:
+            coefficients = shd(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chop_button.active)
+        # coefficients = coefficients.squeeze()[: max_harm+1]
         coefficients = coefficients[: max_harm+1, 0]
 
         if harm_scaling[0] == 0:
@@ -104,38 +114,33 @@ def update_harmonics(data, tap_nbins, ref_nbins):
         if 'empty bins' in str(e):
             rtn_value += 1  # empty bins
         else:
-            raise
-            rtn_value += 10
+            rtn_value = str(e)
     return rtn_value
 
 
 def update_raw_and_phase(data, tap_nbins, ref_nbins):
-    rtn_value = 0
     theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     # phase data
-    if pshet_button.active is False:
-        returns = binned_statistic(x=theta_tap, values=None, statistic='count',
-                                    bins=tap_nbins, range=[-np.pi, np.pi])
-        binned = returns.statistic[np.newaxis, :]
-    elif pshet_button.active is True:
-        
+    if pshet_button.active is True:
+
         returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
-                                        bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
+    else:
+        returns = binned_statistic(x=theta_tap, values=None, statistic='count',
+                                   bins=tap_nbins, range=[-np.pi, np.pi])
+        binned = returns.statistic[np.newaxis, :]
     new_data = {'binned': [binned]}
     phase_plot_data.data = new_data
 
     # raw data
-    new_data = {c.value: data[-raw_plot_tail:, signals.index(c)] for c in signals
-                if c.value in ['sig_a', 'sig_b', 'chop']}
-    if raw_theta_button.active == 0:  # 'raw vs theta_tap'
-        new_data.update({'theta': theta_tap[-raw_plot_tail:]})
-    elif raw_theta_button.active == 1:  # 'raw vs theta_ref'
+    new_data = {c.value: data[-raw_plot_tail:, signals.index(c)] for c in signals if c.value in ['sig_a', 'chop']}
+    if raw_theta_button.active == 1:  # 'raw vs theta_ref'
         new_data.update({'theta': theta_ref[-raw_plot_tail:]})
+    else:  # 'raw vs theta_tap'
+        new_data.update({'theta': theta_tap[-raw_plot_tail:]})
     raw_plot_data.stream(new_data, rollover=raw_plot_size)
-
-    return rtn_value
 
 
 def update_message_box(msg: any, t: float = 0.):
@@ -143,7 +148,7 @@ def update_message_box(msg: any, t: float = 0.):
     and when empty bins occurred during binning
     """
     if isinstance(msg, int):
-        if msg % 10 == 0:
+        if msg == 0:
             dt = (perf_counter() - t) * 1e3  # ms
             message_box.styles['background-color'] = '#FFFFFF'
             message_box.text = f'demod and plotting: {dt:.0f} ms'
@@ -153,14 +158,6 @@ def update_message_box(msg: any, t: float = 0.):
     else:
         message_box.styles['background-color'] = '#FF7777'
         message_box.text = msg
-
-
-# INITIAL PARAMETERS / DATA ############################################################################################
-signals = sorted(chain(detection_signals[Detector.dual],
-                        modulation_signals[Demodulation.pshet]))
-signals.append(Signals['chop'])
-
-harm_scaling = np.zeros(max_harm+1)
 
 
 # WIDGETS ##############################################################################################################
@@ -186,6 +183,7 @@ message_box.styles = {
     'background-color': '#FFFFFF'
 }
 
+
 # SET UP PLOTS #########################################################################################################
 def setup_harm_plot():
     # Currently, only sig_a is displayed
@@ -193,16 +191,17 @@ def setup_harm_plot():
     init_data.update({'t': np.zeros(harm_plot_size)})
     plot_data = ColumnDataSource(init_data)
     fig = figure(aspect_ratio=4)  # toolbar_location=None
-    # p.x_range.follow = 'end' #  I think this is needed only when the number of points grows in total
+    cmap = cc.b_glasbey_category10
     for h in range(max_harm+1):
-        fig.line(x='t', y=str(h), source=plot_data, syncable=False, legend_label=f'O{h}A')
+        fig.line(x='t', y=str(h), source=plot_data, line_color=cmap[h], line_width=3,
+                 syncable=False, legend_label=f'a{h:02}')
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
     return fig, plot_data
 
 
 def setup_raw_plot():
-    channels = ['sig_a', 'sig_b', 'chop']
+    channels = ['sig_a', 'chop']
     init_data = {c: np.zeros(raw_plot_tail) for c in channels}
     init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_plot_tail)})
     plot_data = ColumnDataSource(init_data)
@@ -247,7 +246,7 @@ controls_box = column([
 gui = layout(children=[
     [harmonics_plot],
     [phase_plot, raw_plot, controls_box]
-] , sizing_mode='stretch_width')
+], sizing_mode='stretch_width')
 
 curdoc().add_root(gui)
 curdoc().add_periodic_callback(update, callback_interval)
