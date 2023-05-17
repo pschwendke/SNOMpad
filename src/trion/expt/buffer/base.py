@@ -64,7 +64,6 @@ class AbstractBuffer(ABC):
         """
         pass
 
-
     @abstractmethod
     def put(self, data) -> int:
         """
@@ -94,7 +93,7 @@ class AbstractBuffer(ABC):
 
         Parameters
         ----------
-        len : int
+        n : int
             Number of points to return.
         offset : int
             Start position
