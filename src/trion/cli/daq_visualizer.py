@@ -20,12 +20,12 @@ from trion.analysis.demod import shd, pshet
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
 
-callback_interval = 150  # ms
-buffer_size = 300_000
-harm_plot_size = 50  # number of values on x-axis when plotting harmonics
+callback_interval = 80  # ms
+buffer_size = 200_000
+harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
 raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
-max_harm = 8  # highest harmonics that is plotted
+max_harm = 5  # highest harmonics that is plotted
 buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
@@ -36,7 +36,7 @@ signals = [
     Signals.ref_y,
     Signals.chop
 ]
-harm_scaling = np.zeros(max_harm+1)
+harm_scaling = np.zeros(max_harm + 1)
 
 
 # SIMPLE ACQUISITION IN BACKGROUND #####################################################################################
@@ -80,7 +80,7 @@ def update():
             tap_nbins = tap_input.value
             ref_nbins = ref_input.value
             t = perf_counter()
-            data = buffer.get(n=npts_input.value)
+            data = buffer.tail(n=npts_input.value)
             rtn = update_harmonics(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
             update_raw_and_phase(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
             update_message_box(msg=rtn, t=t)
@@ -98,12 +98,11 @@ def update_harmonics(data, tap_nbins, ref_nbins):
                                         chopped=chop_button.active))
         else:
             coefficients = shd(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chop_button.active)
-        # coefficients = coefficients.squeeze()[: max_harm+1]
-        coefficients = coefficients[: max_harm+1, 0]
+        coefficients = np.abs(coefficients[: max_harm+1, 0])  # add a button to toggle abs()
 
         if harm_scaling[0] == 0:
             harm_scaling = np.ones(max_harm+1) / coefficients
-        harm_scaling[coefficients > 1] = 1 / coefficients[coefficients > 1]
+        harm_scaling[coefficients*harm_scaling > 1] = 1 / coefficients[coefficients*harm_scaling > 1]
         coefficients *= harm_scaling  # ToDo: this does not affect already plotted data. Change this at some point
 
         new_data = {str(i): np.array([coefficients[i]]) for i in range(max_harm+1)}
@@ -193,7 +192,7 @@ def setup_harm_plot():
     fig = figure(aspect_ratio=4)  # toolbar_location=None
     cmap = cc.b_glasbey_category10
     for h in range(max_harm+1):
-        fig.line(x='t', y=str(h), source=plot_data, line_color=cmap[h], line_width=3,
+        fig.line(x='t', y=str(h), source=plot_data, line_color=cmap[h], line_width=2,
                  syncable=False, legend_label=f'a{h:02}')
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
