@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import attr
+import colorcet as cc
 
 from tqdm import tqdm
 from itertools import chain
@@ -193,7 +194,7 @@ class Retraction(Measurement):
                 self.harmonics[int(p / combine_px) - 1] = coefficients
                 data_buffer = []
 
-    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, show=True, save=True):
+    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=True):
         import matplotlib.pyplot as plt
         if self.harmonics is None:
             self.demod()
@@ -201,25 +202,29 @@ class Retraction(Measurement):
             orders = np.arange(max_order)
 
         fig, ax1 = plt.subplots()
+        cmap = cc.glasbey_category10
         x = (self.z - self.z.min()) * 1e9
+
+        if afm_phase:
+            ax3 = ax1.twinx()
+            y = self.m1p / 2 / np.pi * 360  # degrees
+            ax3.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
+            ax3.set_ylabel('AFM phase (degrees)', color='gray')
 
         if afm_amp:
             ax2 = ax1.twinx()
             y = self.m1a / self.m1a.max()
-            ax2.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='gray')
+            ax2.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
             ax2.tick_params(right=False, labelright=False)
             ax2.legend(loc='upper right')
-
-        if afm_phase:
-            ax3 = ax1.twinx()
-            ax3.plot(x, self.m1p, color='C1', marker='.', ms=3, lw=.5)
-            ax3.set_ylabel('AFM phase (rad)', color='C1')
 
         for o in orders:
             y = np.real(self.harmonics[:, o].squeeze())
             y /= np.abs(y).max()
-            ax1.plot(x, y, marker='.', lw=1, label=str(o), color=f'C{o}')
+            ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
 
+        # ax1.axhline(0, color='gray', lw=1)
+        ax1.grid(visible=grid, which='major', axis='both')
         ax1.set_ylabel('optical amplitude (normalized)')
         ax1.set_xlabel('dz (nm)')
         ax1.legend(loc='lower right')
