@@ -206,24 +206,23 @@ class Retraction(Measurement):
         x = (self.z - self.z.min()) * 1e9
 
         if afm_phase:
-            ax3 = ax1.twinx()
+            ax2 = ax1.twinx()
             y = self.m1p / 2 / np.pi * 360  # degrees
-            ax3.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
-            ax3.set_ylabel('AFM phase (degrees)', color='gray')
+            ax2.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
+            ax2.set_ylabel('AFM phase (degrees)', color='gray')
 
         if afm_amp:
-            ax2 = ax1.twinx()
+            ax3 = ax1.twinx()
             y = self.m1a / self.m1a.max()
-            ax2.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
-            ax2.tick_params(right=False, labelright=False)
-            ax2.legend(loc='upper right')
+            ax3.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
+            ax3.tick_params(right=False, labelright=False)
+            ax3.legend(loc='upper right')
 
         for o in orders:
             y = np.real(self.harmonics[:, o].squeeze())
             y /= np.abs(y).max()
             ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
 
-        # ax1.axhline(0, color='gray', lw=1)
         ax1.grid(visible=grid, which='major', axis='both')
         ax1.set_ylabel('optical amplitude (normalized)')
         ax1.set_xlabel('dz (nm)')
