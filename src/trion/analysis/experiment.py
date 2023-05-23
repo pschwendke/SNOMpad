@@ -183,7 +183,7 @@ class Retraction(Measurement):
             filename = f'{self.afm_data.attrs["data_folder"]}/pixel_{p:05d}.npz'
             npz = np.load(self.directory + filename)
             data_buffer.append(np.vstack([i for i in npz.values()]).T)
-            if p % combine_px == 0 and (p > 0 or self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction'):
+            if (p+1) % combine_px == 0:
                 data = np.vstack(data_buffer)
                 if self.modulation == Demodulation.shd:
                     coefficients = shd(data=data, signals=self.signals, tap_nbins=tap_nbins)
@@ -191,7 +191,7 @@ class Retraction(Measurement):
                     coefficients = pshet(data=data, signals=self.signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
                 else:
                     raise NotImplementedError
-                self.harmonics[int(p / combine_px) - 1] = coefficients
+                self.harmonics[int((p+1) / combine_px) - 1] = coefficients
                 data_buffer = []
 
     def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=True):
