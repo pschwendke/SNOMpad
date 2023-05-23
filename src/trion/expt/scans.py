@@ -65,6 +65,7 @@ class BaseScan(ABC):
 
     def export(self):
         logger.info('Saving AFM data')
+        self.afm_data.attrs['name'] = self.start_time.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
         self.afm_data.attrs['date'] = self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
         self.afm_data.attrs['acquisition_time'] = str(self.stop_time - self.start_time)
         self.afm_data.attrs['modulation'] = self.mod.value
@@ -79,7 +80,7 @@ class BaseScan(ABC):
             self.afm_data.attrs['x_offset'] = (self.x_center - self.x_size / 2) * 1E-6
             self.afm_data.attrs['y_offset'] = (self.y_center - self.y_size / 2) * 1E-6
 
-        filename = self.start_time.strftime('%y%m%d-%H%M%S_') + f'{self.acquisition_mode.value}.nc'
+        filename = f'{self.afm_data.attrs["name"]}.nc'
         self.afm_data.to_netcdf(filename)
 
 
