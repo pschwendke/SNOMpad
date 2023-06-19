@@ -138,7 +138,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64) -> np.ndar
         chopped = binned_statistic(x=tap_p[chopped_idx], values=[s[chopped_idx] for s in detector_signals],
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
 
-        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+        binned = (pumped.statistic - chopped.statistic)  # / chopped.statistic
         return binned
 
     else:
@@ -207,7 +207,7 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
         chopped = binned_statistic_2d(x=tap_p[chopped_idx], y=ref_p[chopped_idx],
                                       values=[s[chopped_idx] for s in detector_signals], statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
-        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+        binned = (pumped.statistic - chopped.statistic)  # / chopped.statistic
     else:
         returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
