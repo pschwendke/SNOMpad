@@ -1,9 +1,9 @@
 # This is a Bokeh server app. To function, it must be run using the
 # Bokeh server at the command line:
 #
-#     bokeh serve --show TRION_visualizer.py
+#     bokeh serve --show daq_visualizer.py
 #
-# Running "python TRION_visualizer.py" will NOT work.
+# Running "python daq_visualizer.py" will NOT work.
 import numpy as np
 import sys
 import threading
@@ -25,7 +25,7 @@ buffer_size = 200_000
 harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
 raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
-max_harm = 5  # highest harmonics that is plotted
+max_harm = 5  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
@@ -36,7 +36,11 @@ signals = [
     Signals.ref_y,
     Signals.chop
 ]
-harm_scaling = np.zeros(max_harm + 1)
+harm_scaling = np.zeros(max_harm + 1)  # scaling coefficients for plotting of harmonics
+harm_colors = cc.b_glasbey_category10  # color scheme for plotting harmonics of optical signals
+signal_noise = {  # collection of signal to noise ratios
+    h: Div(text='-', styles={'color': harm_colors[h]}) for h in range(8)
+}
 
 
 # SIMPLE ACQUISITION IN BACKGROUND #####################################################################################
@@ -84,6 +88,7 @@ def update():
             rtn = update_harmonics(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
             update_raw_and_phase(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
             update_message_box(msg=rtn, t=t)
+            update_signal_to_noise()
         except Exception as e:
             update_message_box(str(e))
             raise
@@ -102,8 +107,11 @@ def update_harmonics(data, tap_nbins, ref_nbins):
 
         if harm_scaling[0] == 0:
             harm_scaling = np.ones(max_harm+1) / coefficients
-        harm_scaling[coefficients*harm_scaling > 1] = 1 / coefficients[coefficients*harm_scaling > 1]
-        coefficients *= harm_scaling  # ToDo: this does not affect already plotted data. Change this at some point
+        for i, over_limit in enumerate(coefficients * harm_scaling > 1):
+            if over_limit:
+                harm_scaling[i] = 1 / coefficients[i]
+                harmonics_plot_data.data[str(i)] /= coefficients[i]
+        coefficients *= harm_scaling
 
         new_data = {str(i): np.array([coefficients[i]]) for i in range(max_harm+1)}
         new_data.update({'t': np.array([perf_counter()])})
@@ -159,6 +167,14 @@ def update_message_box(msg: any, t: float = 0.):
         message_box.text = msg
 
 
+def update_signal_to_noise():
+    for k in harmonics_plot_data.data.keys():
+        avg = harmonics_plot_data.data[k].mean()
+        std = harmonics_plot_data.data[k].std()
+        sn = avg / std
+        signal_noise[int(k)].text = f'{sn:.2}'
+
+
 # WIDGETS ##############################################################################################################
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
@@ -182,6 +198,12 @@ message_box.styles = {
     'background-color': '#FFFFFF'
 }
 
+noise_table = column(
+    Div(text='Signal to noise'),
+    row([signal_noise[h] for h in range(4)]),
+    row([signal_noise[h] for h in range(4, 8)])
+)
+
 
 # SET UP PLOTS #########################################################################################################
 def setup_harm_plot():
@@ -190,9 +212,8 @@ def setup_harm_plot():
     init_data.update({'t': np.zeros(harm_plot_size)})
     plot_data = ColumnDataSource(init_data)
     fig = figure(aspect_ratio=4)  # toolbar_location=None
-    cmap = cc.b_glasbey_category10
     for h in range(max_harm+1):
-        fig.line(x='t', y=str(h), source=plot_data, line_color=cmap[h], line_width=2,
+        fig.line(x='t', y=str(h), source=plot_data, line_color=harm_colors[h], line_width=2,
                  syncable=False, legend_label=f'a{h:02}')
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
@@ -218,7 +239,8 @@ def setup_phase_plot():
     plot_data = ColumnDataSource(init_data)
     fig = figure(height=400, width=400, toolbar_location=None)
     cmap = LinearColorMapper(palette=cc.bgy, nan_color='#FF0000')
-    plot = fig.image(image='binned', source=plot_data, color_mapper=cmap, dh=1., dw=1., x=0, y=0, syncable=False)
+    plot = fig.image(image='binned', source=plot_data, color_mapper=cmap,
+                     dh=2*np.pi, dw=2*np.pi, x=-np.pi, y=-np.pi, syncable=False)
     cbar = plot.construct_color_bar(padding=1)
     fig.add_layout(cbar, 'right')
     return fig, plot_data
@@ -239,6 +261,7 @@ controls_box = column([
     row([tap_input, ref_input, npts_input]),
     raw_theta_button,
     stop_server_button,
+    noise_table,
     message_box
 ])
 

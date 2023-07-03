@@ -58,7 +58,7 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
 
     """
     if np.any(np.isnan(array)):
-        raise ValueError("The array has empty bins.")
+        raise ValueError('The array has empty bins.')
 
     ft = np.fft.rfft(array, axis=axis, norm='forward')
 
@@ -162,7 +162,7 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped='auto', ta
     tap_nbins: int
         number of tapping bins
     chopped: str or bool
-        determines whether chopping should be considdered during binning, 'auto' -> True when Signals.chop in signals
+        determines whether chopping should be considered during binning, 'auto' -> True when Signals.chop in signals
     tap_correction: str or None or float
         Type or value of phase correction, see phased_ft()
 
@@ -179,7 +179,8 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped='auto', ta
 
 
 # PSHET DEMODULATION ###################################################################################################
-def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, chopped: bool =  False) -> np.ndarray:
+def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
+                  chopped: bool = False) -> np.ndarray:
     """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
         When Signals.chop is included in signals chopped and pumped are binned sepparately and the difference
         normalized by the chopped signal (probe only) is returned.
@@ -290,7 +291,7 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
-    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+    binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins, chopped=chopped)
     ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
     ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
 
@@ -302,7 +303,7 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
             demod_params['psi_R'] = 0
             demod_params['offset'] = 0
             demod_params['theta_0'] = 1.5
-        binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+        binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins, chopped=chopped)
         demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
         pshet_fitmodulation(binned=binned, fit_params=demod_params)
         psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
