@@ -39,7 +39,7 @@ signals = [
 harm_scaling = np.zeros(max_harm + 1)  # scaling coefficients for plotting of harmonics
 harm_colors = cc.b_glasbey_category10  # color scheme for plotting harmonics of optical signals
 signal_noise = {  # collection of signal to noise ratios
-    h: Div(text='-', styles={'color': harm_colors[h]}) for h in range(8)
+    h: Div(text='-', styles={'color': harm_colors[h], 'font-size': '200%'}) for h in range(8)
 }
 
 
@@ -109,8 +109,8 @@ def update_harmonics(data, tap_nbins, ref_nbins):
             harm_scaling = np.ones(max_harm+1) / coefficients
         for i, over_limit in enumerate(coefficients * harm_scaling > 1):
             if over_limit:
+                harmonics_plot_data.data[str(i)] /= coefficients[i] * harm_scaling[i]
                 harm_scaling[i] = 1 / coefficients[i]
-                harmonics_plot_data.data[str(i)] /= coefficients[i]
         coefficients *= harm_scaling
 
         new_data = {str(i): np.array([coefficients[i]]) for i in range(max_harm+1)}
@@ -169,10 +169,12 @@ def update_message_box(msg: any, t: float = 0.):
 
 def update_signal_to_noise():
     for k in harmonics_plot_data.data.keys():
-        avg = harmonics_plot_data.data[k].mean()
-        std = harmonics_plot_data.data[k].std()
-        sn = avg / std
-        signal_noise[int(k)].text = f'{sn:.2}'
+        if k != 't':
+            avg = harmonics_plot_data.data[k].mean()
+            std = harmonics_plot_data.data[k].std()
+            if std > 0:
+                sn = avg / std
+                signal_noise[int(k)].text = f'{sn:.2}'
 
 
 # WIDGETS ##############################################################################################################
