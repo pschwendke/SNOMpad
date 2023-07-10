@@ -64,7 +64,6 @@ class AbstractBuffer(ABC):
         """
         pass
 
-
     @abstractmethod
     def put(self, data) -> int:
         """
