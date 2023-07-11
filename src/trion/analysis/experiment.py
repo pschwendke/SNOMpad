@@ -103,11 +103,10 @@ class Measurement(ABC):
         self.signals = [Signals[s] for s in self.afm_data.attrs['signals']]
         self.modulation = Demodulation[self.afm_data.attrs['modulation']]
 
-        # TODO delete this when merged into develop (should be set in BaseScan)
-        if 'name' not in self.afm_data.attrs.keys():
-            name = self.afm_data.attrs['date'].replace('-', '').replace('T', '-').replace(':', '')
-            name += '_' + self.afm_data.attrs['acquisition_mode']
-            self.afm_data.attrs['name'] = name
+        # if 'name' not in self.afm_data.attrs.keys():
+        #     name = self.afm_data.attrs['date'].replace('-', '').replace('T', '-').replace(':', '')
+        #     name += '_' + self.afm_data.attrs['acquisition_mode']
+        #     self.afm_data.attrs['name'] = name
 
     @abstractmethod
     def demod(self):
@@ -144,12 +143,6 @@ class Retraction(Measurement):
         self.z = None
         self.m1a = None
         self.m1p = None
-
-        # TODO delete this when merged into develop (should be set in BaseScan)
-        if 'name' not in self.afm_data.attrs.keys():
-            name = self.afm_data.attrs['date'].replace('T', '_').replace(':', '').replace('-', '')
-            name += '_' + self.afm_data.attrs['acquisition_mode']
-            self.afm_data.attrs['name'] = name
 
     def demod(self, tap_nbins: int = 64, ref_nbins: int = 64, combine_px=None):
         if not combine_px and self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction':

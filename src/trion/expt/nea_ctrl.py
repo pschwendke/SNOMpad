@@ -32,6 +32,7 @@ def to_numpy(data: dict) -> dict:
                 array[a, b] = d2[a, b]
         data[key] = array
     return data
+# ToDo make a 1D version of this or retraction curves
 
 
 class NeaSNOM:

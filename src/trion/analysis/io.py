@@ -101,7 +101,7 @@ def export_data(filename, data, header):
 # READING AND WRITING GWYDDION FORMA ###################################################################################
 def export_gwy(filename: str, data: xr.Dataset):
     """ Exports xr.Dataset as gwyddion file. xr.DataArrays become separate channels. DataArray attributes are saved
-    as metadata. Attributes must include x,y_size and x,y_offset. x,y_offset is defined as the top left corner
+    as metadata. Attributes must include x,y_size and x,y_center. x,y_offset is defined as the top left corner
     of the image, with coordinate values increasing downwards and to the right.
 
     Parameters
@@ -116,6 +116,9 @@ def export_gwy(filename: str, data: xr.Dataset):
     metastrings = {k: str(v) for k, v in metadata.items()}
     metacontainer = GwyContainer(metastrings)
 
+    x_offset = (metadata['x_center'] - metadata['x_size'] / 2)
+    y_offset = (metadata['y_center'] - metadata['y_size'] / 2)
+
     for i, (t, d) in enumerate(data.data_vars.items()):
         image_data = d.values.astype('float64')  # only double precision floats in gwy files
         if image_data.ndim != 2:
@@ -126,6 +129,9 @@ def export_gwy(filename: str, data: xr.Dataset):
             z_unit = ''
         try:
             xy_unit = metadata['xy_unit']
+            if xy_unit == 'um':
+                x_offset *= 1e-6
+                y_offset *= 1e-6
         except KeyError:
             xy_unit = 'm'
 
@@ -133,8 +139,8 @@ def export_gwy(filename: str, data: xr.Dataset):
         container['/' + str(i) + '/data'] = GwyDataField(image_data,
                                                          xreal=metadata['x_size'],
                                                          yreal=metadata['y_size'],
-                                                         xoff=metadata['x_offset'],
-                                                         yoff=metadata['y_offset'],
+                                                         xoff=x_offset,
+                                                         yoff=y_offset,
                                                          si_unit_xy=GwySIUnit(unitstr=xy_unit),
                                                          si_unit_z=GwySIUnit(unitstr=z_unit),
                                                          )
