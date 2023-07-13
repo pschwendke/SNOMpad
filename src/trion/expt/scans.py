@@ -26,7 +26,7 @@ class BaseScan(ABC):
         self.device = device
         self.clock_channel = clock_channel
         self.trion_version = __version__
-        self.chopped = None
+        self.chopped = False
         self.afm_data = None
         self.nea_data = None
         self.date = None
@@ -84,7 +84,6 @@ class BaseScan(ABC):
         """
         starts the acquisition, collects data in hdf5 file, returns Measurement object
         """
-        pass
 
     def export(self):
         """
@@ -97,8 +96,7 @@ class BaseScan(ABC):
             for ch in ds:
                 da = ds[ch]
                 dset = group.create_dataset(name=ch, data=da.values)  # data
-                for k, v in da.attrs.items():  # copy all metadata / attributes
-                    dset.attrs[k] = v
+                dset.attrs = da.attrs  # copy all metadata / attributes
                 for dim in da.coords.keys():  # attach dimension scales
                     n = da.get_axis_num(dim)
                     dset.dims[n].attach_scale(group[dim])

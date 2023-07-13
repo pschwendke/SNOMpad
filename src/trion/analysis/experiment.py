@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 import attr
 import colorcet as cc
+import h5py
 
 from tqdm import tqdm
 from itertools import chain
@@ -13,100 +14,36 @@ from trion.analysis.io import export_data
 from trion.analysis.demod import shd, pshet
 
 
-# TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
-#   and one to specify the analysis (ie: so we can acquire pshet channels, but analyze only the sHD part...
-#   The channel map is enough only for single pixels. For scans, we need to add more info. The detector bit is also part
-#   of the channel map...
-@attr.s(order=False)
-class Experiment:
-    """
-    Describes a TRION experimental configuration.
-
-    Parameters
-    ----------
-    scan: Scan
-        AFM scan protocol, such as single-point, approach curve or AFM
-    acquisition: Demodulation
-        Interferometric Near field acquisition modes: self-homodyne, pshet, etc.
-    detector: Detector
-        Optical detector configuration
-    nreps: int
-        Number of repetitions. Default `1`
-    npts: int
-        Number of points per frame. Ignored if `continuous`. Default 200_000.
-    continuous:
-        Continous acquisition. Default True.
-    """
-    scan: Scan = attr.ib(default=Scan.point)
-    acquisition: Demodulation = attr.ib(default=Demodulation.shd)
-    detector: Detector = attr.ib(default=Detector.single)
-    frame_reps: int = attr.ib(default=1)
-    npts: int = attr.ib(default=200_000)
-    continuous: bool = attr.ib(default=True)
-
-    def __attrs_post_init__(self):
-        super().__init__()
-
-    def signals(self) -> Iterable[Signals]:
-        """
-        Lists the signals for the current Experimental configuration.
-        """
-        return sorted(chain(
-            detection_signals[self.detector],
-            modulation_signals[self.acquisition]
-        ))
-
-    def is_valid(self) -> bool:
-        """
-        Check if the experimental configuration is valid.
-        """
-        # Currently this is a bit basic, but this will get more complicated
-        return (
-                type(self.scan) is Scan and
-                type(self.acquisition) is Demodulation and
-                type(self.detector) is Detector
-        )
-
-    def axes(self) -> list:
-        if self.frame_reps > 1:
-            ax = ["frame_rep"]
-        else:
-            ax = []
-        return ax
-
-    def to_dict(self):
-        return attr.asdict(self)
-
-    @classmethod
-    def from_dict(cls, **cfg):
-        cfg = cfg.copy()
-        for key, enum in [("scan", Scan),
-                          ("demodulation", Demodulation),
-                          ("detector", Detector),
-                          ]:
-            v = cfg["key"]
-            if isinstance(v, str):
-                cfg[key] = enum[cfg[key]]
-        return cls(**cfg)
-
-
 class Measurement(ABC):
     """ Base class to load, demodulate and export acquired data.
     """
-    def __init__(self, ds: xr.Dataset, directory):
-        self.afm_data = ds
-        self.directory = directory
-        try:
-            self.afm_data = self.afm_data['__xarray_dataarray_variable__']
-        except KeyError:
-            pass
-        self.signals = [Signals[s] for s in self.afm_data.attrs['signals']]
-        self.modulation = Demodulation[self.afm_data.attrs['modulation']]
+    def __init__(self, file: h5py.File):
+        self.file = file
+        self.name = file.attrs['name']
+        self.afm_data = None
+        self.nea_data = None
+        self.mode = Scan[file.attrs['acquisition_mode']]
+        self.signals = [Signals[s] for s in file.attrs['signals']]
+        self.modulation = Demodulation[file.attrs['modulation']]
+        self.chopped = file.attrs['chopped']
 
-        # if 'name' not in self.afm_data.attrs.keys():
-        #     name = self.afm_data.attrs['date'].replace('-', '').replace('T', '-').replace(':', '')
-        #     name += '_' + self.afm_data.attrs['acquisition_mode']
-        #     self.afm_data.attrs['name'] = name
+        if self.file['afm_data'].keys():
+            self.afm_data = self.h5_to_xr_dataset('afm_data')
+        if self.file['nea_data'].keys():
+            self.nea_data = self.h5_to_xr_dataset('nea_data')
+
+    def h5_to_xr_dataset(self, name: str):
+        group = self.file[name]
+        ds = xr.Dataset()
+        for ch, dset in group.items():
+            if dset.dims[0].keys():
+                values = np.array(dset)
+                dims = [d.keys()[0] for d in dset.dims]
+                da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
+                da.attrs = dset.attrs
+                ds[ch] = da
+        ds.attrs = group.attrs
+        return ds
 
     @abstractmethod
     def demod(self):
@@ -122,18 +59,22 @@ class Measurement(ABC):
         """
 
 
-class Image(Measurement):
-    def __init__(self, ds: xr.Dataset, directory=''):
-        super().__init__(ds, directory)
+def load(filename: str) -> Measurement:
+    """ Loads scan from .h5 file and returns Measurement object. The function is agnostic to scan type.
+    """
+    file = h5py.File(filename, 'r')
+    scan_type = file.attrs['acquisition_mode']
 
-    def demod(self):
-        pass
-
-    def plot(self):
-        pass
-
-    def export(self):
-        pass
+    if scan_type in ['stepped_retraction', 'continuous_retraction']:
+        return Retraction(file)
+    elif scan_type in ['stepped_image', 'continuous_image']:
+        return Image(file)
+    # elif scan_type == 'noise_sampling':
+    #     return Noise(file)
+    # elif scan_type == 'delay_scan':
+    #     return DelayScan(file)
+    else:
+        raise NotImplementedError
 
 
 class Retraction(Measurement):
@@ -232,6 +173,20 @@ class Retraction(Measurement):
         pass
 
 
+class Image(Measurement):
+    def __init__(self, ds: xr.Dataset, directory=''):
+        super().__init__(ds, directory)
+
+    def demod(self):
+        pass
+
+    def plot(self):
+        pass
+
+    def export(self):
+        pass
+
+
 class Noise(Measurement):
     def __init__(self, ds: xr.Dataset, directory=''):
         super().__init__(ds, directory)
@@ -286,22 +241,78 @@ class Noise(Measurement):
             export_data(filename, data, ['t', 'sig_a'])
 
 
-def load(filename: str) -> Measurement:
-    """ Loads scan from .nc file and returns Measurement object. The function is agnostic to scan type.
+# TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
+#   and one to specify the analysis (ie: so we can acquire pshet channels, but analyze only the sHD part...
+#   The channel map is enough only for single pixels. For scans, we need to add more info. The detector bit is also part
+#   of the channel map...
+@attr.s(order=False)
+class Experiment:
     """
-    scan = xr.load_dataset(filename)
-    directory = '/'.join(filename.split('/')[:-1]) + '/'
-    # directory = directory[1:]  # ToDo: does this work on a windows machine ???
-    try:
-        scan_type = Scan[scan.attrs['acquisition_mode']]
-    except KeyError:
-        scan_type = Scan[scan['__xarray_dataarray_variable__'].attrs['acquisition_mode']]
+    Describes a TRION experimental configuration.
 
-    if scan_type in [Scan.stepped_retraction, Scan.continuous_retraction]:
-        return Retraction(scan, directory)
-    elif scan_type in [Scan.stepped_image, Scan.continuous_image]:
-        return Image(scan, directory)
-    elif scan_type == Scan.noise_sampling:
-        return Noise(scan, directory)
-    else:
-        raise NotImplementedError
+    Parameters
+    ----------
+    scan: Scan
+        AFM scan protocol, such as single-point, approach curve or AFM
+    acquisition: Demodulation
+        Interferometric Near field acquisition modes: self-homodyne, pshet, etc.
+    detector: Detector
+        Optical detector configuration
+    nreps: int
+        Number of repetitions. Default `1`
+    npts: int
+        Number of points per frame. Ignored if `continuous`. Default 200_000.
+    continuous:
+        Continous acquisition. Default True.
+    """
+    scan: Scan = attr.ib(default=Scan.point)
+    acquisition: Demodulation = attr.ib(default=Demodulation.shd)
+    detector: Detector = attr.ib(default=Detector.single)
+    frame_reps: int = attr.ib(default=1)
+    npts: int = attr.ib(default=200_000)
+    continuous: bool = attr.ib(default=True)
+
+    def __attrs_post_init__(self):
+        super().__init__()
+
+    def signals(self) -> Iterable[Signals]:
+        """
+        Lists the signals for the current Experimental configuration.
+        """
+        return sorted(chain(
+            detection_signals[self.detector],
+            modulation_signals[self.acquisition]
+        ))
+
+    def is_valid(self) -> bool:
+        """
+        Check if the experimental configuration is valid.
+        """
+        # Currently this is a bit basic, but this will get more complicated
+        return (
+                type(self.scan) is Scan and
+                type(self.acquisition) is Demodulation and
+                type(self.detector) is Detector
+        )
+
+    def axes(self) -> list:
+        if self.frame_reps > 1:
+            ax = ["frame_rep"]
+        else:
+            ax = []
+        return ax
+
+    def to_dict(self):
+        return attr.asdict(self)
+
+    @classmethod
+    def from_dict(cls, **cfg):
+        cfg = cfg.copy()
+        for key, enum in [("scan", Scan),
+                          ("demodulation", Demodulation),
+                          ("detector", Detector),
+                          ]:
+            v = cfg["key"]
+            if isinstance(v, str):
+                cfg[key] = enum[cfg[key]]
+        return cls(**cfg)
