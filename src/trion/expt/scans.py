@@ -9,7 +9,7 @@ from time import sleep
 from typing import Iterable
 
 from trion.analysis.io import export_data
-from trion.analysis.experiment import Measurement, Noise
+from trion.analysis.experiment import Measurement, load
 from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
 from trion.analysis.signals import Scan, Demodulation, Signals
@@ -32,6 +32,7 @@ class BaseScan(ABC):
         self.date = None
         self.file = None
         self.name = None
+        self.filename = None
         self.neaclient_version = None
         self.neaserver_version = None
         self.stop_time = None
@@ -53,9 +54,9 @@ class BaseScan(ABC):
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
 
-        filename = self.name + '.h5'
-        logger.info(f'Creating scan file: {filename}')
-        self.file = h5py.File(filename, 'w')
+        logger.info(f'Creating scan file: {self.filename}')
+        self.filename = self.name + '.h5'
+        self.file = h5py.File(self.filename, 'w')
         self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
         self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
         self.file.create_group('nea_data')  # data returned by NeaScan API
@@ -81,7 +82,7 @@ class BaseScan(ABC):
     @abstractmethod
     def start(self) -> Measurement:
         """
-        starts the acquisition, collects data in self.afm_data, returns Measurement object
+        starts the acquisition, collects data in hdf5 file, returns Measurement object
         """
         pass
 
@@ -108,7 +109,6 @@ class BaseScan(ABC):
         if self.nea_data is not None:
             logger.info('Saving NeaScan data')
             xr_to_h5_dataset(ds=self.nea_data, group=self.file['nea_data'])
-        # ToDo export log
 
         logger.info('Collecting metadata')
         metadata = {}
@@ -118,7 +118,7 @@ class BaseScan(ABC):
                 metadata[m] = self.__dict__[m]
             else:
                 metadata[m] = None
-        metadata['date'] = self.date.strftime('%Y-%m-%dT%H:%M:%S')
+        metadata['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
         metadata['acquisition_time_s'] = str(self.stop_time - self.date)
         metadata['modulation'] = self.modulation.value
         metadata['signals'] = [s.value for s in self.signals]
@@ -127,11 +127,12 @@ class BaseScan(ABC):
 
 
 class ContinuousScan(BaseScan):
-    def __init__(self, signals, modulation):
+    def __init__(self, signals, modulation, setpoint):
         super().__init__(signals, modulation)
         self.ctrl = None
         self.buffer = None
         self.npts = None
+        self.setpoint = setpoint
 
     def connect(self):
         super().connect()
@@ -143,23 +144,14 @@ class ContinuousScan(BaseScan):
         super().disconnect()
         self.ctrl.close()
 
-    def start(self) -> Measurement:
-        pass
-
     def acquire(self):
-        # TODO fix progress bars
-        logger.info('Starting scan')
-        self.ctrl.start()
-        self.nea_data = self.afm.start()
-
-        tracked_channels = ['x', 'y', 'z', 'M1A', 'M1P']
         excess = 0
-        pix_count = 0
+        chunk_idx = 0
         afm_tracking = []
         while not self.afm.scan.IsCompleted:
-            print(f'Pixel no {pix_count}. Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
+            print(f'Chunk no {chunk_idx}. Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
             current = self.afm.get_current()
-            afm_tracking.append(list(current))
+            afm_tracking.append([chunk_idx] + list(current))
 
             n_read = excess
             while n_read < self.npts:
@@ -168,31 +160,36 @@ class ContinuousScan(BaseScan):
                 n_read += n
             excess = n_read - self.npts
             data = self.buffer.get(n=self.npts, offset=excess)
-
-            dset = self.file['daq_data'].create_dataset(f'{pix_count:05}', data=data)
-            tracked = {ch: current[i] for i, ch in enumerate(tracked_channels)}
-            dset.attrs = tracked
-
-            pix_count += 1
+            self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
+            chunk_idx += 1
         print('\nAcquisition complete')
 
         afm_tracking = np.array(afm_tracking)
-        channels = ['x', 'y', 'z', 'M1A', 'M1P']
-        index = np.arange(pix_count)
         self.afm_data = xr.Dataset()
-        for i, c in enumerate(channels):
-            da = xr.DataArray(data=afm_tracking[:, i], dims='idx', coords={'idx': index})
+        tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+        for i, c in enumerate(tracked_channels[1:]):
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
             self.afm_data[c] = da
         if self.acquisition_mode == Scan.continuous_image:
             self.nea_data = to_numpy(self.nea_data)
             self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
             # ToDo get coordinates from NeaScan
             self.nea_data = xr.Dataset(self.nea_data)
-            for k, v in self.nea_data.items():
-                if k in ['Z', 'R-Z', 'M1A', 'R-M1A']:
-                    v.attrs['z_unit'] = 'm'
-                else:
-                    v.attrs['z_unit'] = ''
+
+    def start(self) -> Measurement:
+        try:
+            self.prepare()
+            self.afm.engage(self.setpoint)
+            self.ctrl.start()
+            logger.info('Starting scan')
+            self.nea_data = self.afm.start()
+            self.acquire()
+        finally:
+            self.disconnect()
+
+        self.export()
+        logger.info('Scan complete')
+        return load(self.filename)
 
 
 class NoiseScan(BaseScan):
@@ -234,10 +231,7 @@ class NoiseScan(BaseScan):
         if self.acquire_daq:
             self.ctrl.close()
 
-    def acquire(self) -> dict:
-        # TODO fix progress bars
-        nea_data = self.afm.start()
-
+    def acquire(self):
         if self.acquire_daq:
             self.ctrl.start()
             excess = 0
@@ -255,32 +249,27 @@ class NoiseScan(BaseScan):
                 daq_data.append(self.buffer.get(n=self.npts, offset=excess))
 
             daq_data = np.vstack(daq_data)
-            self.file['daq_data'].create_dataset('00001', data=daq_data)  # just one chunk / pixel
+            self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
         else:
             while not self.afm.scan.IsCompleted:
                 sleep(.1)
 
         logger.info('Acquisition complete')
-        nea_data = to_numpy(nea_data)
-        return nea_data
+        self.nea_data = to_numpy(self.nea_data)
 
-    def start(self) -> Noise:
+    def start(self) -> Measurement:
         try:
             self.prepare()
             self.afm.engage(self.setpoint)
             logger.info('Starting scan')
-            nea_data = self.acquire()
+            self.nea_data = self.afm.start()
+            self.acquire()
         finally:
             self.disconnect()
 
-        nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in nea_data.items()}
-        self.afm_data = xr.Dataset(nea_data)
-        for k, v in self.afm_data.items():
-            if k == ['z', 'r-z', 'M1A', 'r-M1A']:
-                v.attrs['z_unit'] = 'm'
-            else:
-                v.attrs['z_unit'] = ''
+        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
+        self.nea_data = xr.Dataset(self.nea_data)
+
         self.export()
         logger.info('Scan complete')
-
-        return Noise(self.afm_data)
+        return load(self.filename)

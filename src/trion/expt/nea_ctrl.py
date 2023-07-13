@@ -139,18 +139,18 @@ class NeaSNOM:
             self.scan.TakeRows = 1
             self.scan.SkipRows = 4
 
-    def start(self):
+    def start(self) -> dict:
         image = self.scan.Start()
         data = {ch: image.GetChannel(ch) for ch in self.tracked_channels}
         return data
 
-    def get_current(self):
+    def get_current(self) -> (float, float, float, float, float):
         """
-        returns tuple (x, y, z, amp, phase). Units are m and degrees.
+        returns tuple (x, y, z, amp, phase)
         """
-        x = self.nea_mic.TipPositionX * 1E-6
-        y = self.nea_mic.TipPositionY * 1E-6
-        z = self.nea_mic.GetChannel('Z').CurrentValue * 1E-6
-        amp = self.nea_mic.GetChannel('M1A').CurrentValue * 1E-9
-        phase = self.nea_mic.GetChannel('M1P').CurrentValue
+        x = self.nea_mic.TipPositionX  # um
+        y = self.nea_mic.TipPositionY  # um
+        z = self.nea_mic.GetChannel('Z').CurrentValue   # um
+        amp = self.nea_mic.GetChannel('M1A').CurrentValue  # nm
+        phase = self.nea_mic.GetChannel('M1P').CurrentValue  # deg
         return x, y, z, amp, phase

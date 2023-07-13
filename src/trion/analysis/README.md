@@ -48,3 +48,7 @@ processed variables are to be determined.
 The experiment can also be characterized by miscellaneous data, such as number
 of shots, calibration matrices for modulations, scaling factors for the signals,
 etc. We'll see.
+
+## TRION demod files
+
+
