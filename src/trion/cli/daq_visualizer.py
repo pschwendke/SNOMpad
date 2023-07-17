@@ -103,7 +103,7 @@ def update_harmonics(data, tap_nbins, ref_nbins):
                                         chopped=chop_button.active))
         else:
             coefficients = shd(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chop_button.active)
-        coefficients = np.abs(coefficients[: max_harm+1, 0])  # add a button to toggle abs()
+        coefficients = np.abs(coefficients[: max_harm+1])  # add a button to toggle abs()
 
         if harm_scaling[0] == 0:
             harm_scaling = np.ones(max_harm+1) / coefficients

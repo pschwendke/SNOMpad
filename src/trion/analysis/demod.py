@@ -168,13 +168,16 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped='auto', ta
 
     RETURNS
     -------
-    ft: np.ndarray
-        real amplitudes of Fourier components. Orientation is amplitudes on axis=0 and signals on axis=1.
+    ft: 1-dimensional np.ndarray
+        real amplitudes of Fourier components (tapping harmonics on axis=0)
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
     binned = shd_binning(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chopped)
     ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
+    ft = ft.squeeze()  # this is a workaround and will fail when more than one signal is demodulated
+    # ToDo: Fix this! At some point there should be only one signal. Define this.
+    #  update unit tests
     return ft.T
 
 
@@ -286,8 +289,8 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
 
     Returns
     -------
-    coefficients: np.ndarray
-        complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
+    coefficients: 1-dimensional np.ndarray
+        complex coefficients for tapping demodulation (tapping harmonics on axis=0)
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
@@ -309,6 +312,10 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
         psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
 
     coefficients = pshet_coefficients(ft=ft, gamma=gamma, psi_R=psi_R, m=m)
+
+    coefficients = coefficients.squeeze()  # this is a workaround and will fail when more than one signal is demodulated
+    # ToDo: Fix this! At some point there should be only one signal. Define this.
+    #  update unit tests
 
     return coefficients
 
