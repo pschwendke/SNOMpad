@@ -22,6 +22,8 @@ class Measurement(ABC):
         self.name = file.attrs['name']
         self.afm_data = None
         self.nea_data = None
+        self.demod_data = None
+        self.demod_filename = None
         self.mode = Scan[file.attrs['acquisition_mode']]
         self.signals = [Signals[s] for s in file.attrs['signals']]
         self.modulation = Demodulation[file.attrs['modulation']]
@@ -32,8 +34,8 @@ class Measurement(ABC):
         if self.file['nea_data'].keys():
             self.nea_data = self.h5_to_xr_dataset('nea_data')
 
-    def h5_to_xr_dataset(self, name: str):
-        group = self.file[name]
+    def h5_to_xr_dataset(self, group_name: str):
+        group = self.file[group_name]
         ds = xr.Dataset()
         for ch, dset in group.items():
             if dset.dims[0].keys():
@@ -78,82 +80,103 @@ def load(filename: str) -> Measurement:
 
 
 class Retraction(Measurement):
-    def __init__(self, ds: xr.Dataset, directory=''):
-        super().__init__(ds, directory)
-        self.harmonics = None
-        self.z = None
-        self.m1a = None
-        self.m1p = None
+    def __init__(self, file: h5py.File):
+        super().__init__(file)
 
-    def demod(self, tap_nbins: int = 64, ref_nbins: int = 64, combine_px=None):
-        if not combine_px and self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction':
-            combine_px = 1
-        elif not combine_px and self.afm_data.attrs['acquisition_mode'] == 'continuous_retraction':
-            combine_px = 8
-        max_order = int(tap_nbins // 2 + 1)
-        z_res = len(self.afm_data['px']) // combine_px
-        self.harmonics = np.zeros((z_res, max_order, 1), dtype=complex)
+    def demod(self, tap_res: int = 64, ref_res: int = 64, npts=None, demod_filename=None, method='binning', **kwargs):
+        """ Creates xr.Dataset in self.demod_data. Dimensions are 'z_target' for stepped retraction and 'z' for
+        continuous retraction. Dataset contains one DataArray for every tracked channel, and one complex-valued
+        DataArray for demodulated harmonics, with extra dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is '', the file is
+        saved in the '_ANALYSIS' directory on the server.
+        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
+        is already present in demod file, it will be read from the file.
 
-        # read tracked AFM data
-        if self.afm_data.attrs['acquisition_mode'] == 'stepped_retraction':
-            self.z = self.afm_data.values[:, list(self.afm_data['ch'].values).index('z_target')]  # single_point() is buggy
-            self.m1a = (self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A_pre')] +
-                        self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A_post')]) / 2
-            self.m1p = (self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P_pre')] +
-                        self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P_post')]) / 2
-        elif self.afm_data.attrs['acquisition_mode'] == 'continuous_retraction':
-            self.z = self.afm_data.values[:, list(self.afm_data['ch'].values).index('Z')]
-            self.m1a = self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1A')]
-            self.m1p = self.afm_data.values[:, list(self.afm_data['ch'].values).index('M1P')]
+        Parameters
+        ----------
+        tap_res: int
+            resolution of discrete uniform phase domain on theta_tap axis
+        ref_res: int
+            resolution of discrete uniform phase domain on theta_ref axis
+        npts: int
+            min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
+        demod_filename: str
+            path and filename of demod file
+        method: str in ['binning', 'kernel']
+            method to average over phase domain and find harmonic contributions
+        kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        if not npts and self.mode == Scan.stepped_retraction:
+            chunk_size = 1  # one chunk of DAQ data per demodulated pixel
+        elif not npts and self.mode == Scan.continuous_retraction:
+            chunk_size = 5
         else:
-            raise NotImplementedError
-        # and reshape to given z-resolution
-        self.z = self.z[:z_res * combine_px].reshape((z_res, combine_px)).mean(axis=1)
-        self.m1a = self.m1a[:z_res*combine_px].reshape((z_res, combine_px)).mean(axis=1)
-        self.m1p = self.m1p[:z_res*combine_px].reshape((z_res, combine_px)).mean(axis=1)
+            chunk_size = npts // self.file.attrs['npts'] + 1
+        max_order = int(tap_res // 2 + 1)
+        n = len(self.file['daq_data'].keys())
+        z_res = n // chunk_size
+        self.demod_data = xr.Dataset()
 
-        data_buffer = []
-        for p in tqdm(self.afm_data['px'].values):
-            filename = f'{self.afm_data.attrs["data_folder"]}/pixel_{p:05d}.npz'
-            npz = np.load(self.directory + filename)
-            data_buffer.append(np.vstack([i for i in npz.values()]).T)
-            if (p+1) % combine_px == 0:
-                data = np.vstack(data_buffer)
-                if self.modulation == Demodulation.shd:
-                    coefficients = shd(data=data, signals=self.signals, tap_nbins=tap_nbins)
-                elif self.modulation == Demodulation.pshet:
-                    coefficients = pshet(data=data, signals=self.signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-                else:
-                    raise NotImplementedError
-                self.harmonics[int((p+1) / combine_px) - 1] = coefficients
-                data_buffer = []
+        z = self.afm_data['z'].values
+        idx = self.afm_data['idx'].values
+        amp = self.afm_data['amp'].values
+        phase = self.afm_data['phase'].values
+        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
+        z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        amp = amp[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
+        self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
+        if self.mode == Scan.stepped_retraction:
+            z_target = self.afm_data['z_target'].values
+            z_target = z_target[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+            self.demod_data['z_target'] = xr.DataArray(data=z_target, dims='z', coords={'z': z})
 
-    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=True):
+        # demodulate DAQ data for every pixel
+        harmonics = np.zeros((z_res, max_order), dtype=complex)
+        for p, h in tqdm(enumerate(harmonics)):
+            data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[p]])
+            if self.modulation == Demodulation.shd:
+                coefficients = shd(data=data, signals=self.signals, tap_nbins=tap_res, **kwargs)
+            elif self.modulation == Demodulation.pshet:
+                coefficients = pshet(data=data, signals=self.signals, tap_nbins=tap_res, ref_nbins=ref_res, **kwargs)
+            else:
+                raise NotImplementedError
+            h = coefficients
+        self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
+                                                  coords={'z': z, 'order': np.arange(max_order)})
+
+        # ToDo: Metadata
+        # ToDo: create demod file
+        #  and read from demod file
+
+    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=False):
         import matplotlib.pyplot as plt
-        if self.harmonics is None:
+        if self.demod_data is None:
             self.demod()
         if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
             orders = np.arange(max_order)
 
         fig, ax1 = plt.subplots()
         cmap = cc.glasbey_category10
-        x = (self.z - self.z.min()) * 1e9
+        x = (self.demod_data['z'].values - self.demod_data['z'].values.min())
 
         if afm_phase:
             ax2 = ax1.twinx()
-            y = self.m1p / 2 / np.pi * 360  # degrees
+            y = self.demod_data['phase'].values / 2 / np.pi * 360  # degrees
             ax2.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
             ax2.set_ylabel('AFM phase (degrees)', color='gray')
 
         if afm_amp:
             ax3 = ax1.twinx()
-            y = self.m1a / self.m1a.max()
+            y = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
             ax3.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
             ax3.tick_params(right=False, labelright=False)
             ax3.legend(loc='upper right')
 
         for o in orders:
-            y = np.real(self.harmonics[:, o].squeeze())
+            y = np.real(self.demod_data['optical'].values[:, o].squeeze())
             y /= np.abs(y).max()
             ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
 
@@ -174,8 +197,8 @@ class Retraction(Measurement):
 
 
 class Image(Measurement):
-    def __init__(self, ds: xr.Dataset, directory=''):
-        super().__init__(ds, directory)
+    def __init__(self, file: h5py.File):
+        super().__init__(file)
 
     def demod(self):
         pass
@@ -188,8 +211,8 @@ class Image(Measurement):
 
 
 class Noise(Measurement):
-    def __init__(self, ds: xr.Dataset, directory=''):
-        super().__init__(ds, directory)
+    def __init__(self, file: h5py.File):
+        super().__init__(file)
         self.z_spectrum = None
         self.z_frequencies = None
         self.amp_spectrum = None

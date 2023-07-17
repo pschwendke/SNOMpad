@@ -152,5 +152,5 @@ class NeaSNOM:
         y = self.nea_mic.TipPositionY  # um
         z = self.nea_mic.GetChannel('Z').CurrentValue   # um
         amp = self.nea_mic.GetChannel('M1A').CurrentValue  # nm
-        phase = self.nea_mic.GetChannel('M1P').CurrentValue  # deg
+        phase = self.nea_mic.GetChannel('M1P').CurrentValue  # rad
         return x, y, z, amp, phase
