@@ -54,12 +54,12 @@ class NeaSNOM:
     def __del__(self):
         self.disconnect()
 
-    def engage(self, setpoint: float = 0.8):
+    def engage(self, setpoint: float = 0.8, settle_s: float = 5):
         logger.info('Engaging sample')
         if not self.nea_mic.IsInContact:
             self.nea_mic.AutoApproach(setpoint)
-        logger.info('Waiting a bit ...')
-        sleep(5)
+        logger.info(f'Waiting {settle_s} s for the AFM to settle')
+        sleep(settle_s)
 
     def goto_xy(self, x, y):
         # ToDo: units
