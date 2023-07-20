@@ -205,6 +205,8 @@ class ContinuousScan(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            if self.delay_position_mm is not None:
+                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
             self.afm_data[c] = da
         if self.acquisition_mode == Scan.continuous_image:
             self.nea_data = to_numpy(self.nea_data)

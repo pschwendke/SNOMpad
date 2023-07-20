@@ -95,8 +95,7 @@ class Scan(NamedEnum):
     continuous_image = auto()
     continuous_line = ()
     noise_sampling = auto()
-    delay_scan = auto()
-    delay_lines = auto()
+    delay_collection = auto()
 
 
 class Demodulation(NamedEnum):

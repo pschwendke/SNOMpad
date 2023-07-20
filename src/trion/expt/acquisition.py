@@ -83,6 +83,7 @@ class ContinuousPoint(ContinuousScan):
         # ToDo: docstring
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
                          chopped=chopped, delay_position_mm=delay_position_mm)
+        self.acquisition_mode = Scan.point
         self.x_target = x_target
         self.y_target = y_target
         self.in_contact = in_contact
@@ -117,6 +118,8 @@ class ContinuousPoint(ContinuousScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            if self.delay_position_mm is not None:
+                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
             self.afm_data[c] = da
 
     def start(self):
@@ -221,6 +224,8 @@ class SteppedRetraction(BaseScan):
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
+            if self.delay_position_mm is not None:
+                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
             self.afm_data[c] = da
 
         self.export()
@@ -299,11 +304,20 @@ class SteppedImage(BaseScan):
         for c in tracked_channels:
             ch = df[['x', 'y', c]].groupby(['y', 'x']).sum().unstack()
             da = xr.DataArray(ch, dims=('y', 'x'), coords={'x': x_pos, 'y': y_pos})
+            if self.delay_position_mm is not None:
+                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
             afm_data[c] = da
         self.export()
 
         logging.info('Scan complete')
         return load(self.filename)
+
+
+class SteppedLineScan(BaseScan):
+    def __init__(self):
+        super().__init__()
+        self.acquisition_mode = Scan.stepped_line
+        raise NotImplementedError
 
 
 class ContinuousRetraction(ContinuousScan):
@@ -408,37 +422,79 @@ class ContinuousImage(ContinuousScan):
                                self.x_res, self.y_res, self.afm_angle_deg, self.afm_sampling_ms)
 
 
-class DelayScan(ContinuousScan):
-    def __init__(self, modulation: str, t_start_mm: float, t_stop_mm: float, t_0_mm: float, step: str = 'lin',
-                 signals=None, chopped=False, x_target=None, y_target=None, setpoint: int = 0.8, npts: int = 5_000):
-        """
-        """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped)
-        self.x_target = x_target
-        self.y_target = y_target
-        self.step = step
+class ContinuousLineScan(ContinuousScan):
+    def __init__(self):
+        super().__init__()
+        self.acquisition_mode = Scan.continuous_line
+        raise NotImplementedError
 
-    def prepare(self):
-        super().prepare()
-        #  Todo: prepare t_targets (lin or log spacing)
-        if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
-            self.afm.goto_xy(self.x_target, self.y_target)
 
-    def start(self) -> Measurement:
+class DelayCollection(BaseScan):
+    def __init__(self, modulation: str, t_start: float, t_stop: float, t0_mm: float, n_delays: int,
+                 scan: str, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
+        super().__init__(modulation=modulation, delay_position_mm=150)  # some value because we don't know the unit yet
+        self.acquisition_mode = Scan.delay_collection
+        self.scan_kwargs = scan_kwargs
+        self.t0_mm = t0_mm
+
+        if scale == 'lin':
+            self.t_targets = np.linspace(t_start, t_stop, n_delays)
+        elif scale == 'log':
+            self.t_targets = np.logspace(np.log10(t_start), np.log10(t_stop), n_delays)
+
+        i = ['point', 'retraction', 'line', 'image'].index(scan)
+        if continuous:
+            self.scan_class = [ContinuousPoint, ContinuousRetraction, ContinuousLineScan, ContinuousImage][i]
+        else:
+            self.scan_class = [ContinuousPoint, SteppedRetraction, SteppedLineScan, SteppedImage][i]
+
+    def single_scan(self, t: float):
+        scan = self.scan_class(modulation=self.modulation, **self.scan_kwargs)
+        # ToDo Monkey patch the preparation ...
+
+        # TODo: move delay stage
+        # ToDo: when t_0 is given, make it reference and make it work with time arguments
+
+    def start(self):
         try:
             self.prepare()
-            self.afm.engage(self.setpoint)
-            self.ctrl.start()
-            logger.info('Starting scan')
-            # self.nea_data = self.afm.start()
-            self.acquire()
+            for t in self.t_targets:
+                self.single_scan(t=t)
+
         finally:
             self.disconnect()
 
-        self.export()
-        logger.info('Scan complete')
-        return load(self.filename)
+# class DelayScan(ContinuousScan):
+#     def __init__(self, modulation: str, t_start_mm: float, t_stop_mm: float, t_0_mm: float, step: str = 'lin',
+#                  signals=None, chopped=False, x_target=None, y_target=None, setpoint: int = 0.8, npts: int = 5_000):
+#         """
+#         """
+#         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped)
+#         self.x_target = x_target
+#         self.y_target = y_target
+#         self.step = step
+#
+#     def prepare(self):
+#         super().prepare()
+#         #  Todo: prepare t_targets (lin or log spacing)
+#         if self.x_target is not None and self.y_target is not None:
+#             logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+#             self.afm.goto_xy(self.x_target, self.y_target)
+#
+#     def start(self) -> Measurement:
+#         try:
+#             self.prepare()
+#             self.afm.engage(self.setpoint)
+#             self.ctrl.start()
+#             logger.info('Starting scan')
+#             # self.nea_data = self.afm.start()
+#             self.acquire()
+#         finally:
+#             self.disconnect()
+#
+#         self.export()
+#         logger.info('Scan complete')
+#         return load(self.filename)
 
 
 def transfer_func_acq(
