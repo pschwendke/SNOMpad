@@ -75,12 +75,63 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
     return data
 
 
-# class ContinuousPoint(ContinuousScan):
-#     def __init__(self, signals: Iterable[Signals], modulation: Demodulation, npts: int = 5_000,
-#                  x_target=None, y_target=None, in_contact=True):
-#         """
-#         """
-#         super().__init__(signals=signals, modulation=modulation)
+class ContinuousPoint(ContinuousScan):
+    def __init__(self, modulation: str, n: int, npts: int = 5_000, delay_position_mm=None, setpoint: float = 0.8,
+                 chopped=False, signals=None, x_target=None, y_target=None, in_contact=True):
+        """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
+        """
+        # ToDo: docstring
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
+                         chopped=chopped, delay_position_mm=delay_position_mm)
+        self.x_target = x_target
+        self.y_target = y_target
+        self.in_contact = in_contact
+        self.target = n
+
+    def prepare(self):
+        super().prepare()
+        if self.x_target is not None and self.y_target is not None:
+            logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+            self.afm.goto_xy(self.x_target, self.y_target)
+
+    def acquire(self):
+        excess = 0
+        chunk_idx = 0
+        afm_tracking = []
+        while chunk_idx * self.npts < self.target:
+            current = self.afm.get_current()
+            afm_tracking.append([chunk_idx] + list(current))
+
+            n_read = excess
+            while n_read < self.npts:
+                sleep(0.001)
+                n = self.ctrl.reader.read()
+                n_read += n
+            excess = n_read - self.npts
+            data = self.buffer.get(n=self.npts, offset=excess)
+            self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
+            chunk_idx += 1
+
+        afm_tracking = np.array(afm_tracking)
+        self.afm_data = xr.Dataset()
+        tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+        for i, c in enumerate(tracked_channels[1:]):
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            self.afm_data[c] = da
+
+    def start(self):
+        try:
+            self.prepare()
+            if self.in_contact:
+                self.afm.engage(self.setpoint)
+            self.ctrl.start()
+            logger.info('starting single point acquisition')
+            self.acquire()
+        finally:
+            self.disconnect()
+        self.export()
+        logger.info('acuisition complete')
+        return load(self.filename)
 
 
 class SteppedRetraction(BaseScan):
@@ -369,6 +420,7 @@ class DelayScan(ContinuousScan):
 
     def prepare(self):
         super().prepare()
+        #  Todo: prepare t_targets (lin or log spacing)
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
             self.afm.goto_xy(self.x_target, self.y_target)
