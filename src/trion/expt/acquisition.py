@@ -12,7 +12,7 @@ from typing import Iterable
 from tqdm import tqdm
 from itertools import product
 
-from trion.analysis.signals import Signals, Demodulation, Scan
+from trion.analysis.signals import Signals, Scan
 from trion.analysis.experiment import Measurement, load
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.buffer.base import Overfill
@@ -75,28 +75,32 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
     return data
 
 
-class ContinuousPoint(ContinuousScan):
-    def __init__(self, signals: Iterable[Signals], modulation: Demodulation, npts: int = 5_000,
-                 x_target=None, y_target=None, in_contact=True):
-        """
-        """
-        super().__init__(signals=signals, modulation=modulation)
+# class ContinuousPoint(ContinuousScan):
+#     def __init__(self, signals: Iterable[Signals], modulation: Demodulation, npts: int = 5_000,
+#                  x_target=None, y_target=None, in_contact=True):
+#         """
+#         """
+#         super().__init__(signals=signals, modulation=modulation)
 
 
 class SteppedRetraction(BaseScan):
-    def __init__(self, signals: Iterable[Signals], modulation: Demodulation, z_size: int = 0.2, z_res: int = 200,
-                 x_target=None, y_target=None, npts: int = 75_000, setpoint: int = 0.8):
+    def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False,
+                 delay_position_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: int = 0.8):
         """
         Parameters
         ----------
-        signals: Iterable[Signals]
-            signals that are acquired from the DAQ
-        modulation: Demodulation
-            type of modulation of optical signals, e.g. pshet
+        modulation: str
+            type of modulation of optical signals, e.g. 'pshet'
         z_size: int
             height or distance dz of the retraction curve in micrometers
         z_res: int
             number of steps (pixels) acquired during retraction curve
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
         x_target: float
             x coordinate of retraction curve. Must be passed together with y_target
         y_target: float
@@ -106,7 +110,7 @@ class SteppedRetraction(BaseScan):
         setpoint: int
             AFM setpoint when engaged
         """
-        super().__init__(signals, modulation)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.afm_sampling_milliseconds = 50
         self.acquisition_mode = Scan.stepped_retraction
         self.z_size = z_size
@@ -174,14 +178,13 @@ class SteppedRetraction(BaseScan):
 
 
 class SteppedImage(BaseScan):
-    def __init__(self, signals: Iterable[Signals], modulation: Demodulation, x_center: float, y_center: float,
-                 x_res: int, y_res: int, x_size: float, y_size: float, npts: int = 75_000, setpoint: int = 0.8):
+    def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
+                 x_size: float, y_size: float, npts: int = 75_000, setpoint: int = 0.8,
+                 signals=None, chopped=False, delay_position_mm=None):
         """
         Parameters
         ----------
-        signals: Iterable[Signals]
-            signals that are acquired from the DAQ
-        modulation: Demodulation
+        modulation: str
             type of modulation of optical signals, e.g. pshet
         x_center: float
             x value in the center of the acquired image (in micrometres)
@@ -199,8 +202,14 @@ class SteppedImage(BaseScan):
             number of samples per chunk acquired by the DAQ
         setpoint: int
             AFM setpoint when engaged
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
         """
-        super().__init__(signals, modulation)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.stepped_image
         self.x_size = x_size
         self.y_size = y_size
@@ -247,37 +256,42 @@ class SteppedImage(BaseScan):
 
 
 class ContinuousRetraction(ContinuousScan):
-    def __init__(self, signals: Iterable[Signals], modulation: Demodulation, z_size: float = 0.2, npts: int = 5_000,
-                 x_target=None, y_target=None, setpoint: int = 0.8, z_res: int = 200, afm_sampling_ms: int = 300):
+    def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: int = 0.8, signals=None,
+                 chopped=False, delay_position_mm=None, x_target=None, y_target=None, z_res: int = 200,
+                 afm_sampling_ms: int = 300):
         """
         Parameters
         ----------
-        signals: Iterable[Signals]
-            signals that are acquired from the DAQ
-        modulation: Demodulation
-            type of modulation of optical signals, e.g. pshet
+        modulation: str
+            either 'shd' or 'pshet'
         z_size: int
             height or distance dz of the retraction curve
         npts: int
             number of samples from the DAQ that are saved in one chunk
+        setpoint: int
+            AFM setpoint when engaged
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
         x_target: float
             x coordinate of retraction curve. Must be passed together with y_target
         y_target: float
             y coordinate of retraction curve. Must be passed together with x_target
-        setpoint: int
-            AFM setpoint when engaged
         z_res: int
             number of pixels of utilized NeaScan approach curve routine
         afm_sampling_ms: int
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
         """
-        super().__init__(signals, modulation, setpoint)
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
+                         chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.continuous_retraction
         self.z_size = z_size
         self.z_res = z_res
         self.x_target = x_target
         self.y_target = y_target
-        self.npts = npts
         self.afm_sampling_ms = afm_sampling_ms
 
     def prepare(self):
@@ -289,16 +303,14 @@ class ContinuousRetraction(ContinuousScan):
 
 
 class ContinuousImage(ContinuousScan):
-    def __init__(self, signals: Iterable[Signals], modulation: Demodulation, x_center: float, y_center: float,
-                 x_res: int, y_res: int, x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0,
-                 npts: int = 5_000, setpoint: int = 0.8):
+    def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
+                 x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0,
+                 signals=None, chopped=False, delay_position_mm=None, npts: int = 5_000, setpoint: int = 0.8):
         """
         Parameters
         ----------
-        signals: Iterable[Signals]
-            signals that are acquired from the DAQ
-        modulation: Demodulation
-            type of modulation of optical signals, e.g. pshet
+        modulation: str
+            type of modulation of optical signals, e.g. 'pshet'
         x_center: float
             x value in the center of the acquired image
         y_center: float
@@ -315,12 +327,20 @@ class ContinuousImage(ContinuousScan):
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
         afm_angle_deg: float
             rotation of the scan frame (in degrees)
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
         npts: int
             number of samples from the DAQ that are saved in one chunk
         setpoint: int
             AFM setpoint when engaged
         """
-        super().__init__(signals, modulation, setpoint)
+
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
+                         chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.continuous_image
         self.x_size = x_size
         self.y_size = y_size
@@ -330,12 +350,43 @@ class ContinuousImage(ContinuousScan):
         self.y_center = y_center
         self.afm_angle_deg = afm_angle_deg
         self.afm_sampling_ms = afm_sampling_ms
-        self.npts = npts
 
     def prepare(self):
         super().prepare()
         self.afm.prepare_image(self.modulation, self.x_center, self.y_center, self.x_size, self.y_size,
                                self.x_res, self.y_res, self.afm_angle_deg, self.afm_sampling_ms)
+
+
+class DelayScan(ContinuousScan):
+    def __init__(self, modulation: str, t_start_mm: float, t_stop_mm: float, t_0_mm: float, step: str = 'lin',
+                 signals=None, chopped=False, x_target=None, y_target=None, setpoint: int = 0.8, npts: int = 5_000):
+        """
+        """
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped)
+        self.x_target = x_target
+        self.y_target = y_target
+        self.step = step
+
+    def prepare(self):
+        super().prepare()
+        if self.x_target is not None and self.y_target is not None:
+            logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+            self.afm.goto_xy(self.x_target, self.y_target)
+
+    def start(self) -> Measurement:
+        try:
+            self.prepare()
+            self.afm.engage(self.setpoint)
+            self.ctrl.start()
+            logger.info('Starting scan')
+            # self.nea_data = self.afm.start()
+            self.acquire()
+        finally:
+            self.disconnect()
+
+        self.export()
+        logger.info('Scan complete')
+        return load(self.filename)
 
 
 def transfer_func_acq(

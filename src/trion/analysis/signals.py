@@ -90,9 +90,13 @@ class Scan(NamedEnum):
     point = auto()
     stepped_retraction = auto()
     stepped_image = auto()
+    stepped_line = auto()
     continuous_retraction = auto()
     continuous_image = auto()
+    continuous_line = ()
     noise_sampling = auto()
+    delay_scan = auto()
+    delay_lines = auto()
 
 
 class Demodulation(NamedEnum):

@@ -1,4 +1,3 @@
-import os
 import logging
 import h5py
 import numpy as np
@@ -6,27 +5,53 @@ import xarray as xr
 from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
-from typing import Iterable
 
-from trion.analysis.io import export_data
 from trion.analysis.experiment import Measurement, load
+from trion.analysis.signals import Scan, Demodulation, Signals
 from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
-from trion.analysis.signals import Scan, Demodulation, Signals
 from trion.expt.nea_ctrl import NeaSNOM, to_numpy
+from trion.expt.dl_ctrl import DLStage
 from trion.__init__ import __version__
 
 logger = logging.getLogger(__name__)
 
 
 class BaseScan(ABC):
-    def __init__(self, signals, modulation, device='Dev1', clock_channel='pfi0'):
+    def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0',
+                 delay_position_mm=None, chopped=False):
+        """
+        Parameters
+        ----------
+        modulation: str
+            either 'shd' or 'pshet'
+        signals: iterable
+            list of Signals. If None, the signals will be determined by modulation and chopped
+        device: str
+            should be 'Dev1' for now.
+        clock_channel: str
+            should be 'pfi0', as labelled on the DAQ
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
+        chopped: bool
+            if True, chop signal will be acquired
+        """
+        try:
+            self.modulation = Demodulation[modulation]
+        except KeyError:
+            logger.error(f'BaseScan only takes "shd" and "pshet" as modulation values. "{modulation}" was passed.')
+        if signals is None:
+            sig_list = {'shd': ['sig_a', 'tap_x', 'tap_y'], 'pshet': ['sig_a', 'tap_x', 'tap_y', 'ref_x', 'ref_y']}
+            signals = [Signals[s] for s in sig_list[modulation]]
+            if chopped:
+                signals.append(Signals['chop'])
         self.signals = signals
-        self.modulation = modulation
         self.device = device
         self.clock_channel = clock_channel
         self.trion_version = __version__
-        self.chopped = False
+        self.delay_position_mm = delay_position_mm
+        self.chopped = chopped
+        self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
         self.nea_data = None
         self.date = None
@@ -37,7 +62,7 @@ class BaseScan(ABC):
         self.neaserver_version = None
         self.stop_time = None
         self.afm = None
-        self.acquisition_mode = None
+        self.delay_stage = None
         self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time_s',
                               'modulation', 'signals', 'chopped',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
@@ -54,6 +79,15 @@ class BaseScan(ABC):
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
 
+        if self.delay_position_mm is not None:
+            logger.info('Initializing delay stage')
+            ret = self.delay_stage.prepare()
+            if ret is True:
+                logger.info(f'Moving to delay position: {self.delay_position_mm} mm')
+                self.delay_stage.move_abs(val=self.delay_position_mm, unit='mm')
+                self.delay_stage.wait_for_stage()
+            self.delay_stage.log_status()
+
         logger.info(f'Creating scan file: {self.filename}')
         self.filename = self.name + '.h5'
         self.file = h5py.File(self.filename, 'w')
@@ -69,6 +103,8 @@ class BaseScan(ABC):
         self.afm = NeaSNOM()
         self.neaclient_version = self.afm.nea_mic.ClientVersion
         self.neaserver_version = self.afm.nea_mic.ServerVersion
+        if self.delay_position_mm is not None:
+            self.delay_stage = DLStage()
 
     def disconnect(self):
         """
@@ -77,6 +113,8 @@ class BaseScan(ABC):
         logger.info('Disconnecting')
         self.stop_time = datetime.now()
         self.afm.disconnect()
+        if self.delay_stage is not None:
+            self.delay_stage.disconnect()
         self.file.close()
 
     @abstractmethod
@@ -125,11 +163,11 @@ class BaseScan(ABC):
 
 
 class ContinuousScan(BaseScan):
-    def __init__(self, signals, modulation, setpoint):
-        super().__init__(signals, modulation)
+    def __init__(self, npts: int, setpoint: float, **kwargs):
+        super().__init__(**kwargs)
         self.ctrl = None
         self.buffer = None
-        self.npts = None
+        self.npts = npts
         self.setpoint = setpoint
 
     def connect(self):
@@ -190,84 +228,85 @@ class ContinuousScan(BaseScan):
         return load(self.filename)
 
 
-class NoiseScan(BaseScan):
-    def __init__(self, signals: Iterable[Signals], sampling_seconds: float,
-                 x_target=None, y_target=None, npts: int = 5_000, setpoint: int = 0.8):
-        super().__init__(signals, modulation=Demodulation.shd)
-        self.x_target, self.y_target = x_target, y_target
-        self.npts = npts
-        self.setpoint = setpoint
-
-        self.acquisition_mode = Scan.noise_sampling
-        self.afm_sampling_milliseconds = 0.4
-        self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_milliseconds // 1), 1
-        self.x_size, self.y_size = 0, 0
-        self.afm_angle = 0
-        self.ctrl = None
-        self.buffer = None
-        self.acquire_daq = False
-        if Signals.tap_x in self.signals:
-            self.acquire_daq = True
-            self.daq_data_filename = None
-
-    def prepare(self):
-        super().prepare()
-        if self.x_target is None or self.y_target is None:
-            self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
-        self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
-                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
-
-    def connect(self):
-        super().connect()
-        if self.acquire_daq:
-            self.ctrl = DaqController(self.device, clock_channel=self.clock_channel)
-            self.buffer = CircularArrayBuffer(vars=self.signals, size=100_000)
-            self.ctrl.setup(buffer=self.buffer)
-
-    def disconnect(self):
-        super().disconnect()
-        if self.acquire_daq:
-            self.ctrl.close()
-
-    def acquire(self):
-        if self.acquire_daq:
-            self.ctrl.start()
-            excess = 0
-            daq_data = []
-            while not self.afm.scan.IsCompleted:
-                print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
-
-                # ToDo: maybe an ExtendingArrayBuffer of sufficient size would be better. skip the loop.
-                n_read = excess
-                while n_read < self.npts:
-                    sleep(.001)
-                    n = self.ctrl.reader.read()
-                    n_read += n
-                excess = n_read - self.npts
-                daq_data.append(self.buffer.get(n=self.npts, offset=excess))
-
-            daq_data = np.vstack(daq_data)
-            self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
-        else:
-            while not self.afm.scan.IsCompleted:
-                sleep(.1)
-
-        logger.info('Acquisition complete')
-        self.nea_data = to_numpy(self.nea_data)
-
-    def start(self) -> Measurement:
-        try:
-            self.prepare()
-            self.afm.engage(self.setpoint)
-            logger.info('Starting scan')
-            self.nea_data = self.afm.start()
-            self.acquire()
-        finally:
-            self.disconnect()
-
-        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
-        self.nea_data = xr.Dataset(self.nea_data)
-
-        self.export()
-        logger.info('Scan complete')
-        return load(self.filename)
+#  ToDo: rewrite this
+# class NoiseScan(BaseScan):
+#     def __init__(self, signals: Iterable[Signals], sampling_seconds: float,
+#                  x_target=None, y_target=None, npts: int = 5_000, setpoint: int = 0.8):
+#         super().__init__(signals, modulation=Demodulation.shd)
+#         self.x_target, self.y_target = x_target, y_target
+#         self.npts = npts
+#         self.setpoint = setpoint
+#
+#         self.acquisition_mode = Scan.noise_sampling
+#         self.afm_sampling_milliseconds = 0.4
+#         self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_milliseconds // 1), 1
+#         self.x_size, self.y_size = 0, 0
+#         self.afm_angle = 0
+#         self.ctrl = None
+#         self.buffer = None
+#         self.acquire_daq = False
+#         if Signals.tap_x in self.signals:
+#             self.acquire_daq = True
+#             self.daq_data_filename = None
+#
+#     def prepare(self):
+#         super().prepare()
+#         if self.x_target is None or self.y_target is None:
+#             self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
+#         self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
+#                                self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
+#
+#     def connect(self):
+#         super().connect()
+#         if self.acquire_daq:
+#             self.ctrl = DaqController(self.device, clock_channel=self.clock_channel)
+#             self.buffer = CircularArrayBuffer(vars=self.signals, size=100_000)
+#             self.ctrl.setup(buffer=self.buffer)
+#
+#     def disconnect(self):
+#         super().disconnect()
+#         if self.acquire_daq:
+#             self.ctrl.close()
+#
+#     def acquire(self):
+#         if self.acquire_daq:
+#             self.ctrl.start()
+#             excess = 0
+#             daq_data = []
+#             while not self.afm.scan.IsCompleted:
+#                 print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
+#
+#                 # ToDo: maybe an ExtendingArrayBuffer of sufficient size would be better. skip the loop.
+#                 n_read = excess
+#                 while n_read < self.npts:
+#                     sleep(.001)
+#                     n = self.ctrl.reader.read()
+#                     n_read += n
+#                 excess = n_read - self.npts
+#                 daq_data.append(self.buffer.get(n=self.npts, offset=excess))
+#
+#             daq_data = np.vstack(daq_data)
+#             self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
+#         else:
+#             while not self.afm.scan.IsCompleted:
+#                 sleep(.1)
+#
+#         logger.info('Acquisition complete')
+#         self.nea_data = to_numpy(self.nea_data)
+#
+#     def start(self) -> Measurement:
+#         try:
+#             self.prepare()
+#             self.afm.engage(self.setpoint)
+#             logger.info('Starting scan')
+#             self.nea_data = self.afm.start()
+#             self.acquire()
+#         finally:
+#             self.disconnect()
+#
+#         self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
+#         self.nea_data = xr.Dataset(self.nea_data)
+#
+#         self.export()
+#         logger.info('Scan complete')
+#         return load(self.filename)
