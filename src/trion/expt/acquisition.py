@@ -84,6 +84,7 @@ class ContinuousPoint(ContinuousScan):
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
                          chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.point
+        self.xy_unit = 'um'
         self.x_target = x_target
         self.y_target = y_target
         self.in_contact = in_contact
@@ -92,7 +93,7 @@ class ContinuousPoint(ContinuousScan):
     def prepare(self):
         super().prepare()
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
 
     def acquire(self):
@@ -156,9 +157,9 @@ class SteppedRetraction(BaseScan):
         delay_position_mm: float
             if not None, delay stage will be moved to this position before scan
         x_target: float
-            x coordinate of retraction curve. Must be passed together with y_target
+            x coordinate of retraction curve in um. Must be passed together with y_target
         y_target: float
-            y coordinate of retraction curve. Must be passed together with x_target
+            y coordinate of retraction curve in um. Must be passed together with x_target
         npts: int
             number of samples per chunk acquired by the DAQ
         setpoint: int
@@ -167,6 +168,7 @@ class SteppedRetraction(BaseScan):
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.afm_sampling_milliseconds = 50
         self.acquisition_mode = Scan.stepped_retraction
+        self.xy_unit = 'um'
         self.z_size = z_size
         self.z_res = z_res
         self.x_center = None
@@ -180,7 +182,7 @@ class SteppedRetraction(BaseScan):
         try:
             self.prepare()
             if self.x_target is not None and self.y_target is not None:
-                logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+                logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
                 self.afm.goto_xy(self.x_target, self.y_target)
             targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
             tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
@@ -267,6 +269,7 @@ class SteppedImage(BaseScan):
         """
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.stepped_image
+        self.xy_unit = 'um'
         self.x_size = x_size
         self.y_size = y_size
         self.x_res = x_res
@@ -314,9 +317,10 @@ class SteppedImage(BaseScan):
 
 
 class SteppedLineScan(BaseScan):
-    def __init__(self):
+    def __init__(self, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int, npts: int):
         super().__init__()
         self.acquisition_mode = Scan.stepped_line
+        self.xy_unit = 'um'
         raise NotImplementedError
 
 
@@ -353,6 +357,7 @@ class ContinuousRetraction(ContinuousScan):
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
                          chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.continuous_retraction
+        self.xy_unit = 'um'
         self.z_size = z_size
         self.z_res = z_res
         self.x_target = x_target
@@ -362,7 +367,7 @@ class ContinuousRetraction(ContinuousScan):
     def prepare(self):
         super().prepare()
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
+            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
         self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_ms)
 
@@ -377,9 +382,9 @@ class ContinuousImage(ContinuousScan):
         modulation: str
             type of modulation of optical signals, e.g. 'pshet'
         x_center: float
-            x value in the center of the acquired image
+            x value in the center of the acquired image (um)
         y_center: float
-            y value in the center of the acquired image
+            y value in the center of the acquired image (um)
         x_res: int
             number of pixels along x-axis (horizontal)
         y_res: int
@@ -407,6 +412,7 @@ class ContinuousImage(ContinuousScan):
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
                          chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.continuous_image
+        self.xy_unit = 'um'
         self.x_size = x_size
         self.y_size = y_size
         self.x_res = x_res
@@ -426,6 +432,7 @@ class ContinuousLineScan(ContinuousScan):
     def __init__(self):
         super().__init__()
         self.acquisition_mode = Scan.continuous_line
+        self.xy_unit = 'um'
         raise NotImplementedError
 
 
