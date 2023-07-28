@@ -140,7 +140,7 @@ class ContinuousPoint(ContinuousScan):
 
 class SteppedRetraction(BaseScan):
     def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False,
-                 delay_position_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: int = 0.8):
+                 delay_position_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -162,7 +162,7 @@ class SteppedRetraction(BaseScan):
             y coordinate of retraction curve in um. Must be passed together with x_target
         npts: int
             number of samples per chunk acquired by the DAQ
-        setpoint: int
+        setpoint: float
             AFM setpoint when engaged
         """
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
@@ -237,7 +237,7 @@ class SteppedRetraction(BaseScan):
 
 class SteppedImage(BaseScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
-                 x_size: float, y_size: float, npts: int = 75_000, setpoint: int = 0.8,
+                 x_size: float, y_size: float, npts: int = 75_000, setpoint: float = 0.8,
                  signals=None, chopped=False, delay_position_mm=None):
         """
         Parameters
@@ -258,7 +258,7 @@ class SteppedImage(BaseScan):
             size of image in y direction (in micrometres)
         npts: int
             number of samples per chunk acquired by the DAQ
-        setpoint: int
+        setpoint: float
             AFM setpoint when engaged
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
@@ -317,15 +317,55 @@ class SteppedImage(BaseScan):
 
 
 class SteppedLineScan(BaseScan):
-    def __init__(self, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int, npts: int):
-        super().__init__()
+    def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
+                 npts: int, chopped=False, signals=None, delay_position_mm=None, setpoint: float = 0.8):
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
-        raise NotImplementedError
+        self.x_start = x_start
+        self.y_start = y_start
+        self.x_stop = x_stop
+        self.y_stop = y_stop
+        self.linescan_res = res
+        self.npts = npts
+        self.setpoint = setpoint
+
+    def start(self) -> Measurement:
+        x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
+        y_pos = np.linspace(self.y_start, self.y_stop, self.linescan_res)
+        targets = list(zip(y_pos, x_pos))
+        tracked_channels = ['x', 'y', 'z', 'amp', 'phase']
+
+        try:
+            self.prepare()
+            self.afm.set_pshet(self.modulation)
+            self.afm.engage(self.setpoint)
+            logger.info('Starting scan')
+            afm_tracking = []
+            for i, (y, x) in enumerate(tqdm(targets)):
+                self.afm.goto_xy(x, y)
+                data = single_point(self.device, self.signals, self.npts, self.clock_channel)
+                self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+                current = list(self.afm.get_current())
+                afm_tracking.append([i, x, y] + current)
+        finally:
+            self.disconnect()
+
+        afm_tracking = np.array(afm_tracking)
+        self.afm_data = xr.DataSet()
+        for i, c in enumerate(tracked_channels):
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            if self.delay_position_mm is not None:
+                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
+            self.afm_data[c] = da
+        self.export()
+
+        logging.info('Scan complete')
+        return load(self.filename)
 
 
 class ContinuousRetraction(ContinuousScan):
-    def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: int = 0.8, signals=None,
+    def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: float = 0.8, signals=None,
                  chopped=False, delay_position_mm=None, x_target=None, y_target=None, z_res: int = 200,
                  afm_sampling_ms: int = 300):
         """
@@ -337,7 +377,7 @@ class ContinuousRetraction(ContinuousScan):
             height or distance dz of the retraction curve
         npts: int
             number of samples from the DAQ that are saved in one chunk
-        setpoint: int
+        setpoint: float
             AFM setpoint when engaged
         chopped: bool
             set True if acquiring pump-probe with chopper
@@ -375,7 +415,7 @@ class ContinuousRetraction(ContinuousScan):
 class ContinuousImage(ContinuousScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0,
-                 signals=None, chopped=False, delay_position_mm=None, npts: int = 5_000, setpoint: int = 0.8):
+                 signals=None, chopped=False, delay_position_mm=None, npts: int = 5_000, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -405,7 +445,7 @@ class ContinuousImage(ContinuousScan):
             if not None, delay stage will be moved to this position before scan
         npts: int
             number of samples from the DAQ that are saved in one chunk
-        setpoint: int
+        setpoint: float
             AFM setpoint when engaged
         """
 
@@ -473,7 +513,7 @@ class DelayCollection(BaseScan):
 
 # class DelayScan(ContinuousScan):
 #     def __init__(self, modulation: str, t_start_mm: float, t_stop_mm: float, t_0_mm: float, step: str = 'lin',
-#                  signals=None, chopped=False, x_target=None, y_target=None, setpoint: int = 0.8, npts: int = 5_000):
+#                  signals=None, chopped=False, x_target=None, y_target=None, setpoint: float = 0.8, npts: int = 5_000):
 #         """
 #         """
 #         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped)

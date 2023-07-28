@@ -55,8 +55,8 @@ class BaseScan(ABC):
         self.afm_data = None
         self.nea_data = None
         self.date = None
-        self.file = None
         self.name = None
+        self.file = None
         self.filename = None
         self.neaclient_version = None
         self.neaserver_version = None
@@ -68,7 +68,8 @@ class BaseScan(ABC):
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
                               'delay_position_mm', 't0_mm',
-                              'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res', 'xy_unit',
+                              'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
+                              'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'ref_mirror_frequency_Hz',
                               'trion_version', 'neaclient_version', 'neaserver_version']
@@ -233,7 +234,7 @@ class ContinuousScan(BaseScan):
 #  ToDo: rewrite this
 # class NoiseScan(BaseScan):
 #     def __init__(self, signals: Iterable[Signals], sampling_seconds: float,
-#                  x_target=None, y_target=None, npts: int = 5_000, setpoint: int = 0.8):
+#                  x_target=None, y_target=None, npts: int = 5_000, setpoint: float = 0.8):
 #         super().__init__(signals, modulation=Demodulation.shd)
 #         self.x_target, self.y_target = x_target, y_target
 #         self.npts = npts
