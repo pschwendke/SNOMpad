@@ -76,11 +76,38 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
 
 
 class ContinuousPoint(ContinuousScan):
-    def __init__(self, modulation: str, n: int, npts: int = 5_000, delay_position_mm=None, setpoint: float = 0.8,
-                 chopped=False, signals=None, x_target=None, y_target=None, in_contact=True):
+    def __init__(self, modulation: str, n: int, npts: int = 5_000, delay_position_mm=None, delay_tracker=None,
+                 setpoint: float = 0.8, chopped=False, signals=None, x_target=None, y_target=None, in_contact=True,
+                 stop=False):
         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
+
+        Parameters
+        ----------
+        modulation: str
+            either 'shd' or 'pshet'
+        n: int
+            number of samples to acquire. When n == 0, acquisition is continuous until stop is True
+        npts: int
+            number of samples from the DAQ that are saved in one chunk
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
+        delay_tracker: None or position property of DLStage()
+            if not None, delay values (in mm) will be tracked and saved with every chunk
+        setpoint: float
+            AFM setpoint when engaged
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        x_target: float
+            x coordinate of retraction curve. Must be passed together with y_target
+        y_target: float
+            y coordinate of retraction curve. Must be passed together with x_target
+        in_contact: bool
+            If True, the samples are acquired while AFM is in contact
+        stop: bool
+            will be evaluated after every chunk. stop is True stops acquisition.
         """
-        # ToDo: docstring
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
                          chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.point
@@ -88,10 +115,14 @@ class ContinuousPoint(ContinuousScan):
         self.x_target = x_target
         self.y_target = y_target
         self.in_contact = in_contact
+        self.delay_tracker = delay_tracker
         self.target = n
+        self.stop = stop
 
     def prepare(self):
         super().prepare()
+        if self.target == 0:
+            self.target = np.inf
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -100,9 +131,11 @@ class ContinuousPoint(ContinuousScan):
         excess = 0
         chunk_idx = 0
         afm_tracking = []
-        while chunk_idx * self.npts < self.target:
-            current = self.afm.get_current()
-            afm_tracking.append([chunk_idx] + list(current))
+        while chunk_idx * self.npts < self.target and self.stop is False:
+            current = [chunk_idx] + list(self.afm.get_current())
+            if self.delay_tracker is not None:
+                current.append(self.delay_tracker())
+            afm_tracking.append(current)
 
             n_read = excess
             while n_read < self.npts:
@@ -117,6 +150,8 @@ class ContinuousPoint(ContinuousScan):
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+        if self.delay_tracker is not None:
+            tracked_channels.append('t')
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
             if self.delay_position_mm is not None:
@@ -134,7 +169,7 @@ class ContinuousPoint(ContinuousScan):
         finally:
             self.disconnect()
         self.export()
-        logger.info('acuisition complete')
+        logger.info('acquisition complete')
         return load(self.filename)
 
 
