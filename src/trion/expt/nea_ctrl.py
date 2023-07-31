@@ -106,7 +106,7 @@ class NeaSNOM:
         self.scan.set_SamplingTime(afm_sampling_time)
 
     def prepare_image(self, mod: Demodulation, x_center, y_center, x_size, y_size, x_res, y_res,
-                      angle,  sampling_time, serpent: bool = False):
+                      angle, sampling_time_ms, serpent: bool = False):
         # ToDo: units
         #  write doc string
         if serpent:
@@ -117,7 +117,7 @@ class NeaSNOM:
             logger.error(f'SNOM error: {mod.value} is not implemented')
 
         step = x_size / x_res
-        vel = step / sampling_time * 1000
+        vel = step / sampling_time_ms * 1000
         logger.info(f'Tip velocity is set to {vel:.2} um s^-1')
         if vel > 4:
             logger.warning('WARNING: tip velocity > 4 um s^-1')
@@ -133,7 +133,7 @@ class NeaSNOM:
         self.scan.set_ResolutionColumns(x_res)
         self.scan.set_ResolutionRows(y_res)
         self.scan.set_ScanAngle(angle)
-        self.scan.set_SamplingTime(sampling_time)
+        self.scan.set_SamplingTime(sampling_time_ms)
         if serpent:
             self.scan.set_ResolutionRows(y_res * 5)
             self.scan.TakeRows = 1

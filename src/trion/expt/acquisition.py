@@ -319,6 +319,32 @@ class SteppedImage(BaseScan):
 class SteppedLineScan(BaseScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
                  npts: int, chopped=False, signals=None, delay_position_mm=None, setpoint: float = 0.8):
+        """
+        Parameters
+        ----------
+        modulation: str
+            type of modulation of optical signals, e.g. 'pshet'
+        x_start: float
+            x value of starting point of line scan, in um
+        y_start: float
+            y value of starting point of line scan, in um
+        x_stop: float
+            x value of final point of line scan, in um
+        y_stop: float
+            y value of final point of line scan, in um
+        res:
+            resolution of stepped line scan
+        npts: int
+            number of samples per chunk acquired by the DAQ
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
+        setpoint: float
+            AFM setpoint when engaged
+        """
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
@@ -334,7 +360,7 @@ class SteppedLineScan(BaseScan):
         x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
         y_pos = np.linspace(self.y_start, self.y_stop, self.linescan_res)
         targets = list(zip(y_pos, x_pos))
-        tracked_channels = ['x', 'y', 'z', 'amp', 'phase']
+        tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
         try:
             self.prepare()
@@ -352,7 +378,7 @@ class SteppedLineScan(BaseScan):
             self.disconnect()
 
         afm_tracking = np.array(afm_tracking)
-        self.afm_data = xr.DataSet()
+        self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
             if self.delay_position_mm is not None:
@@ -469,11 +495,61 @@ class ContinuousImage(ContinuousScan):
 
 
 class ContinuousLineScan(ContinuousScan):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float,
+                 res: int = 200, n_lines: int = 10, afm_sampling_ms: float = 50, npts: int = 5_000,
+                 chopped=False, signals=None, delay_position_mm=None, setpoint: float = 0.8):
+        """
+        Parameters
+        ----------
+        modulation: str
+            type of modulation of optical signals, e.g. 'pshet'
+        x_start: float
+            x value of starting point of line scan, in um
+        y_start: float
+            y value of starting point of line scan, in um
+        x_stop: float
+            x value of final point of line scan, in um
+        y_stop: float
+            y value of final point of line scan, in um
+        res: int
+            resolution along fast axis (along line scan) for underlying AFM scan
+        n_lines: int
+            resolution along slow axis (number of passes, trace and retrace) for underlying AFM scan
+        afm_sampling_ms: int
+            time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
+        npts: int
+            number of samples from the DAQ that are saved in one chunk
+        chopped: bool
+            set True if acquiring pump-probe with chopper
+        signals: Iterable[Signals]
+            signals that are acquired from the DAQ
+        delay_position_mm: float
+            if not None, delay stage will be moved to this position before scan
+        setpoint: float
+            AFM setpoint when engaged
+        """
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm,
+                         npts=npts, setpoint=setpoint)
         self.acquisition_mode = Scan.continuous_line
         self.xy_unit = 'um'
-        raise NotImplementedError
+        self.x_start = x_start
+        self.y_start = y_start
+        self.x_stop = x_stop
+        self.y_stop = y_stop
+        self.x_res = res
+        self.y_res = n_lines
+        self.afm_sampling_ms = afm_sampling_ms
+
+    def prepare(self):
+        super().prepare()
+        x_center = .5 * (self.x_start + self.x_stop)
+        y_center = .5 * (self.y_start + self.y_stop)
+        dx = np.abs(self.x_stop - self.x_start)
+        dy = np.abs(self.y_stop - self.x_start)
+        angle = np.atan2(dy, dx)
+        length = np.sqrt(dx**2 + dy**2)
+        self.afm.prepare_image(mod=self.modulation, x_center=x_center, y_center=y_center, x_size=length, y_size=0,
+                               x_res=self.x_res, y_res=self.y_res, angle=angle, sampling_time_ms=self.afm_sampling_ms)
 
 
 class DelayCollection(BaseScan):
