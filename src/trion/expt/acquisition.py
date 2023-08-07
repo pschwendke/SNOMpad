@@ -13,7 +13,6 @@ from tqdm import tqdm
 from itertools import product
 
 from trion.analysis.signals import Signals, Scan
-from trion.analysis.experiment import Measurement, load
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.buffer.base import Overfill
 from trion.expt.daq import DaqController
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 def single_point(device: str, signals: Iterable[Signals], npts: int,
                  clock_channel: str = 'pfi0', truncate: bool = True, pbar=None):
     """
-    Perform single point acquisition.
+    Perform single point acquisition of DAQ data.
 
     Parameters
     ----------
@@ -76,7 +75,7 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
 
 
 class ContinuousPoint(ContinuousScan):
-    def __init__(self, modulation: str, n: int, npts: int = 5_000, delay_position_mm=None, delay_tracker=None,
+    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, delay_tracker=None,
                  setpoint: float = 0.8, chopped=False, signals=None, x_target=None, y_target=None, in_contact=True,
                  stop=False):
         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
@@ -89,8 +88,12 @@ class ContinuousPoint(ContinuousScan):
             number of samples to acquire. When n == 0, acquisition is continuous until stop is True
         npts: int
             number of samples from the DAQ that are saved in one chunk
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         delay_tracker: None or position property of DLStage()
             if not None, delay values (in mm) will be tracked and saved with every chunk
         setpoint: float
@@ -109,7 +112,7 @@ class ContinuousPoint(ContinuousScan):
             will be evaluated after every chunk. stop is True stops acquisition.
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, delay_position_mm=delay_position_mm)
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.point
         self.xy_unit = 'um'
         self.x_target = x_target
@@ -154,8 +157,8 @@ class ContinuousPoint(ContinuousScan):
             tracked_channels.append('t')
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
-            if self.delay_position_mm is not None:
-                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
+            if self.t is not None:
+                da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
 
     def start(self):
@@ -169,13 +172,12 @@ class ContinuousPoint(ContinuousScan):
         finally:
             self.disconnect()
         self.export()
-        logger.info('acquisition complete')
-        return load(self.filename)
+        logger.info('point acquisition complete')
 
 
 class SteppedRetraction(BaseScan):
-    def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False,
-                 delay_position_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8):
+    def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False, t=None,
+                 t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -189,8 +191,12 @@ class SteppedRetraction(BaseScan):
             signals that are acquired from the DAQ
         chopped: bool
             set True if acquiring pump-probe with chopper
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         x_target: float
             x coordinate of retraction curve in um. Must be passed together with y_target
         y_target: float
@@ -200,7 +206,7 @@ class SteppedRetraction(BaseScan):
         setpoint: float
             AFM setpoint when engaged
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.afm_sampling_milliseconds = 50
         self.acquisition_mode = Scan.stepped_retraction
         self.xy_unit = 'um'
@@ -213,7 +219,7 @@ class SteppedRetraction(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self) -> Measurement:
+    def start(self):
         try:
             self.prepare()
             if self.x_target is not None and self.y_target is not None:
@@ -261,19 +267,18 @@ class SteppedRetraction(BaseScan):
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
-            if self.delay_position_mm is not None:
-                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
+            if self.t is not None:
+                da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
 
         self.export()
         logging.info('Scan complete')
-        return load(self.filename)
 
 
 class SteppedImage(BaseScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, npts: int = 75_000, setpoint: float = 0.8,
-                 signals=None, chopped=False, delay_position_mm=None):
+                 signals=None, chopped=False, t=None, t_unit=None, t0_mm=None):
         """
         Parameters
         ----------
@@ -299,10 +304,14 @@ class SteppedImage(BaseScan):
             signals that are acquired from the DAQ
         chopped: bool
             set True if acquiring pump-probe with chopper
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.stepped_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -314,7 +323,7 @@ class SteppedImage(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self) -> Measurement:
+    def start(self):
         x_pos, y_pos = [
             np.linspace(-1, 1, n, endpoint=True) * s / 2 + p
             for n, s, p in zip((self.x_res, self.y_res), (self.x_size, self.y_size), (self.x_center, self.y_center))
@@ -338,22 +347,20 @@ class SteppedImage(BaseScan):
             self.disconnect()
 
         df = pd.DataFrame(afm_tracking, columns=tracked_channels)
-        afm_data = xr.Dataset()
+        self.afm_data = xr.Dataset()
         for c in tracked_channels:
             ch = df[['x', 'y', c]].groupby(['y', 'x']).sum().unstack()
             da = xr.DataArray(ch, dims=('y', 'x'), coords={'x': x_pos, 'y': y_pos})
-            if self.delay_position_mm is not None:
-                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
-            afm_data[c] = da
+            if self.t is not None:
+                da = da.expand_dims(dim={'t': np.array(self.t)})
+            self.afm_data[c] = da
         self.export()
-
         logging.info('Scan complete')
-        return load(self.filename)
 
 
 class SteppedLineScan(BaseScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
-                 npts: int, chopped=False, signals=None, delay_position_mm=None, setpoint: float = 0.8):
+                 npts: int, chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -375,12 +382,16 @@ class SteppedLineScan(BaseScan):
             set True if acquiring pump-probe with chopper
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -391,7 +402,7 @@ class SteppedLineScan(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self) -> Measurement:
+    def start(self):
         x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
         y_pos = np.linspace(self.y_start, self.y_stop, self.linescan_res)
         targets = list(zip(y_pos, x_pos))
@@ -416,18 +427,16 @@ class SteppedLineScan(BaseScan):
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
-            if self.delay_position_mm is not None:
-                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
+            if self.t is not None:
+                da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
         self.export()
-
         logging.info('Scan complete')
-        return load(self.filename)
 
 
 class ContinuousRetraction(ContinuousScan):
     def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: float = 0.8, signals=None,
-                 chopped=False, delay_position_mm=None, x_target=None, y_target=None, z_res: int = 200,
+                 chopped=False, t=None, t_unit=None, t0_mm=None, x_target=None, y_target=None, z_res: int = 200,
                  afm_sampling_ms: int = 300):
         """
         Parameters
@@ -442,8 +451,12 @@ class ContinuousRetraction(ContinuousScan):
             AFM setpoint when engaged
         chopped: bool
             set True if acquiring pump-probe with chopper
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
         x_target: float
@@ -456,7 +469,7 @@ class ContinuousRetraction(ContinuousScan):
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, delay_position_mm=delay_position_mm)
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.continuous_retraction
         self.xy_unit = 'um'
         self.z_size = z_size
@@ -475,8 +488,8 @@ class ContinuousRetraction(ContinuousScan):
 
 class ContinuousImage(ContinuousScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
-                 x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0,
-                 signals=None, chopped=False, delay_position_mm=None, npts: int = 5_000, setpoint: float = 0.8):
+                 x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0, signals=None,
+                 chopped=False, t=None, t_unit=None, t0_mm=None, npts: int = 5_000, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -502,16 +515,19 @@ class ContinuousImage(ContinuousScan):
             signals that are acquired from the DAQ
         chopped: bool
             set True if acquiring pump-probe with chopper
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         npts: int
             number of samples from the DAQ that are saved in one chunk
         setpoint: float
             AFM setpoint when engaged
         """
-
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, delay_position_mm=delay_position_mm)
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.continuous_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -532,7 +548,7 @@ class ContinuousImage(ContinuousScan):
 class ContinuousLineScan(ContinuousScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float,
                  res: int = 200, n_lines: int = 10, afm_sampling_ms: float = 50, npts: int = 5_000,
-                 chopped=False, signals=None, delay_position_mm=None, setpoint: float = 0.8):
+                 chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8):
         """
         Parameters
         ----------
@@ -558,12 +574,16 @@ class ContinuousLineScan(ContinuousScan):
             set True if acquiring pump-probe with chopper
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, delay_position_mm=delay_position_mm,
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
                          npts=npts, setpoint=setpoint)
         self.acquisition_mode = Scan.continuous_line
         self.xy_unit = 'um'
@@ -587,20 +607,40 @@ class ContinuousLineScan(ContinuousScan):
                                x_res=self.x_res, y_res=self.y_res, angle=angle, sampling_time_ms=self.afm_sampling_ms)
 
 
-class DelayCollection(BaseScan):
-    def __init__(self, modulation: str, t_start: float, t_stop: float, t0_mm: float, n_delays: int,
-                 scan: str, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
-        super().__init__(modulation=modulation, delay_position_mm=150)  # some value because we don't know the unit yet
+class DelayScan(BaseScan):
+    # Wanted behaviour:
+    # other scan class can be passed and are collected at every delay position
+    # at the end, one file is saved
+    # continuous only works with continuous point class
+    # t can be ps, fs, s or mm
+    # continuous for n_step == 0
+    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, t0_mm: float,
+                 n_step: int, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
+        """
+        Parameters
+        ----------
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+        """
+        super().__init__(modulation=modulation, t=150)  # some value because we don't know the unit yet
         self.acquisition_mode = Scan.delay_collection
         self.scan_kwargs = scan_kwargs
+        self.t_unit = t_unit
         self.t0_mm = t0_mm
 
         if scale == 'lin':
-            self.t_targets = np.linspace(t_start, t_stop, n_delays)
+            self.t_targets = np.linspace(t_start, t_stop, n_step)
         elif scale == 'log':
-            self.t_targets = np.logspace(np.log10(t_start), np.log10(t_stop), n_delays)
-
-        i = ['point', 'retraction', 'line', 'image'].index(scan)
+            self.t_targets = np.logspace(np.log10(t_start), np.log10(t_stop), n_step)
+        else:
+            raise NotImplementedError(f'scale has to be lin or log. "{scale}" was passed.')
+        
+        try:
+            i = ['point', 'retraction', 'line', 'image'].index(scan)
+        except ValueError:
+            raise ValueError(f'Implemented scans are "point", "retraction", "line", and "image". "{scan}" was passed.')
         if continuous:
             self.scan_class = [ContinuousPoint, ContinuousRetraction, ContinuousLineScan, ContinuousImage][i]
         else:
@@ -608,7 +648,9 @@ class DelayCollection(BaseScan):
 
     def single_scan(self, t: float):
         scan = self.scan_class(modulation=self.modulation, **self.scan_kwargs)
+        scan.start()
         # ToDo Monkey patch the preparation ...
+        #  or pass argument stand_alone = False
 
         # TODo: move delay stage
         # ToDo: when t_0 is given, make it reference and make it work with time arguments
@@ -616,43 +658,17 @@ class DelayCollection(BaseScan):
     def start(self):
         try:
             self.prepare()
-            for t in self.t_targets:
+            for i, t in enumerate(self.t_targets):
+                logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
                 self.single_scan(t=t)
 
         finally:
             self.disconnect()
 
-# class DelayScan(ContinuousScan):
-#     def __init__(self, modulation: str, t_start_mm: float, t_stop_mm: float, t_0_mm: float, step: str = 'lin',
-#                  signals=None, chopped=False, x_target=None, y_target=None, setpoint: float = 0.8, npts: int = 5_000):
-#         """
-#         """
-#         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped)
-#         self.x_target = x_target
-#         self.y_target = y_target
-#         self.step = step
-#
-#     def prepare(self):
-#         super().prepare()
-#         #  Todo: prepare t_targets (lin or log spacing)
-#         if self.x_target is not None and self.y_target is not None:
-#             logger.info(f'Moving sample to target position x={self.x_target:.2f}, y={self.y_target:.2f}')
-#             self.afm.goto_xy(self.x_target, self.y_target)
-#
-#     def start(self) -> Measurement:
-#         try:
-#             self.prepare()
-#             self.afm.engage(self.setpoint)
-#             self.ctrl.start()
-#             logger.info('Starting scan')
-#             # self.nea_data = self.afm.start()
-#             self.acquire()
-#         finally:
-#             self.disconnect()
-#
-#         self.export()
-#         logger.info('Scan complete')
-#         return load(self.filename)
+        # ToDo format data ???
+
+        self.export()
+        logger.info('Delay scan complete')
 
 
 def transfer_func_acq(

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class BaseScan(ABC):
     def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0',
-                 delay_position_mm=None, chopped=False):
+                 t=None, t_unit=None, t0_mm=None, chopped=False, parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -31,10 +31,18 @@ class BaseScan(ABC):
             should be 'Dev1' for now.
         clock_channel: str
             should be 'pfi0', as labelled on the DAQ
-        delay_position_mm: float
+        t: float
             if not None, delay stage will be moved to this position before scan
+        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+            unit of t value. Needs to ge vien when t is given
+        t0_mm: float
+            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         chopped: bool
             if True, chop signal will be acquired
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         try:
             self.modulation = Demodulation[modulation]
@@ -49,49 +57,58 @@ class BaseScan(ABC):
         self.device = device
         self.clock_channel = clock_channel
         self.trion_version = __version__
-        self.delay_position_mm = delay_position_mm
+        self.t = t
+        self.t_unit = t_unit
+        self.t0_mm = t0_mm
         self.chopped = chopped
+        self.parent_scan = parent_scan
+        self.identifier = identifier
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
         self.nea_data = None
         self.date = None
         self.name = None
         self.file = None
-        self.filename = None
+        self.stop_time = None
         self.neaclient_version = None
         self.neaserver_version = None
-        self.stop_time = None
         self.afm = None
         self.delay_stage = None
         self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time_s',
                               'modulation', 'signals', 'chopped',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
-                              'delay_position_mm', 't0_mm',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
                               'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
+                              't', 't_start', 't_stop', 't_unit', 't0_mm',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'ref_mirror_frequency_Hz',
                               'trion_version', 'neaclient_version', 'neaserver_version']
 
     def prepare(self):
         logger.info('Preparing Scan')
-        self.connect()
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
 
-        if self.delay_position_mm is not None:
-            logger.info('Initializing delay stage')
-            ret = self.delay_stage.prepare()
-            if ret is True:
-                logger.info(f'Moving to delay position: {self.delay_position_mm} mm')
-                self.delay_stage.move_abs(val=self.delay_position_mm, unit='mm')
-                self.delay_stage.wait_for_stage()
-            self.delay_stage.log_status()
+        if self.parent_scan is None:
+            self.connect()
+            if self.t_unit is not None:
+                logger.info('Initializing delay stage')
+                ret = self.delay_stage.prepare()
+                if ret is True:
+                    # ToDo pass t_0 to delay stage
+                    #  accept and compute different units for delay position
+                    #  maybe make own function
+                    logger.info(f'Moving to delay position: {self.t} mm')
+                    self.delay_stage.move_abs(val=self.t, unit='mm')
+                    self.delay_stage.wait_for_stage()
+                self.delay_stage.log_status()
 
-        logger.info(f'Creating scan file: {self.filename}')
-        self.filename = self.name + '.h5'
-        self.file = h5py.File(self.filename, 'w')
+            filename = self.name + '.h5'
+            logger.info(f'Creating scan file: {filename}')
+            self.file = h5py.File(filename, 'w')
+        else:
+            self.file = self.parent_scan.file.create_group(self.identifier)  # acts as a separate file, for all that we care about
         self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
         self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
         self.file.create_group('nea_data')  # data returned by NeaScan API
@@ -104,7 +121,7 @@ class BaseScan(ABC):
         self.afm = NeaSNOM()
         self.neaclient_version = self.afm.nea_mic.ClientVersion
         self.neaserver_version = self.afm.nea_mic.ServerVersion
-        if self.delay_position_mm is not None:
+        if self.t_unit is not None:
             self.delay_stage = DLStage()
 
     def disconnect(self):
@@ -116,12 +133,13 @@ class BaseScan(ABC):
         self.afm.disconnect()
         if self.delay_stage is not None:
             self.delay_stage.disconnect()
-        self.file.close()
+        if self.parent_scan is None:
+            self.file.close()
 
     @abstractmethod
-    def start(self) -> Measurement:
+    def start(self):
         """
-        starts the acquisition, collects data in hdf5 file, returns Measurement object
+        starts the acquisition, collects data in hdf5 file
         """
 
     def export(self):
@@ -206,8 +224,8 @@ class ContinuousScan(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
-            if self.delay_position_mm is not None:
-                da = da.expand_dims(dim={'t': np.array(self.delay_position_mm)})
+            if self.t is not None:
+                da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
         if self.acquisition_mode == Scan.continuous_image:
             self.nea_data = to_numpy(self.nea_data)
@@ -215,7 +233,7 @@ class ContinuousScan(BaseScan):
             # ToDo get coordinates from NeaScan
             self.nea_data = xr.Dataset(self.nea_data)
 
-    def start(self) -> Measurement:
+    def start(self):
         try:
             self.prepare()
             self.afm.engage(self.setpoint)
@@ -228,7 +246,6 @@ class ContinuousScan(BaseScan):
 
         self.export()
         logger.info('Scan complete')
-        return load(self.filename)
 
 
 #  ToDo: rewrite this
@@ -297,7 +314,7 @@ class ContinuousScan(BaseScan):
 #         logger.info('Acquisition complete')
 #         self.nea_data = to_numpy(self.nea_data)
 #
-#     def start(self) -> Measurement:
+#     def start(self):
 #         try:
 #             self.prepare()
 #             self.afm.engage(self.setpoint)
@@ -312,4 +329,3 @@ class ContinuousScan(BaseScan):
 #
 #         self.export()
 #         logger.info('Scan complete')
-#         return load(self.filename)

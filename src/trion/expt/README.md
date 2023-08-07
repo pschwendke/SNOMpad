@@ -21,7 +21,7 @@ The structure is as follows:
     > #### group: 'afm_data'
     - **datasets**: 'x', 'z', 'amp' etc.
       - tracked data, either on grid (stepped), or indexed (continuous)
-      - an 'idx' array links each row of data to a dataset it 'daq_data'
+      - an 'idx' array links each row of data to a dataset in 'daq_data'
     > #### group: 'nea_data'
     - **datasets**: 'M1A', 'O1A' etc. 
       - images or curves as returned by the NeaScan API
