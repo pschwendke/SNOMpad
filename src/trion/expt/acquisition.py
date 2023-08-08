@@ -77,7 +77,7 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
 class ContinuousPoint(ContinuousScan):
     def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, delay_tracker=None,
                  setpoint: float = 0.8, chopped=False, signals=None, x_target=None, y_target=None, in_contact=True,
-                 stop=False):
+                 stop=False, parent_scan=None, identifier=None):
         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
 
         Parameters
@@ -110,9 +110,14 @@ class ContinuousPoint(ContinuousScan):
             If True, the samples are acquired while AFM is in contact
         stop: bool
             will be evaluated after every chunk. stop is True stops acquisition.
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.point
         self.xy_unit = 'um'
         self.x_target = x_target
@@ -177,7 +182,8 @@ class ContinuousPoint(ContinuousScan):
 
 class SteppedRetraction(BaseScan):
     def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False, t=None,
-                 t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8):
+                 t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8,
+                 parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -205,8 +211,14 @@ class SteppedRetraction(BaseScan):
             number of samples per chunk acquired by the DAQ
         setpoint: float
             AFM setpoint when engaged
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.afm_sampling_milliseconds = 50
         self.acquisition_mode = Scan.stepped_retraction
         self.xy_unit = 'um'
@@ -278,7 +290,7 @@ class SteppedRetraction(BaseScan):
 class SteppedImage(BaseScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, npts: int = 75_000, setpoint: float = 0.8,
-                 signals=None, chopped=False, t=None, t_unit=None, t0_mm=None):
+                 signals=None, chopped=False, t=None, t_unit=None, t0_mm=None, parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -310,8 +322,14 @@ class SteppedImage(BaseScan):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.stepped_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -360,7 +378,8 @@ class SteppedImage(BaseScan):
 
 class SteppedLineScan(BaseScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
-                 npts: int, chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8):
+                 npts: int, chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8,
+                 parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -390,8 +409,14 @@ class SteppedLineScan(BaseScan):
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -437,7 +462,7 @@ class SteppedLineScan(BaseScan):
 class ContinuousRetraction(ContinuousScan):
     def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: float = 0.8, signals=None,
                  chopped=False, t=None, t_unit=None, t0_mm=None, x_target=None, y_target=None, z_res: int = 200,
-                 afm_sampling_ms: int = 300):
+                 afm_sampling_ms: int = 300, parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -467,9 +492,14 @@ class ContinuousRetraction(ContinuousScan):
             number of pixels of utilized NeaScan approach curve routine
         afm_sampling_ms: int
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.continuous_retraction
         self.xy_unit = 'um'
         self.z_size = z_size
@@ -489,7 +519,8 @@ class ContinuousRetraction(ContinuousScan):
 class ContinuousImage(ContinuousScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0, signals=None,
-                 chopped=False, t=None, t_unit=None, t0_mm=None, npts: int = 5_000, setpoint: float = 0.8):
+                 chopped=False, t=None, t_unit=None, t0_mm=None, npts: int = 5_000, setpoint: float = 0.8,
+                 parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -525,9 +556,14 @@ class ContinuousImage(ContinuousScan):
             number of samples from the DAQ that are saved in one chunk
         setpoint: float
             AFM setpoint when engaged
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
-                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm)
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.continuous_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -548,7 +584,8 @@ class ContinuousImage(ContinuousScan):
 class ContinuousLineScan(ContinuousScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float,
                  res: int = 200, n_lines: int = 10, afm_sampling_ms: float = 50, npts: int = 5_000,
-                 chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8):
+                 chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8,
+                 parent_scan=None, identifier=None):
         """
         Parameters
         ----------
@@ -582,9 +619,13 @@ class ContinuousLineScan(ContinuousScan):
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
+        parent_scan: BaseScan
+            when a BaseScan object is passed, no file is created, but data saved into parent's file
+        identifier: str
+            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
-                         npts=npts, setpoint=setpoint)
+                         npts=npts, setpoint=setpoint, parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.continuous_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -608,27 +649,37 @@ class ContinuousLineScan(ContinuousScan):
 
 
 class DelayScan(BaseScan):
-    # Wanted behaviour:
-    # other scan class can be passed and are collected at every delay position
-    # at the end, one file is saved
-    # continuous only works with continuous point class
-    # t can be ps, fs, s or mm
-    # continuous for n_step == 0
-    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, t0_mm: float,
-                 n_step: int, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
+    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, n_step: int,
+                 t0_mm=None, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
         """
         Parameters
         ----------
-        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
-            unit of t value. Needs to ge vien when t is given
+        modulation: str
+            either 'shd' or 'pshet'
+        scan: str
+            Defines the type of scan to be performed at every delay position.
+            Str has to be one of 'point', 'retraction', 'line', or 'image'.
+        t_start: float
+            first position of delay stage
+        t_stop: float
+            last position of delay stage
+        t_unit: str
+            Unit of t values. Needs to ge vien when t is given, and has to be one of 'm', 'mm', 's', 'ps', 'fs'
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+        n_step: int
+            Number of steps between t_start and t_stop
+        continuous: bool
+            When True, continuous scan classes are used, e.g. ContinuousLineScan. When False, stepped scan classes
+            are used, e.g. SteppedLineScan
+        scale: str
+            spacing of n_step acquisitions along t axis. Liner when 'lin' is passed. 'log' produces logarithmic spacing.
+        scan_kwargs:
+            keyword arguments that are passed to scan class
         """
-        super().__init__(modulation=modulation, t=150)  # some value because we don't know the unit yet
+        super().__init__(modulation=modulation, t=t_start, t_unit=t_unit, t0_mm=t0_mm)
         self.acquisition_mode = Scan.delay_collection
         self.scan_kwargs = scan_kwargs
-        self.t_unit = t_unit
-        self.t0_mm = t0_mm
 
         if scale == 'lin':
             self.t_targets = np.linspace(t_start, t_stop, n_step)
@@ -646,26 +697,17 @@ class DelayScan(BaseScan):
         else:
             self.scan_class = [ContinuousPoint, SteppedRetraction, SteppedLineScan, SteppedImage][i]
 
-    def single_scan(self, t: float):
-        scan = self.scan_class(modulation=self.modulation, **self.scan_kwargs)
-        scan.start()
-        # ToDo Monkey patch the preparation ...
-        #  or pass argument stand_alone = False
-
-        # TODo: move delay stage
-        # ToDo: when t_0 is given, make it reference and make it work with time arguments
-
     def start(self):
         try:
             self.prepare()
             for i, t in enumerate(self.t_targets):
                 logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
-                self.single_scan(t=t)
-
+                scan = self.scan_class(modulation=self.modulation, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
+                                       parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
+                scan.start()
+                # ToDo continuous point might not work here. check this
         finally:
             self.disconnect()
-
-        # ToDo format data ???
 
         self.export()
         logger.info('Delay scan complete')
