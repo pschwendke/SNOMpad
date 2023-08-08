@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
 
-from trion.analysis.experiment import Measurement, load
 from trion.analysis.signals import Scan, Demodulation, Signals
 from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
@@ -89,52 +88,57 @@ class BaseScan(ABC):
         logger.info('Preparing Scan')
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
+        self.connect()
 
         if self.parent_scan is None:
-            self.connect()
-            if self.t_unit is not None:
-                logger.info('Initializing delay stage')
-                ret = self.delay_stage.prepare()
-                if ret is True:
-                    # ToDo pass t_0 to delay stage
-                    #  accept and compute different units for delay position
-                    #  maybe make own function
-                    logger.info(f'Moving to delay position: {self.t} mm')
-                    self.delay_stage.move_abs(val=self.t, unit='mm')
-                    self.delay_stage.wait_for_stage()
-                self.delay_stage.log_status()
-
             filename = self.name + '.h5'
             logger.info(f'Creating scan file: {filename}')
             self.file = h5py.File(filename, 'w')
-        else:
-            self.file = self.parent_scan.file.create_group(self.identifier)  # acts as a separate file, for all that we care about
+        else:  # acts as a separate file, for all that we care about:
+            self.file = self.parent_scan.file.create_group(self.identifier)
         self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
         self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
         self.file.create_group('nea_data')  # data returned by NeaScan API
 
+        if self.t_unit is not None:
+            if self.t0_mm is not None:
+                self.delay_stage.reference = self.t0_mm
+            logger.info(f'Moving to delay position: {self.t} {self.t_unit}')
+            self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
+            self.delay_stage.wait_for_stage()
+            self.delay_stage.log_status()
+
     def connect(self):
         """
-        connect to all relevant devices
+        connect to all relevant devices, or inherit from outer scope
         """
-        logger.info('Connecting')
-        self.afm = NeaSNOM()
+        if self.parent_scan is None:
+            logger.info('Connecting')
+            self.afm = NeaSNOM()
+            if self.t_unit is not None:
+                logger.info('Initializing delay stage')
+                self.delay_stage = DLStage()
+                ret = self.delay_stage.prepare()
+                if ret is not True:
+                    raise RuntimeError('Error preparing delay stage')
+        else:
+            logger.info('Inheriting connections from parent scan')
+            self.afm = self.parent_scan.afm
+            self.delay_stage = self.parent_scan.delay_stage
         self.neaclient_version = self.afm.nea_mic.ClientVersion
         self.neaserver_version = self.afm.nea_mic.ServerVersion
-        if self.t_unit is not None:
-            self.delay_stage = DLStage()
 
     def disconnect(self):
         """
-        disconnect from all relevant devices
+        disconnect from all relevant devices if not inherited
         """
-        logger.info('Disconnecting')
         self.stop_time = datetime.now()
-        self.afm.disconnect()
-        if self.delay_stage is not None:
-            self.delay_stage.disconnect()
         if self.parent_scan is None:
+            logger.info('Disconnecting')
+            self.afm.disconnect()
             self.file.close()
+            if self.delay_stage is not None:
+                self.delay_stage.disconnect()
 
     @abstractmethod
     def start(self):
@@ -146,7 +150,7 @@ class BaseScan(ABC):
         """
         Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file. Collect and export metadata.
         """
-        def xr_to_h5_dataset(ds: xr.Dataset, group: h5py.Group):
+        def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
             for dim, coord in ds.coords.items():  # create dimension scales
                 group[dim] = coord.values
                 group[dim].make_scale(dim)
@@ -160,10 +164,10 @@ class BaseScan(ABC):
 
         if self.afm_data is not None:
             logger.info('Saving tracked AFM data')
-            xr_to_h5_dataset(ds=self.afm_data, group=self.file['afm_data'])
+            xr_to_h5_datasets(ds=self.afm_data, group=self.file['afm_data'])
         if self.nea_data is not None:
             logger.info('Saving NeaScan data')
-            xr_to_h5_dataset(ds=self.nea_data, group=self.file['nea_data'])
+            xr_to_h5_datasets(ds=self.nea_data, group=self.file['nea_data'])
 
         logger.info('Collecting metadata')
         metadata = {}
