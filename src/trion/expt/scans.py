@@ -141,10 +141,20 @@ class BaseScan(ABC):
                 self.delay_stage.disconnect()
 
     @abstractmethod
+    def routine(self):
+        """
+        acquisition routine, specific for each scan class
+        """
+
     def start(self):
         """
-        starts the acquisition, collects data in hdf5 file
+        starts the acquisition
         """
+        try:
+            self.routine()
+        finally:
+            self.disconnect()
+        logger.info('Scan complete')
 
     def export(self):
         """
@@ -187,9 +197,22 @@ class BaseScan(ABC):
 
 class ContinuousScan(BaseScan):
     def __init__(self, npts: int, setpoint: float, **kwargs):
+        """
+        Parameters
+        ----------
+        npts: int
+            number of samples from the DAQ that are saved in one chunk
+        setpoint: float
+            AFM setpoint when engaged
+        **kwargs:
+            keyword arguments that are passed to BaseScan.__init__()
+        """
         super().__init__(**kwargs)
         self.ctrl = None
         self.buffer = None
+        if npts > 100_000:
+            logger.error(f'npts was reduced to max chunk size of 100_000. npts={npts} was passed.')
+            npts = 100_000
         self.npts = npts
         self.setpoint = setpoint
 
@@ -231,25 +254,21 @@ class ContinuousScan(BaseScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
+        # ToDo neadata should maybe be transformed in nea_ctr.py
         if self.acquisition_mode == Scan.continuous_image:
             self.nea_data = to_numpy(self.nea_data)
             self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
             # ToDo get coordinates from NeaScan
             self.nea_data = xr.Dataset(self.nea_data)
 
-    def start(self):
-        try:
-            self.prepare()
-            self.afm.engage(self.setpoint)
-            self.ctrl.start()
-            logger.info('Starting scan')
-            self.nea_data = self.afm.start()
-            self.acquire()
-        finally:
-            self.disconnect()
-
+    def routine(self):
+        self.prepare()
+        self.afm.engage(self.setpoint)
+        self.ctrl.start()
+        logger.info('Starting scan')
+        self.nea_data = self.afm.start()
+        self.acquire()
         self.export()
-        logger.info('Scan complete')
 
 
 #  ToDo: rewrite this

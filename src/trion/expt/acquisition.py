@@ -75,9 +75,9 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
 
 
 class ContinuousPoint(ContinuousScan):
-    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, delay_tracker=None,
+    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None,
                  setpoint: float = 0.8, chopped=False, signals=None, x_target=None, y_target=None, in_contact=True,
-                 stop=False, parent_scan=None, identifier=None):
+                 parent_scan=None, identifier=None):
         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
 
         Parameters
@@ -94,8 +94,6 @@ class ContinuousPoint(ContinuousScan):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        delay_tracker: None or position property of DLStage()
-            if not None, delay values (in mm) will be tracked and saved with every chunk
         setpoint: float
             AFM setpoint when engaged
         chopped: bool
@@ -108,8 +106,6 @@ class ContinuousPoint(ContinuousScan):
             y coordinate of retraction curve. Must be passed together with x_target
         in_contact: bool
             If True, the samples are acquired while AFM is in contact
-        stop: bool
-            will be evaluated after every chunk. stop is True stops acquisition.
         parent_scan: BaseScan
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
@@ -123,9 +119,7 @@ class ContinuousPoint(ContinuousScan):
         self.x_target = x_target
         self.y_target = y_target
         self.in_contact = in_contact
-        self.delay_tracker = delay_tracker
         self.target = n
-        self.stop = stop
 
     def prepare(self):
         super().prepare()
@@ -139,10 +133,8 @@ class ContinuousPoint(ContinuousScan):
         excess = 0
         chunk_idx = 0
         afm_tracking = []
-        while chunk_idx * self.npts < self.target and self.stop is False:
+        while chunk_idx * self.npts < self.target:
             current = [chunk_idx] + list(self.afm.get_current())
-            if self.delay_tracker is not None:
-                current.append(self.delay_tracker())
             afm_tracking.append(current)
 
             n_read = excess
@@ -158,26 +150,20 @@ class ContinuousPoint(ContinuousScan):
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
-        if self.delay_tracker is not None:
-            tracked_channels.append('t')
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
 
-    def start(self):
-        try:
-            self.prepare()
-            if self.in_contact:
-                self.afm.engage(self.setpoint)
-            self.ctrl.start()
-            logger.info('starting single point acquisition')
-            self.acquire()
-        finally:
-            self.disconnect()
+    def routine(self):
+        self.prepare()
+        if self.in_contact:
+            self.afm.engage(self.setpoint)
+        self.ctrl.start()
+        logger.info('starting single point acquisition')
+        self.acquire()
         self.export()
-        logger.info('point acquisition complete')
 
 
 class SteppedRetraction(BaseScan):
@@ -231,60 +217,55 @@ class SteppedRetraction(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self):
-        try:
-            self.prepare()
-            if self.x_target is not None and self.y_target is not None:
-                logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
-                self.afm.goto_xy(self.x_target, self.y_target)
-            targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
-            tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
-            self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_milliseconds)
-            self.afm.engage(self.setpoint)
+    def routine(self):
+        self.prepare()
+        if self.x_target is not None and self.y_target is not None:
+            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            self.afm.goto_xy(self.x_target, self.y_target)
+        targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
+        tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+        self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_milliseconds)
+        self.afm.engage(self.setpoint)
 
-            logger.info('Starting scan')
-            self.afm.start()
-            self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
-            afm_tracking = []
-            pbar = tqdm(targets)
-            for i, t in enumerate(pbar):
-                # wait for target z-position during retraction scan
+        logger.info('Starting scan')
+        self.afm.start()
+        self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
+        afm_tracking = []
+        pbar = tqdm(targets)
+        for i, t in enumerate(pbar):
+            # wait for target z-position during retraction scan
+            _, _, z, _, _ = self.afm.get_current()
+            dist = abs(z - init_z)
+            while dist < t:
                 _, _, z, _, _ = self.afm.get_current()
                 dist = abs(z - init_z)
-                while dist < t:
-                    _, _, z, _, _ = self.afm.get_current()
-                    dist = abs(z - init_z)
-                    pbar.set_postfix(target=t, dist=dist, z=z)
-                    sleep(0.01)
-                    if self.afm.scan.IsCompleted:
-                        logger.warning(f'Scan is completed while there are targets. ({i} of {len(targets)})')
-                        self.z_res = i
-                        break
+                pbar.set_postfix(target=t, dist=dist, z=z)
+                sleep(0.01)
                 if self.afm.scan.IsCompleted:
+                    logger.warning(f'Scan is completed while there are targets. ({i} of {len(targets)})')
+                    self.z_res = i
                     break
-                self.afm.scan.Suspend()
-                # acquire npts # of samples
-                data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-                current = list(self.afm.get_current())
-                self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
-                afm_tracking.append([t, i] + current)
-                self.afm.scan.Resume()
+            if self.afm.scan.IsCompleted:
+                break
+            self.afm.scan.Suspend()
+            # acquire npts # of samples
+            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
+            current = list(self.afm.get_current())
+            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            afm_tracking.append([t, i] + current)
+            self.afm.scan.Resume()
 
-            while not self.afm.scan.IsCompleted:
-                sleep(1)
-        finally:
-            self.disconnect()
+        while not self.afm.scan.IsCompleted:
+            sleep(1)
 
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
-            da = xr.DataArray(data=afm_tracking[:, i+1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
+            da = xr.DataArray(data=afm_tracking[:, i + 1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
-
         self.export()
-        logging.info('Scan complete')
 
 
 class SteppedImage(BaseScan):
@@ -341,7 +322,7 @@ class SteppedImage(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self):
+    def routine(self):
         x_pos, y_pos = [
             np.linspace(-1, 1, n, endpoint=True) * s / 2 + p
             for n, s, p in zip((self.x_res, self.y_res), (self.x_size, self.y_size), (self.x_center, self.y_center))
@@ -349,20 +330,17 @@ class SteppedImage(BaseScan):
         targets = list(product(y_pos, x_pos))
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
 
-        try:
-            self.prepare()
-            self.afm.set_pshet(self.modulation)
-            self.afm.engage(self.setpoint)
-            logger.info('Starting scan')
-            afm_tracking = []
-            for i, (y, x) in enumerate(tqdm(targets)):
-                self.afm.goto_xy(x, y)
-                data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-                self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
-                current = list(self.afm.get_current())
-                afm_tracking.append([x, y, i] + current)
-        finally:
-            self.disconnect()
+        self.prepare()
+        self.afm.set_pshet(self.modulation)
+        self.afm.engage(self.setpoint)
+        logger.info('Starting scan')
+        afm_tracking = []
+        for i, (y, x) in enumerate(tqdm(targets)):
+            self.afm.goto_xy(x, y)
+            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
+            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            current = list(self.afm.get_current())
+            afm_tracking.append([x, y, i] + current)
 
         df = pd.DataFrame(afm_tracking, columns=tracked_channels)
         self.afm_data = xr.Dataset()
@@ -373,7 +351,6 @@ class SteppedImage(BaseScan):
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
         self.export()
-        logging.info('Scan complete')
 
 
 class SteppedLineScan(BaseScan):
@@ -427,26 +404,23 @@ class SteppedLineScan(BaseScan):
         self.npts = npts
         self.setpoint = setpoint
 
-    def start(self):
+    def routine(self):
         x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
         y_pos = np.linspace(self.y_start, self.y_stop, self.linescan_res)
         targets = list(zip(y_pos, x_pos))
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
-        try:
-            self.prepare()
-            self.afm.set_pshet(self.modulation)
-            self.afm.engage(self.setpoint)
-            logger.info('Starting scan')
-            afm_tracking = []
-            for i, (y, x) in enumerate(tqdm(targets)):
-                self.afm.goto_xy(x, y)
-                data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-                self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
-                current = list(self.afm.get_current())
-                afm_tracking.append([i, x, y] + current)
-        finally:
-            self.disconnect()
+        self.prepare()
+        self.afm.set_pshet(self.modulation)
+        self.afm.engage(self.setpoint)
+        logger.info('Starting scan')
+        afm_tracking = []
+        for i, (y, x) in enumerate(tqdm(targets)):
+            self.afm.goto_xy(x, y)
+            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
+            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            current = list(self.afm.get_current())
+            afm_tracking.append([i, x, y] + current)
 
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
@@ -456,7 +430,6 @@ class SteppedLineScan(BaseScan):
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
         self.export()
-        logging.info('Scan complete')
 
 
 class ContinuousRetraction(ContinuousScan):
@@ -697,20 +670,15 @@ class DelayScan(BaseScan):
         else:
             self.scan_class = [ContinuousPoint, SteppedRetraction, SteppedLineScan, SteppedImage][i]
 
-    def start(self):
-        try:
-            self.prepare()
-            for i, t in enumerate(self.t_targets):
-                logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
-                scan = self.scan_class(modulation=self.modulation, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
-                                       parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
-                scan.start()
-                # ToDo continuous point might not work here. check this
-        finally:
-            self.disconnect()
-
+    def routine(self):
+        self.prepare()
+        for i, t in enumerate(self.t_targets):
+            logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
+            scan = self.scan_class(modulation=self.modulation, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
+                                   parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
+            scan.start()
+            scan.export()
         self.export()
-        logger.info('Delay scan complete')
 
 
 def transfer_func_acq(
