@@ -5,6 +5,7 @@ import xarray as xr
 from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
+from typing import Iterable
 
 from trion.analysis.signals import Scan, Demodulation, Signals
 from trion.expt.daq import DaqController
@@ -264,91 +265,67 @@ class ContinuousScan(BaseScan):
     def routine(self):
         self.prepare()
         self.afm.engage(self.setpoint)
-        self.ctrl.start()
         logger.info('Starting scan')
+        self.ctrl.start()
         self.nea_data = self.afm.start()
         self.acquire()
         self.export()
 
 
-#  ToDo: rewrite this
-# class NoiseScan(BaseScan):
-#     def __init__(self, signals: Iterable[Signals], sampling_seconds: float,
-#                  x_target=None, y_target=None, npts: int = 5_000, setpoint: float = 0.8):
-#         super().__init__(signals, modulation=Demodulation.shd)
-#         self.x_target, self.y_target = x_target, y_target
-#         self.npts = npts
-#         self.setpoint = setpoint
-#
-#         self.acquisition_mode = Scan.noise_sampling
-#         self.afm_sampling_milliseconds = 0.4
-#         self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_milliseconds // 1), 1
-#         self.x_size, self.y_size = 0, 0
-#         self.afm_angle = 0
-#         self.ctrl = None
-#         self.buffer = None
-#         self.acquire_daq = False
-#         if Signals.tap_x in self.signals:
-#             self.acquire_daq = True
-#             self.daq_data_filename = None
-#
-#     def prepare(self):
-#         super().prepare()
-#         if self.x_target is None or self.y_target is None:
-#             self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
-#         self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
-#                                self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
-#
-#     def connect(self):
-#         super().connect()
-#         if self.acquire_daq:
-#             self.ctrl = DaqController(self.device, clock_channel=self.clock_channel)
-#             self.buffer = CircularArrayBuffer(vars=self.signals, size=100_000)
-#             self.ctrl.setup(buffer=self.buffer)
-#
-#     def disconnect(self):
-#         super().disconnect()
-#         if self.acquire_daq:
-#             self.ctrl.close()
-#
-#     def acquire(self):
-#         if self.acquire_daq:
-#             self.ctrl.start()
-#             excess = 0
-#             daq_data = []
-#             while not self.afm.scan.IsCompleted:
-#                 print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
-#
-#                 # ToDo: maybe an ExtendingArrayBuffer of sufficient size would be better. skip the loop.
-#                 n_read = excess
-#                 while n_read < self.npts:
-#                     sleep(.001)
-#                     n = self.ctrl.reader.read()
-#                     n_read += n
-#                 excess = n_read - self.npts
-#                 daq_data.append(self.buffer.get(n=self.npts, offset=excess))
-#
-#             daq_data = np.vstack(daq_data)
-#             self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
-#         else:
-#             while not self.afm.scan.IsCompleted:
-#                 sleep(.1)
-#
-#         logger.info('Acquisition complete')
-#         self.nea_data = to_numpy(self.nea_data)
-#
-#     def start(self):
-#         try:
-#             self.prepare()
-#             self.afm.engage(self.setpoint)
-#             logger.info('Starting scan')
-#             self.nea_data = self.afm.start()
-#             self.acquire()
-#         finally:
-#             self.disconnect()
-#
-#         self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
-#         self.nea_data = xr.Dataset(self.nea_data)
-#
-#         self.export()
-#         logger.info('Scan complete')
+class NoiseScan(ContinuousScan):
+    def __init__(self, sampling_seconds: float, signals: None, x_target=None, y_target=None,
+                 npts: int = 5_000, setpoint: float = 0.8):
+        """
+        Parameters
+        ----------
+        signals: iterable
+            list of Signals. If None, the signals will be determined by modulation and chopped
+        sampling_seconds: float
+            number of seconds to acquire
+        x_target: float
+            x coordinate of acquisition in um. Must be passed together with y_target
+        y_target: float
+            y coordinate of acquisition in um. Must be passed together with x_target
+        npts: int
+            number of samples per chunk acquired by the DAQ
+        setpoint: float
+            AFM setpoint when engaged
+        """
+        if signals is None:
+            signals = [Signals['sig_a'], Signals['tap_x'], Signals['tap_y']]
+        super().__init__(npts=npts, setpoint=setpoint, modulation='shd', signals=signals)
+        self.acquisition_mode = Scan.noise_sampling
+        self.x_target, self.y_target = x_target, y_target
+        self.afm_sampling_milliseconds = 0.4
+        self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_milliseconds // 1), 1
+        self.x_size, self.y_size = 0, 0
+        self.afm_angle = 0
+
+    def prepare(self):
+        super().prepare()
+        if self.x_target is None or self.y_target is None:
+            self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
+        self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
+                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
+
+    def acquire(self):
+        # ToDo this could be merged at some time with parent class
+        excess = 0
+        daq_data = []
+        while not self.afm.scan.IsCompleted:
+            print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
+            n_read = excess
+            while n_read < self.npts:  # this slicing seems redundant. Someone should rewrite this.
+                sleep(.001)
+                n = self.ctrl.reader.read()
+                n_read += n
+            excess = n_read - self.npts
+            daq_data.append(self.buffer.get(n=self.npts, offset=excess))
+
+        daq_data = np.vstack(daq_data)
+        self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
+
+        logger.info('Acquisition complete')
+        self.nea_data = to_numpy(self.nea_data)
+        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
+        self.nea_data = xr.Dataset(self.nea_data)
