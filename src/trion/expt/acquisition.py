@@ -38,7 +38,7 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
     clock_channel : str
         Channel to use as sample clock
     npts : int
-        Number of samples to acquire. If < 0, acquires continuously.
+        Number of pulses to acquire. If < 0, acquires continuously.
     truncate : bool
         Truncate output to exact number of points.
     pbar : progressbar or None

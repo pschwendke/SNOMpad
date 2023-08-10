@@ -13,6 +13,19 @@ from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detect
 from trion.analysis.demod import shd, pshet
 
 
+def h5_to_xr_dataset(group: h5py.Group):
+    ds = xr.Dataset()
+    for ch, dset in group.items():
+        if dset.dims[0].keys():
+            values = np.array(dset)
+            dims = [d.keys()[0] for d in dset.dims]
+            da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
+            da.attrs = dset.attrs
+            ds[ch] = da
+    ds.attrs = group.attrs
+    return ds
+
+
 class Measurement(ABC):
     """ Base class to load, demodulate and export acquired data.
     """
@@ -26,25 +39,19 @@ class Measurement(ABC):
         self.mode = Scan[file.attrs['acquisition_mode']]
         self.signals = [Signals[s] for s in file.attrs['signals']]
         self.modulation = Demodulation[file.attrs['modulation']]
-        self.chopped = file.attrs['chopped']
 
         if self.file['afm_data'].keys():
-            self.afm_data = self.h5_to_xr_dataset('afm_data')
+            self.afm_data = h5_to_xr_dataset(group=self.file['afm_data'])
         if self.file['nea_data'].keys():
-            self.nea_data = self.h5_to_xr_dataset('nea_data')
+            self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
 
-    def h5_to_xr_dataset(self, group_name: str):
-        group = self.file[group_name]
-        ds = xr.Dataset()
-        for ch, dset in group.items():
-            if dset.dims[0].keys():
-                values = np.array(dset)
-                dims = [d.keys()[0] for d in dset.dims]
-                da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
-                da.attrs = dset.attrs
-                ds[ch] = da
-        ds.attrs = group.attrs
-        return ds
+    def to_h5(self):
+        """ Write hdf5 demod file in standard directory
+        """
+
+    def load_h5(self):
+        """ Load hdf5 demod file
+        """
 
     @abstractmethod
     def demod(self):
@@ -53,10 +60,6 @@ class Measurement(ABC):
     @abstractmethod
     def plot(self):
         """ Plot (and save) demodulated data, e.g. images or curves
-        """
-    @abstractmethod
-    def export(self):
-        """ Export demodulated data as xarray dataset, csv or gwyddion file
         """
 
 
@@ -72,18 +75,15 @@ def load(filename: str) -> Measurement:
         return Image(file)
     elif scan_type in ['stepped_line', 'continuous_line']:
         return Line(file)
-    # elif scan_type == 'noise_sampling':
-    #     return Noise(file)
-    # elif scan_type == 'delay_scan':
-    #     return DelayScan(file)
+    elif scan_type == 'noise_sampling':
+        return Noise(file)
+    elif scan_type == 'delay_collection':
+        return Delay(file)
     else:
         raise NotImplementedError
 
 
 class Retraction(Measurement):
-    def __init__(self, file: h5py.File):
-        super().__init__(file)
-
     def demod(self, tap_res: int = 64, ref_res: int = 64, npts=None, demod_filename=None, method='binning', **kwargs):
         """ Creates xr.Dataset in self.demod_data. Dimensions are 'z_target' for stepped retraction and 'z' for
         continuous retraction. Dataset contains one DataArray for every tracked channel, and one complex-valued
@@ -193,38 +193,38 @@ class Retraction(Measurement):
             plt.show()
         plt.close()
 
-    def export(self):
-        raise NotImplementedError
-
 
 class Image(Measurement):
-    def __init__(self, file: h5py.File):
-        super().__init__(file)
+    def demod(self):
         raise NotImplementedError
 
-    def demod(self):
-        pass
-
     def plot(self):
-        pass
-
-    def export(self):
-        pass
+        raise NotImplementedError
 
 
 class Line(Measurement):
-    def __init__(self, file:h5py.File):
-        super().__init__(file)
+    def demod(self):
         raise NotImplementedError
 
+    def plot(self):
+        raise NotImplementedError
+
+
+class Noise(Measurement):
     def demod(self):
-        pass
+        raise NotImplementedError
 
     def plot(self):
-        pass
+        raise NotImplementedError
 
-    def export(self):
-        pass
+
+class Delay(Measurement):
+    def demod(self):
+        raise NotImplementedError
+
+    def plot(self):
+        raise NotImplementedError
+
 
 # class Noise(Measurement):
 #     def __init__(self, file: h5py.File):

@@ -5,7 +5,6 @@ import xarray as xr
 from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
-from typing import Iterable
 
 from trion.analysis.signals import Scan, Demodulation, Signals
 from trion.expt.daq import DaqController
@@ -15,6 +14,19 @@ from trion.expt.dl_ctrl import DLStage
 from trion.__init__ import __version__
 
 logger = logging.getLogger(__name__)
+
+
+def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
+    for dim, coord in ds.coords.items():  # create dimension scales
+        group[dim] = coord.values
+        group[dim].make_scale(dim)
+    for ch in ds:
+        da = ds[ch]
+        dset = group.create_dataset(name=ch, data=da.values)  # data
+        dset.attrs = da.attrs  # copy all metadata / attributes
+        for dim in da.coords.keys():  # attach dimension scales
+            n = da.get_axis_num(dim)
+            dset.dims[n].attach_scale(group[dim])
 
 
 class BaseScan(ABC):
@@ -161,18 +173,6 @@ class BaseScan(ABC):
         """
         Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file. Collect and export metadata.
         """
-        def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
-            for dim, coord in ds.coords.items():  # create dimension scales
-                group[dim] = coord.values
-                group[dim].make_scale(dim)
-            for ch in ds:
-                da = ds[ch]
-                dset = group.create_dataset(name=ch, data=da.values)  # data
-                dset.attrs = da.attrs  # copy all metadata / attributes
-                for dim in da.coords.keys():  # attach dimension scales
-                    n = da.get_axis_num(dim)
-                    dset.dims[n].attach_scale(group[dim])
-
         if self.afm_data is not None:
             logger.info('Saving tracked AFM data')
             xr_to_h5_datasets(ds=self.afm_data, group=self.file['afm_data'])
