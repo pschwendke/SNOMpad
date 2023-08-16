@@ -34,7 +34,7 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
-    # phi = phi - (phi > 0) * np.pi  # shift all results to negative quadrant.
+    phi = phi - (phi > 0) * np.pi  # shift all results to negative quadrant.
     phi = phi.mean()  # Output should be a float. However, is this stable?
     return phi
 
