@@ -23,7 +23,8 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
     for ch in ds:
         da = ds[ch]
         dset = group.create_dataset(name=ch, data=da.values)  # data
-        dset.attrs = da.attrs  # copy all metadata / attributes
+        for k, v in da.attrs.items():  # copy all metadata / attributes
+            dset.attrs[k] = v
         for dim in da.coords.keys():  # attach dimension scales
             n = da.get_axis_num(dim)
             dset.dims[n].attach_scale(group[dim])
@@ -145,7 +146,6 @@ class BaseScan(ABC):
         """
         disconnect from all relevant devices if not inherited
         """
-        self.stop_time = datetime.now()
         if self.parent_scan is None:
             logger.info('Disconnecting')
             self.afm.disconnect()
@@ -167,8 +167,7 @@ class BaseScan(ABC):
             self.routine()
         finally:
             self.disconnect()
-        logger.info('Scan complete')
-
+        
     def export(self):
         """
         Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file. Collect and export metadata.
@@ -193,7 +192,10 @@ class BaseScan(ABC):
         metadata['modulation'] = self.modulation.value
         metadata['signals'] = [s.value for s in self.signals]
         metadata['acquisition_mode'] = self.acquisition_mode.value
-        self.file.attrs = metadata
+        for k, v in metadata.items():
+            if v is not None:
+                logger.debug(f'writing metadata ({k}: {v})')
+                self.file.attrs[k] = v
 
 
 class ContinuousScan(BaseScan):
@@ -228,6 +230,7 @@ class ContinuousScan(BaseScan):
         self.ctrl.close()
 
     def acquire(self):
+        logger.info('Starting acquisition')
         excess = 0
         chunk_idx = 0
         afm_tracking = []
@@ -246,6 +249,8 @@ class ContinuousScan(BaseScan):
             self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
             chunk_idx += 1
         print('\nAcquisition complete')
+        logger.info('Acquisition complete')  # ToDo this is still a bit off. Clean up at some point.
+        self.stop_time = datetime.now()
 
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
@@ -265,7 +270,6 @@ class ContinuousScan(BaseScan):
     def routine(self):
         self.prepare()
         self.afm.engage(self.setpoint)
-        logger.info('Starting scan')
         self.ctrl.start()
         self.nea_data = self.afm.start()
         self.acquire()
@@ -310,6 +314,7 @@ class NoiseScan(ContinuousScan):
 
     def acquire(self):
         # ToDo this could be merged at some time with parent class
+        logger.info('Starting scan')
         excess = 0
         daq_data = []
         while not self.afm.scan.IsCompleted:
@@ -329,3 +334,5 @@ class NoiseScan(ContinuousScan):
         self.nea_data = to_numpy(self.nea_data)
         self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
         self.nea_data = xr.Dataset(self.nea_data)
+        logger.info('Scan complete')
+        self.stop_time = datetime.now()

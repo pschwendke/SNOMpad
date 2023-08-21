@@ -11,6 +11,7 @@ from time import sleep
 from typing import Iterable
 from tqdm import tqdm
 from itertools import product
+from datetime import datetime
 
 from trion.analysis.signals import Signals, Scan
 from trion.expt.buffer import ExtendingArrayBuffer
@@ -114,6 +115,7 @@ class ContinuousPoint(ContinuousScan):
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped,
                          t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
+        # ToDo Fix Bug: modulation is not set automatically
         self.acquisition_mode = Scan.point
         self.xy_unit = 'um'
         self.x_target = x_target
@@ -130,6 +132,7 @@ class ContinuousPoint(ContinuousScan):
             self.afm.goto_xy(self.x_target, self.y_target)
 
     def acquire(self):
+        logger.info('Starting acquisition')
         excess = 0
         chunk_idx = 0
         afm_tracking = []
@@ -155,6 +158,8 @@ class ContinuousPoint(ContinuousScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
+        logger.info('Acquisition complete')
+        self.stop_time = datetime.now()
 
     def routine(self):
         self.prepare()
@@ -227,7 +232,7 @@ class SteppedRetraction(BaseScan):
         self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_milliseconds)
         self.afm.engage(self.setpoint)
 
-        logger.info('Starting scan')
+        logger.info('Starting acquisition')
         self.afm.start()
         self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
         afm_tracking = []
@@ -257,6 +262,8 @@ class SteppedRetraction(BaseScan):
 
         while not self.afm.scan.IsCompleted:
             sleep(1)
+        logger.info('Acquisition complete')
+        self.stop_time = datetime.now()
 
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
@@ -333,7 +340,7 @@ class SteppedImage(BaseScan):
         self.prepare()
         self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
-        logger.info('Starting scan')
+        logger.info('Starting acquisition')
         afm_tracking = []
         for i, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
@@ -341,6 +348,9 @@ class SteppedImage(BaseScan):
             self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
             current = list(self.afm.get_current())
             afm_tracking.append([x, y, i] + current)
+
+        logger.info('Acquisition complete')
+        self.stop_time = datetime.now()
 
         df = pd.DataFrame(afm_tracking, columns=tracked_channels)
         self.afm_data = xr.Dataset()
@@ -413,7 +423,7 @@ class SteppedLineScan(BaseScan):
         self.prepare()
         self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
-        logger.info('Starting scan')
+        logger.info('Starting acquisition')
         afm_tracking = []
         for i, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
@@ -421,6 +431,9 @@ class SteppedLineScan(BaseScan):
             self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
             current = list(self.afm.get_current())
             afm_tracking.append([i, x, y] + current)
+
+        logger.info('Acquisition complete')
+        self.stop_time = datetime.now()
 
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
@@ -678,6 +691,8 @@ class DelayScan(BaseScan):
                                    parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
             scan.start()
             scan.export()
+        logger.info('DelayScan complete')
+        self.stop_time = datetime.now()
         self.export()
 
 

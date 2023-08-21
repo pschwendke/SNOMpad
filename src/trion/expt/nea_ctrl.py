@@ -75,8 +75,8 @@ class NeaSNOM:
         self.nea_mic.RegulatorOff()
 
     def disconnect(self):
-        logger.info('Disconnecting microscope')
         self.stop()
+        logger.info('Disconnecting microscope')
         self.nea_client.Disconnect()
 
     def set_pshet(self, mod: Demodulation):
