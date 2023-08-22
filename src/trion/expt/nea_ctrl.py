@@ -43,16 +43,19 @@ class NeaSNOM:
         self.tracked_channels = None
         self.tip_velocity = 5.                # tip velocity when moving to target position (um/s)
         self.nea_client = neaSDK.Connection('nea-server')               # Open up connection to microscope
-        self.nea_mic = self.nea_client.Connect()                # Define the Microscope
+        self.nea_mic = self.nea_client.Connect()              # Define the Microscope
         sleep(0.1)                              # Short delay makes things work fine (?)
+        self.connected = True
+        logger.debug('Microscope connected')
         self.stop()
 
-        logger.info('Microscope connected')
         logger.debug("Client Version: " + self.nea_mic.ClientVersion)    # get Client Version
         logger.debug("Server Version: " + self.nea_mic.ServerVersion)    # get Server Version
 
     def __del__(self):
-        self.disconnect()
+        logger.debug('NeaSNOM.__del__()')
+        if self.connected:
+            self.disconnect()
 
     def engage(self, setpoint: float = 0.8, settle_s: float = 5):
         logger.info('Engaging sample')
@@ -70,14 +73,16 @@ class NeaSNOM:
             raise RuntimeError('Did not reach target position')
 
     def stop(self):
-        logger.info('Stopping Scan')
+        logger.debug('Stopping any Scan')
         self.nea_mic.CancelCurrentProcedure()
         self.nea_mic.RegulatorOff()
 
     def disconnect(self):
-        self.stop()
-        logger.info('Disconnecting microscope')
-        self.nea_client.Disconnect()
+        if self.nea_mic is not None:
+            self.stop()
+        logger.debug('Disconnecting microscope')
+        self.nea_mic = self.nea_client.Disconnect()
+        self.connected = False
 
     def set_pshet(self, mod: Demodulation):
         logger.info(f'Settig NeaSNOM modulation to {mod.value}')

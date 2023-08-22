@@ -168,7 +168,6 @@ class ContinuousPoint(ContinuousScan):
         self.ctrl.start()
         logger.info('starting single point acquisition')
         self.acquire()
-        self.export()
 
 
 class SteppedRetraction(BaseScan):
@@ -272,7 +271,6 @@ class SteppedRetraction(BaseScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
-        self.export()
 
 
 class SteppedImage(BaseScan):
@@ -360,7 +358,6 @@ class SteppedImage(BaseScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
-        self.export()
 
 
 class SteppedLineScan(BaseScan):
@@ -442,7 +439,6 @@ class SteppedLineScan(BaseScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
-        self.export()
 
 
 class ContinuousRetraction(ContinuousScan):
@@ -690,10 +686,9 @@ class DelayScan(BaseScan):
             scan = self.scan_class(modulation=self.modulation, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
                                    parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
             scan.start()
-            scan.export()
         logger.info('DelayScan complete')
         self.stop_time = datetime.now()
-        self.export()
+        
 
 
 def transfer_func_acq(

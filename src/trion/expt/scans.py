@@ -76,6 +76,7 @@ class BaseScan(ABC):
         self.chopped = chopped
         self.parent_scan = parent_scan
         self.identifier = identifier
+        self.connected = False
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
         self.nea_data = None
@@ -102,7 +103,7 @@ class BaseScan(ABC):
         logger.info('Preparing Scan')
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        self.connect()
+        self.connected = self.connect()
 
         if self.parent_scan is None:
             filename = self.name + '.h5'
@@ -141,6 +142,7 @@ class BaseScan(ABC):
             self.delay_stage = self.parent_scan.delay_stage
         self.neaclient_version = self.afm.nea_mic.ClientVersion
         self.neaserver_version = self.afm.nea_mic.ServerVersion
+        return True
 
     def disconnect(self):
         """
@@ -149,9 +151,17 @@ class BaseScan(ABC):
         if self.parent_scan is None:
             logger.info('Disconnecting')
             self.afm.disconnect()
+            self.afm = None
             self.file.close()
             if self.delay_stage is not None:
                 self.delay_stage.disconnect()
+                self.delay_stage = None
+        return False
+
+    def __del__(self):
+        logger.debug('BaseScan.__del__()')
+        if self.connected:
+            self.disconnect()
 
     @abstractmethod
     def routine(self):
@@ -165,8 +175,9 @@ class BaseScan(ABC):
         """
         try:
             self.routine()
+            self.export()
         finally:
-            self.disconnect()
+            self.connected = self.disconnect()
         
     def export(self):
         """
@@ -224,10 +235,13 @@ class ContinuousScan(BaseScan):
         self.ctrl = DaqController(self.device, clock_channel=self.clock_channel)
         self.buffer = CircularArrayBuffer(vars=self.signals, size=100_000)
         self.ctrl.setup(buffer=self.buffer)
+        return True
 
     def disconnect(self):
         super().disconnect()
         self.ctrl.close()
+        self.ctrl = None
+        return False
 
     def acquire(self):
         logger.info('Starting acquisition')
@@ -273,7 +287,6 @@ class ContinuousScan(BaseScan):
         self.ctrl.start()
         self.nea_data = self.afm.start()
         self.acquire()
-        self.export()
 
 
 class NoiseScan(ContinuousScan):

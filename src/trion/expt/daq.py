@@ -198,7 +198,7 @@ class DaqController:
 
     def __attrs_post_init__(self):  # well... sorry for this..
         # Just log some information.
-        logger.info(f"Daq Controller using {self.dev}.")
+        logger.debug(f"Daq Controller using {self.dev}.")
 
     # - how to handle read mode? we can directly stream to destination, or use a 
     #   buffer.. strategy...
