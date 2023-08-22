@@ -154,7 +154,7 @@ class ContinuousPoint(ContinuousScan):
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
         for i, c in enumerate(tracked_channels[1:]):
-            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
@@ -435,7 +435,7 @@ class SteppedLineScan(BaseScan):
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
-            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0]})
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da

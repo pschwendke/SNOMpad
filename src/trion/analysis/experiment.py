@@ -79,7 +79,17 @@ def load(filename: str) -> Measurement:
         return Noise(file)
     elif scan_type == 'delay_collection':
         return Delay(file)
+    elif scan_type == 'point':
+        return Point(file)
     else:
+        raise NotImplementedError
+    
+
+class Point(Measurement):
+    def demod(self):
+        raise NotImplementedError
+
+    def plot(self):
         raise NotImplementedError
 
 
