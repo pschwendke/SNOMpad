@@ -624,7 +624,7 @@ class ContinuousLineScan(ContinuousScan):
         y_center = .5 * (self.y_start + self.y_stop)
         dx = np.abs(self.x_stop - self.x_start)
         dy = np.abs(self.y_stop - self.x_start)
-        angle = np.atan2(dy, dx)
+        angle = np.arctan2(dy, dx)
         length = np.sqrt(dx**2 + dy**2)
         self.afm.prepare_image(mod=self.modulation, x_center=x_center, y_center=y_center, x_size=length, y_size=0,
                                x_res=self.x_res, y_res=self.y_res, angle=angle, sampling_time_ms=self.afm_sampling_ms)

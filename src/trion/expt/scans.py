@@ -150,7 +150,8 @@ class BaseScan(ABC):
         """
         if self.parent_scan is None:
             logger.info('Disconnecting')
-            self.afm.disconnect()
+            if self.afm is not None:
+                self.afm.disconnect()
             self.afm = None
             self.file.close()
             if self.delay_stage is not None:
@@ -280,6 +281,9 @@ class ContinuousScan(BaseScan):
             self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
             # ToDo get coordinates from NeaScan
             self.nea_data = xr.Dataset(self.nea_data)
+        if self.acquisition_mode in [Scan.continuous_retraction, Scan.continuous_line]:
+            # ToDo neadata must be turned into xr.dataset
+            self.nea_data = None
 
     def routine(self):
         self.prepare()

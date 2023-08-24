@@ -93,7 +93,7 @@ class Scan(NamedEnum):
     stepped_line = auto()
     continuous_retraction = auto()
     continuous_image = auto()
-    continuous_line = ()
+    continuous_line = auto()
     noise_sampling = auto()
     delay_collection = auto()
 
