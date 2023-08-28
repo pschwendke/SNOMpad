@@ -50,19 +50,19 @@ class Measurement(ABC):
             self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
 
     def __str__(self) -> str:
-        out = 'Metadata:\n'
+        ret = 'Metadata:\n'
         for k, v in self.metadata.items():
-            out += f'{k}: {v}\n'
+            ret += f'{k}: {v}\n'
         if self.afm_data is not None:
-            out += '\nAFM data:\n'
-            out += self.afm_data.__str__()
+            ret += '\nAFM data:\n'
+            ret += self.afm_data.__str__()
         if self.nea_data is not None:
-            out += '\nNeaScan data:\n'
-            out += self.nea_data.__str__()
-        return out
+            ret += '\nNeaScan data:\n'
+            ret += self.nea_data.__str__()
+        return ret
     
     def __repr__(self) -> str:
-        return f'<TRION Measurement: {self.name}>'
+        return f'<TRION measurement: {self.name}>'
 
     def to_h5(self):
         """ Write hdf5 demod file in standard directory
