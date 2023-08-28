@@ -267,6 +267,7 @@ class SteppedRetraction(BaseScan):
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
+            # ToDo: should the dimension always be idx ???
             da = xr.DataArray(data=afm_tracking[:, i + 1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})

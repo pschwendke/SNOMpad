@@ -40,10 +40,29 @@ class Measurement(ABC):
         self.signals = [Signals[s] for s in file.attrs['signals']]
         self.modulation = Demodulation[file.attrs['modulation']]
 
+        self.metadata = {}
+        for k, v in file.attrs.items():
+            self.metadata[k] = v
+
         if self.file['afm_data'].keys():
             self.afm_data = h5_to_xr_dataset(group=self.file['afm_data'])
         if self.file['nea_data'].keys():
             self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
+
+    def __str__(self) -> str:
+        out = 'Metadata:\n'
+        for k, v in self.metadata.items():
+            out += f'{k}: {v}\n'
+        if self.afm_data is not None:
+            out += '\nAFM data:\n'
+            out += self.afm_data.__str__()
+        if self.nea_data is not None:
+            out += '\nNeaScan data:\n'
+            out += self.nea_data.__str__()
+        return out
+    
+    def __repr__(self) -> str:
+        return f'<TRION Measurement: {self.name}>'
 
     def to_h5(self):
         """ Write hdf5 demod file in standard directory

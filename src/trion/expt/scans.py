@@ -88,7 +88,7 @@ class BaseScan(ABC):
         self.neaserver_version = None
         self.afm = None
         self.delay_stage = None
-        self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time_s',
+        self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
                               'modulation', 'signals', 'chopped',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
@@ -200,7 +200,7 @@ class BaseScan(ABC):
             else:
                 metadata[m] = None
         metadata['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
-        metadata['acquisition_time_s'] = str(self.stop_time - self.date)
+        metadata['acquisition_time'] = str(self.stop_time - self.date)
         metadata['modulation'] = self.modulation.value
         metadata['signals'] = [s.value for s in self.signals]
         metadata['acquisition_mode'] = self.acquisition_mode.value
