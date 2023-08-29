@@ -5,7 +5,7 @@ from trion.analysis.signals import Signals
 
 
 @pytest.fixture(scope='session')
-def shd_data_points(request) -> tuple[tuple, np.ndarray, list]:
+def shd_data_points(request):
     tap_nbins, tap_nharm, tap_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
 
@@ -43,7 +43,7 @@ def shd_data_points(request) -> tuple[tuple, np.ndarray, list]:
 
 
 @pytest.fixture(scope='session')
-def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
+def pshet_data_points(request):
     tap_nbins, tap_nharm, tap_harm_amps, ref_nbins, ref_nharm, ref_harm_amps = request.param
     """ Generates one data point in the middle of each bin.
 
@@ -97,7 +97,7 @@ def pshet_data_points(request) -> tuple[tuple, np.ndarray, list]:
 
 
 @pytest.fixture(scope='session')
-def noise_data(request) -> tuple[np.ndarray, list]:
+def noise_data(request):
     npts, chopped = request.param
     """ Creates random (noise) data for sig_a and sig_b for n_points data points.
     tap_x,y and ref_x,y are calculated for random phases.

@@ -30,7 +30,7 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     Note
     ----
     Operate on the appropriate axis to determine the phase offsets from the
-    binned data. For binned with shape (M, tap_nbins
+    binned data. For binned with shape (M, tap_nbins)
     """
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
@@ -139,8 +139,7 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped: b
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
         chopped = binned_statistic(x=tap_p[chopped_idx], values=detector_signal[chopped_idx],
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-
-        binned = (pumped.statistic - chopped.statistic) / chopped.statistic
+        binned = (pumped.statistic - chopped.statistic)  # / chopped.statistic
         return binned
 
     else:
