@@ -93,7 +93,7 @@ class AbstractBuffer(ABC):
 
         Parameters
         ----------
-        len : int
+        n : int
             Number of points to return.
         offset : int
             Start position

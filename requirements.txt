@@ -23,6 +23,13 @@ pyqtgraph
 attrs
 bidict
 toml
-setuptools
+h5py
 pytest  # should pytest go in the requirements? probably not...
 pytest-benchmark  # same here
+xarray
+pyserial
+gwyfile
+lmfit
+setuptools
+bokeh
+colorcet

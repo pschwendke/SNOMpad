@@ -30,11 +30,11 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     Note
     ----
     Operate on the appropriate axis to determine the phase offsets from the
-    binned data. For binned with shape (M, tap_nbins
+    binned data. For binned with shape (M, tap_nbins)
     """
     spec = np.fft.rfft(binned, axis=axis)
     phi = np.angle(spec.take(1, axis=axis))
-    # phi = phi - (phi > 0) * np.pi  # shift all results to negative quadrant.
+    phi = phi - (phi > 0) * np.pi  # shift all results to negative quadrant.
     phi = phi.mean()  # Output should be a float. However, is this stable?
     return phi
 
@@ -71,12 +71,12 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
     else:
         raise NotImplementedError
 
-    if array.ndim == 2:  # shd
+    if array.ndim == 1:  # shd
         phase *= np.arange(ft.shape[axis])
-    elif array.ndim == 3 and axis == -1:  # pshet tap axis
-        phase = np.arange(ft.shape[axis])[np.newaxis, np.newaxis, :] * phase
-    elif array.ndim == 3 and axis == -2:  # pshet ref axis
-        phase = np.arange(ft.shape[axis])[np.newaxis, :, np.newaxis] * phase
+    elif array.ndim == 2 and axis == 1:  # pshet tap axis
+        phase = np.arange(ft.shape[axis])[np.newaxis, :] * phase
+    elif array.ndim == 2 and axis == 0:  # pshet ref axis
+        phase = np.arange(ft.shape[axis])[:, np.newaxis] * phase
 
     ft *= np.exp(1j * phase)
     return np.real(ft)
@@ -110,8 +110,8 @@ def sort_chopped(chop: np.ndarray) -> tuple:
 
 # SHD DEMODULATION #####################################################################################################
 def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped: bool = False) -> np.ndarray:
-    """ Bins signals into 1D tap_p phase domain. tap_y, tap_x must be included. When Signals.chop is included in signals
-        chopped and pumped are binned sepparately and the difference normalized by the chopped signal (probe only) is
+    """ Bins sig_a into 1D tap_p phase domain. tap_y, tap_x must be included. When Signals.chop is included in signals
+        chopped and pumped are binned separately and the difference normalized by the chopped signal (probe only) is
         returned.
 
     PARAMETERS
@@ -128,23 +128,22 @@ def shd_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped: b
     RETURNS
     -------
     binned: np.ndarray
-        average signals for each bin between -pi, pi. Signals on axis=0, values on axis=1.
+        average signals for each bin between -pi, pi.
     """
-    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    detector_signal = data[:, signals.index(Signals.sig_a)]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
 
     if chopped:
         chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
-        pumped = binned_statistic(x=tap_p[pumped_idx], values=[s[pumped_idx] for s in detector_signals],
+        pumped = binned_statistic(x=tap_p[pumped_idx], values=detector_signal[pumped_idx],
                                   statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-        chopped = binned_statistic(x=tap_p[chopped_idx], values=[s[chopped_idx] for s in detector_signals],
+        chopped = binned_statistic(x=tap_p[chopped_idx], values=detector_signal[chopped_idx],
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
-
         binned = (pumped.statistic - chopped.statistic)  # / chopped.statistic
         return binned
 
     else:
-        returns = binned_statistic(x=tap_p, values=detector_signals,
+        returns = binned_statistic(x=tap_p, values=detector_signal,
                                    statistic='mean', bins=tap_nbins, range=[-np.pi, np.pi])
         binned = returns.statistic
         return binned
@@ -168,23 +167,20 @@ def shd(data: np.ndarray, signals: list, tap_nbins: int = 64, chopped='auto', ta
 
     RETURNS
     -------
-    ft: 1-dimensional np.ndarray
-        real amplitudes of Fourier components (tapping harmonics on axis=0)
+    ft: np.ndarray
+        real amplitudes of Fourier components.
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
     binned = shd_binning(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chopped)
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    ft = ft.squeeze()  # this is a workaround and will fail when more than one signal is demodulated
-    # ToDo: Fix this! At some point there should be only one signal. Define this.
-    #  update unit tests
-    return ft.T
+    ft = phased_ft(array=binned, correction=tap_correction)
+    return ft
 
 
 # PSHET DEMODULATION ###################################################################################################
 def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64,
                   chopped: bool = False) -> np.ndarray:
-    """ Performs 2D binning on signals onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
+    """ Performs 2D binning on sig_a onto tap_p, ref_p domain. tap_y, tap_x, ref_x, ref_y must be included.
         When Signals.chop is included in signals chopped and pumped are binned sepparately and the difference
         normalized by the chopped signal (probe only) is returned.
 
@@ -204,28 +200,28 @@ def pshet_binning(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbin
     RETURNS
     -------
     binned: np.ndarray
-        average signals for each bin between -pi, pi. Signals on axis=0,
-        tapping bins on axis=2, reference bins on axis=1.
+        average signals for each bin between -pi, pi.
+        tapping bins on axis=1, reference bins on axis=0.
     """
-    detector_signals = [data[:, signals.index(det_sig)] for det_sig in all_detector_signals if det_sig in signals]
+    detector_signal = data[:, signals.index(Signals.sig_a)]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
 
     if chopped:
         chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
         pumped = binned_statistic_2d(x=tap_p[pumped_idx], y=ref_p[pumped_idx],
-                                     values=[s[pumped_idx] for s in detector_signals], statistic='mean',
+                                     values=detector_signal[pumped_idx], statistic='mean',
                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         chopped = binned_statistic_2d(x=tap_p[chopped_idx], y=ref_p[chopped_idx],
-                                      values=[s[chopped_idx] for s in detector_signals], statistic='mean',
+                                      values=detector_signal[chopped_idx], statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = (pumped.statistic - chopped.statistic)  # / chopped.statistic
     else:
-        returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signals, statistic='mean',
+        returns = binned_statistic_2d(x=tap_p, y=ref_p, values=detector_signal, statistic='mean',
                                       bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
 
-    return binned.transpose(0, 2, 1)
+    return binned.T
 
 
 def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, m: int = 1) -> np.ndarray:
@@ -234,7 +230,7 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, 
     PARAMETERS
     ----------
     ft: np.ndarray
-        array containig Fourier amplitudes. signals on axis=0, ref on axis=1, tap on axis=2
+        array containing Fourier amplitudes. ref on axis=0, tap on axis=1
     gamma: float
         modulation depth
     psi_R: float
@@ -245,16 +241,16 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, 
     RETURNS
     -------
     coefficients: np.ndarray
-        complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
+        complex coefficients for tapping demodulation
     """
     m = np.array([m, m+1])
     scales = 1 / jv(m, gamma) * np.array([1, 1j])
-    coefficients = (ft[:, m, :] * scales[np.newaxis, :, np.newaxis]).sum(axis=1)
+    coefficients = (ft[m, :] * scales[:, np.newaxis]).sum(axis=0)
 
     phase = np.exp(1j * (psi_R + m[0] * np.pi / 2))
     coefficients *= phase
 
-    return coefficients.T
+    return coefficients
 
 
 def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int = 64, demod_params=None, chopped='auto',
@@ -289,33 +285,29 @@ def pshet(data: np.ndarray, signals: list, tap_nbins: int = 64, ref_nbins: int =
 
     Returns
     -------
-    coefficients: 1-dimensional np.ndarray
-        complex coefficients for tapping demodulation (tapping harmonics on axis=0)
+    coefficients: np.ndarray
+        complex coefficients for tapping demodulation. tapping harmonics on axis=0, signals on axis=1
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
     binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins, chopped=chopped)
-    ft = phased_ft(array=binned, axis=-1, correction=tap_correction)
-    ft = phased_ft(array=ft, axis=-2, correction=ref_correction)
+    ft = phased_ft(array=binned, axis=1, correction=tap_correction)
+    ft = phased_ft(array=ft, axis=0, correction=ref_correction)
 
-    if type(demod_params) is dict:  # if psi_R and gamma should be determined through fitting
-        if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
-            # initial guesses
-            demod_params['rho'] = .45
-            demod_params['gamma'] = 2.63
-            demod_params['psi_R'] = 0
-            demod_params['offset'] = 0
-            demod_params['theta_0'] = 1.5
-        binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins, chopped=chopped)
-        demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
-        pshet_fitmodulation(binned=binned, fit_params=demod_params)
-        psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
+    # if type(demod_params) is dict:  # if psi_R and gamma should be determined through fitting
+    #     if not all([p in demod_params for p in ['rho', 'gamma', 'psi_R', 'offset', 'theta_0']]):
+    #         # initial guesses
+    #         demod_params['rho'] = .45
+    #         demod_params['gamma'] = 2.63
+    #         demod_params['psi_R'] = 0
+    #         demod_params['offset'] = 0
+    #         demod_params['theta_0'] = 1.5
+    #     binned = pshet_binning(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins, chopped=chopped)
+    #     demod_params['tap_offset'] = phase_offset(binned=binned, axis=-1)  # fit modulation at phase of contact
+    #     pshet_fitmodulation(binned=binned, fit_params=demod_params)
+    #     psi_R, gamma = demod_params['psi_R'], demod_params['gamma']
 
     coefficients = pshet_coefficients(ft=ft, gamma=gamma, psi_R=psi_R, m=m)
-
-    coefficients = coefficients.squeeze()  # this is a workaround and will fail when more than one signal is demodulated
-    # ToDo: Fix this! At some point there should be only one signal. Define this.
-    #  update unit tests
 
     return coefficients
 
