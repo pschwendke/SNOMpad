@@ -82,23 +82,22 @@ def pshet_data(npts: int = 200_000, theta_C: float = 1.6, theta_0: float = 1.8, 
 
 
 # FITTING FUNCTIONS # FOR DEMODULATION #################################################################################
-def pshet_modulation(theta_ref, theta_0, gamma, sigma_re, sigma_im):
+def pshet_modulation(theta_ref, theta_0, gamma, sigma):
     """ Returns signal intensity after pshet modulation.
     """
-    signal = (sigma_re + 1j * sigma_im) * np.exp(1j * gamma * np.sin(theta_ref - theta_0))
+    signal = sigma * np.exp(1j * gamma * np.sin(theta_ref - theta_0))
     return np.real(signal + np.conj(signal))
 
 
 def pshet_obj_func(params, theta_ref, sig):
     """ Returns array of residuals, normalized to signal amplitude.
     """
-    theta_0 = params['theta_0']
-    gamma = params['gamma']
-    sigma_re = params['sigma_re']
-    sigma_im = params['sigma_im']
+    theta_0 = params['theta_0'].value
+    gamma = params['gamma'].value
+    sigma = params['sigma_re'].value + 1j * params['sigma_im'].value
 
-    model = pshet_modulation(theta_ref=theta_ref, theta_0=theta_0, gamma=gamma, sigma_re=sigma_re, sigma_im=sigma_im)
-    model += params['offset']
+    model = pshet_modulation(theta_ref=theta_ref, theta_0=theta_0, gamma=gamma, sigma=sigma)
+    model += params['offset'].value
 
     amplitude = sig.max() - sig.min()
     residuals = (model - sig) / amplitude

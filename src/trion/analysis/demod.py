@@ -1,5 +1,3 @@
-# ToDo: standardize names of variables
-
 from warnings import warn
 import numpy as np
 from scipy.special import jv
@@ -113,24 +111,25 @@ def sort_chopped(chop: np.ndarray) -> tuple:
 
 # SHD DEMODULATION #####################################################################################################
 def shd_phases(data: np.ndarray, signals: list, normalize=False) -> np.ndarray:
-    """ Mainly calculates tap_p and ref_p. If normalize == True, sig_b is used for normalization.
+    """ Mainly calculates tap_p. If normalize == True, sig_b is used for normalization.
     """
+    # ToDo: add balanced detection
     if normalize:
         signal = data[:, signals.index(Signals.sig_a)] / data[:, signals.index(Signals.sig_b)]
     else:
         signal = data[:, signals.index(Signals.sig_a)]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
-    prepared_data = np.vstack([signal, tap_p]).T
-    return prepared_data
+    sig_and_phase = np.vstack([signal, tap_p]).T
+    return sig_and_phase
 
 
-def shd_binning(prepared_data: np.ndarray, tap_res: int = 64) -> np.ndarray:
+def shd_binning(sig_and_phase: np.ndarray, tap_res: int = 64) -> np.ndarray:
     """ Bins sig_a into 1D tap_p phase domain. tap_y, tap_x must be included.
 
     PARAMETERS
     ----------
-    prepared_data: np.ndarray
-        data array with sig_a, tap_p, ref_p on axis=1
+    sig_and_phase: np.ndarray
+        data array with sig_a and tap_p on axis=1 and samples on axis=0
     tap_res: float
         number of tapping bins
 
@@ -139,22 +138,22 @@ def shd_binning(prepared_data: np.ndarray, tap_res: int = 64) -> np.ndarray:
     binned: np.ndarray
         average signals for each bin between -pi, pi.
     """
-    returns = binned_statistic(x=prepared_data[:, 1], values=prepared_data[:, 0],
+    returns = binned_statistic(x=sig_and_phase[:, 1], values=sig_and_phase[:, 0],
                                statistic='mean', bins=tap_res, range=[-np.pi, np.pi])
     binned = returns.statistic
     return binned
 
 
-def shd_kernel_average(prepared_data: np.ndarray, tap_res: int = 64) -> np.ndarray:
+def shd_kernel_average(sig_and_phase: np.ndarray, tap_res: int = 64) -> np.ndarray:
     """ Averages and interpolates signal onto even grid using kernel smoothening
     """
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
-    binned = kernel_interpolation_1d(prepared_data[:, 0], prepared_data[:, 1], tap_grid)
+    binned = kernel_interpolation_1d(signal=sig_and_phase[:, 0], x_sig=sig_and_phase[:, 1], x_grid=tap_grid)
     return binned
 
 
 def shd(data: np.ndarray, signals: list, tap_res: int = 64, chopped='auto', tap_correction='fft',
-        binning='binned_kernel', normalize='auto', max_order=5) -> np.ndarray:
+        binning='binning', normalize='auto') -> np.ndarray:
     """ Simple combination shd demodulation functions. The sorting of chopped and pumped pulses is handled here.
 
     Parameters
@@ -173,13 +172,11 @@ def shd(data: np.ndarray, signals: list, tap_res: int = 64, chopped='auto', tap_
         determines routine to compute binned phase domain
     normalize: 'auto', True, False
         if True, sig_a is normalized to sig_a / sig_b. When 'auto', normalize is True when sig_b in signals
-    max_order: int
-        max harmonic order that should be returned.
 
     Returns
     -------
     coefficients: np.ndarray
-        real coefficients for tapping demodulation. tapping harmonics on axis=0
+        real coefficients for tapping demodulation.
     """
     if chopped == 'auto':
         chopped = Signals.chop in signals
@@ -188,15 +185,13 @@ def shd(data: np.ndarray, signals: list, tap_res: int = 64, chopped='auto', tap_
 
     if chopped:
         chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
-        data_with_phases = [data[pumped_idx], data[chopped_idx]]
+        sig_and_phase = [shd_phases(data=data[pumped_idx], signals=signals, normalize=normalize),
+                         shd_phases(data=data[chopped_idx], signals=signals, normalize=normalize)]
     else:
-        data_with_phases = [shd_phases(data=data, signals=signals, normalize=normalize)]
+        sig_and_phase = [shd_phases(data=data, signals=signals, normalize=normalize)]
 
-    binned = []
-    for data in data_with_phases:
-        binning_func = [shd_binning, shd_kernel_average]
-        binning_func = binning_func[['binning', 'kernel'].index(binning)]
-        binned.append(binning_func(prepared_data=data, tap_res=tap_res))
+    binning_func = [shd_binning, shd_kernel_average][['binning', 'kernel'].index(binning)]
+    binned = [binning_func(sig_and_phase=sig, tap_res=tap_res) for sig in sig_and_phase]
     if chopped:
         binned = (binned[0] - binned[1])  # / binned[1]
     else:
@@ -216,17 +211,17 @@ def pshet_phases(data: np.ndarray, signals: list, normalize=False) -> np.ndarray
         signal = data[:, signals.index(Signals.sig_a)]
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
-    prepared_data = np.vstack([signal, tap_p, ref_p]).T
-    return prepared_data
+    sig_and_phase = np.vstack([signal, tap_p, ref_p]).T
+    return sig_and_phase
 
 
-def pshet_binning(prepared_data: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+def pshet_binning(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
     """ Performs 2D binning on sig_a onto tap_p, ref_p domain.
 
     PARAMETERS
     ----------
-    prepared_data: np.ndarray
-        data array with sig_a, tap_p, ref_p on axis=1
+    sig_and_phase: np.ndarray
+        data array with sig_a, tap_p, and ref_p on axis=1 and samples on axis=0
     tap_res: float
         number of tapping bins
     ref_res: float
@@ -238,30 +233,30 @@ def pshet_binning(prepared_data: np.ndarray, tap_res: int = 64, ref_res: int = 6
         average signals for each bin between -pi, pi.
         tapping bins on axis=1, reference bins on axis=0.
     """
-    returns = binned_statistic_2d(x=prepared_data[:, 1], y=prepared_data[:, 2], values=prepared_data[:, 0],
+    returns = binned_statistic_2d(x=sig_and_phase[:, 1], y=sig_and_phase[:, 2], values=sig_and_phase[:, 0],
                                   statistic='mean', bins=[tap_res, ref_res],
                                   range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
     return binned.T
 
 
-def pshet_kernel_average(prepared_data: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+def pshet_kernel_average(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
     """ Averages and interpolates signal onto even grid using kernel smoothening
     """
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
     ref_grid = np.linspace(-np.pi, np.pi, ref_res, endpoint=False) + np.pi / ref_res
-    binned = kernel_interpolation_2d(prepared_data[:, 0], prepared_data[:, 1], prepared_data[:, 2], tap_grid, ref_grid)
+    binned = kernel_interpolation_2d(sig_and_phase[:, 0], sig_and_phase[:, 1], sig_and_phase[:, 2], tap_grid, ref_grid)
     return binned
 
 
-def pshet_binned_kernel(prepared_data: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+def pshet_binned_kernel(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
     """ Reference phase is divided into intervals, each on which 1D kernel interpolation is applied on the tap axis.
     """
     ref_bounds = np.linspace(-np.pi, np.pi, ref_res + 1, endpoint=True)
     ref_bins = []
     for i in range(ref_res):
-        idx = np.logical_and(ref_bounds[i] < prepared_data[:, 2], prepared_data[:, 2] < ref_bounds[i + 1])
-        b = np.vstack([prepared_data[idx, 0], prepared_data[idx, 1]])
+        idx = np.logical_and(ref_bounds[i] < sig_and_phase[:, 2], sig_and_phase[:, 2] < ref_bounds[i + 1])
+        b = np.vstack([sig_and_phase[idx, 0], sig_and_phase[idx, 1]])
         ref_bins.append(b)
 
     bin_phases = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
@@ -271,14 +266,14 @@ def pshet_binned_kernel(prepared_data: np.ndarray, tap_res: int = 64, ref_res: i
     return np.array(binned)
 
 
-def pshet_fitting(phased: np.ndarray, max_order: int):
+def pshet_fitting(tap_ft: np.ndarray, max_order: int):
     """ Fits the pshet phase modulation on every tapping harmonic.
     Returned harmonics are amplitude and phase of modulation.
     """
-    theta_ref = np.linspace(-np.pi, np.pi, phased.shape[0], endpoint=False) + np.pi / phased.shape[0]
+    theta_ref = np.linspace(-np.pi, np.pi, tap_ft.shape[0], endpoint=False) + np.pi / tap_ft.shape[0]
     sigma_tracker = []
 
-    sig = phased[:, 0]
+    sig = tap_ft[:, 0]
     sig_ft = np.fft.rfft(sig, norm='forward')
     tau = (np.abs(sig_ft[1]) + 1j * np.abs(sig_ft[2])) * np.exp(1j * np.pi / 2)
 
@@ -297,7 +292,7 @@ def pshet_fitting(phased: np.ndarray, max_order: int):
     sigma_tracker.append([sigma_re, sigma_im])
 
     for h in range(1, max_order + 1):
-        sig = phased[:, h]
+        sig = tap_ft[:, h]
 
         params = Parameters()
         params.add('theta_0', value=theta_0, vary=False)
@@ -347,10 +342,10 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, 
     return coefficients
 
 
-def pshet_sidebands(phased: np.ndarray, max_order=None):
+def pshet_sidebands(tap_ft: np.ndarray, max_order=None):
     """ Demodulates pshet modulation by calculating harmonic content via fft, and summing adjacent sidebands
     """
-    ft = phased_ft(array=phased, axis=0, correction=None)
+    ft = phased_ft(array=tap_ft, axis=0, correction=None)
     harmonics = pshet_coefficients(ft=ft)
     if max_order is not None:
         harmonics = harmonics[:max_order+1]
@@ -396,15 +391,14 @@ def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64,
 
     if chopped:
         chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
-        data_with_phases = [data[pumped_idx], data[chopped_idx]]
+        sig_and_phase = [pshet_phases(data=data[pumped_idx], signals=signals, normalize=normalize),
+                         pshet_phases(data=data[chopped_idx], signals=signals, normalize=normalize)]
     else:
-        data_with_phases = [pshet_phases(data=data, signals=signals, normalize=normalize)]
+        sig_and_phase = [pshet_phases(data=data, signals=signals, normalize=normalize)]
 
-    binned = []
-    for data in data_with_phases:
-        binning_func = [pshet_binning, pshet_binned_kernel, pshet_kernel_average]
-        binning_func = binning_func[['binning', 'binned_kernel', 'kernel'].index(binning)]
-        binned.append(binning_func(prepared_data=data, tap_res=tap_res, ref_res=ref_res))
+    binning_func = [pshet_binning, pshet_binned_kernel,
+                    pshet_kernel_average][['binning', 'binned_kernel', 'kernel'].index(binning)]
+    binned = [binning_func(sig_and_phase=sig, tap_res=tap_res, ref_res=ref_res) for sig in sig_and_phase]
     if chopped:
         binned = (binned[0] - binned[1])  # / binned[1]
     else:
@@ -412,9 +406,8 @@ def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64,
 
     tap_ft = phased_ft(array=binned, axis=1, correction=tap_correction)
 
-    pshet_func = [pshet_sidebands, pshet_fitting]
-    pshet_func = pshet_func[['sidebands', 'fitting'].index(pshet_demod)]
-    harmonics = pshet_func(phased=tap_ft, max_order=max_order)
+    pshet_func = [pshet_sidebands, pshet_fitting][['sidebands', 'fitting'].index(pshet_demod)]
+    harmonics = pshet_func(tap_ft=tap_ft, max_order=max_order)
     return harmonics
 
 
