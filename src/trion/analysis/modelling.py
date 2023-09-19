@@ -10,13 +10,12 @@ from trion.analysis.signals import Signals
 #  Is the signal a sum or product of tap and ref modulation?
 
 
-# SIGNAL MODELLING #####################################################################################################
+# SIGNAL MODELLING # MAINLY FOR TESTING ################################################################################
 def reference_modulation(theta, rho, gamma, theta_0, psi_R):
     """ essentially the reference beam phase
     """
     psi = gamma * np.sin(theta - theta_0)
     ret = rho * (1 + np.exp(1j * (psi - psi_R)))
-
     return ret
 
 
@@ -33,7 +32,6 @@ def shd_signal(theta: np.ndarray, theta_C: float = 1.6, amps=None) -> np.ndarray
     """ Modeling of tapping modulation in shd mode. theta_C is the phase of contact.
     """
     sig = tapping_modulation(theta=theta, theta_C=theta_C, amps=amps)
-    # sig *= sig.conj()  # without this, we can reconstruct the amplitudes. Mmh ...
     return np.real(sig)
 
 
@@ -62,7 +60,6 @@ def shd_data(npts: int = 70_000, theta_C: float = 1.6, noise_level: float = 0, t
     sig_a = shd_signal(theta=tap_p, theta_C=theta_C, amps=amps)
     sig_a += np.random.uniform(- sig_a.max() * noise_level, sig_a.max() * noise_level, len(tap_p))
     data = np.vstack([sig_a, tap_x, tap_y]).T
-
     return data, sigs
 
 
@@ -81,41 +78,27 @@ def pshet_data(npts: int = 200_000, theta_C: float = 1.6, theta_0: float = 1.8, 
                          gamma=gamma, amps=amps)
     sig_a += np.random.uniform(- sig_a.max() * noise_level, sig_a.max() * noise_level, npts)
     data = np.vstack([sig_a, tap_x, tap_y, ref_x, ref_y]).T
-
     return data, sigs
 
 
-# FITTING FUNCTIONS ####################################################################################################
-def pshet_fitmodulation(binned: np.ndarray, fit_params: dict):
-    """ only performed on first signal, i.e. data[0, :, :]
-    fit_params should include rho, gamma, theta_0, psi_R, offset, tap_offset
+# FITTING FUNCTIONS # FOR DEMODULATION #################################################################################
+def pshet_modulation(theta_ref, theta_0, gamma, sigma):
+    """ Returns signal intensity after pshet modulation.
     """
-    def obj_func(parameters, x_data, y_data) -> float:
-        model = reference_modulation(theta=x_data, rho=parameters['rho'], gamma=parameters['gamma'],
-                                     theta_0=parameters['theta_0'], psi_R=parameters['psi_R'])
-        chi_squared = (np.real(model) + parameters['offset'] - y_data) ** 2
-        return chi_squared
+    signal = sigma * np.exp(1j * gamma * np.sin(theta_ref - theta_0))
+    return np.real(signal + np.conj(signal))
 
-    theta_tap = np.linspace(-np.pi, np.pi, binned.shape[-1])
-    theta_ref = np.linspace(-np.pi, np.pi, binned.shape[-2])
-    theta_C = np.pi - fit_params['tap_offset'] - (fit_params['tap_offset'] < 0) * np.pi  # make theta_C positive
-    theta_C = np.median(theta_C)
-    theta_C_idx = np.abs(theta_tap + theta_C).argmin()
-    data = binned[0, :, theta_C_idx]
 
-    params = Parameters()
-    params.add('rho', value=fit_params['rho'], min=0, max=1)
-    params.add('gamma', value=fit_params['gamma'], min=0, max=10)
-    params.add('theta_0', value=fit_params['theta_0'], min=0, max=np.pi)
-    params.add('psi_R', value=fit_params['psi_R'], min=-np.pi, max=np.pi)
-    params.add('offset', value=fit_params['offset'], min=0, max=1)
+def pshet_obj_func(params, theta_ref, sig):
+    """ Returns array of residuals, normalized to signal amplitude.
+    """
+    theta_0 = params['theta_0'].value
+    gamma = params['gamma'].value
+    sigma = params['sigma_re'].value + 1j * params['sigma_im'].value
 
-    if fit_params['offset'] == 0:
-        fit = minimize(obj_func, params, args=(theta_ref, data), method='basinhopping')
-    else:
-        fit = minimize(obj_func, params, args=(theta_ref, data), method='leastsqr')
-    fit_params['rho'] = fit.params['rho'].value
-    fit_params['gamma'] = fit.params['gamma'].value
-    fit_params['theta_0'] = fit.params['theta_0'].value
-    fit_params['psi_R'] = fit.params['psi_R'].value
-    fit_params['offset'] = fit.params['offset'].value
+    model = pshet_modulation(theta_ref=theta_ref, theta_0=theta_0, gamma=gamma, sigma=sigma)
+    model += params['offset'].value
+
+    amplitude = sig.max() - sig.min()
+    residuals = (model - sig) / amplitude
+    return residuals
