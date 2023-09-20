@@ -6,8 +6,6 @@ from lmfit import Parameters, minimize
 from trion.analysis.signals import Signals
 
 # ToDo: documentation
-#  Rethink this whole modelling scheme.
-#  Is the signal a sum or product of tap and ref modulation?
 
 
 # SIGNAL MODELLING # MAINLY FOR TESTING ################################################################################

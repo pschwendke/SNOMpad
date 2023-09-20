@@ -205,6 +205,7 @@ def shd(data: np.ndarray, signals: list, tap_res: int = 64, chopped='auto', tap_
 def pshet_phases(data: np.ndarray, signals: list, normalize=False) -> np.ndarray:
     """ Mainly calculates tap_p and ref_p. If normalize == True, sig_b is used for normalization.
     """
+    # ToDo: add balanced detection
     if normalize:
         signal = data[:, signals.index(Signals.sig_a)] / data[:, signals.index(Signals.sig_b)]
     else:
@@ -259,10 +260,10 @@ def pshet_binned_kernel(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: i
         b = np.vstack([sig_and_phase[idx, 0], sig_and_phase[idx, 1]])
         ref_bins.append(b)
 
-    bin_phases = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
+    tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
     binned = []
     for b in ref_bins:
-        binned.append(kernel_interpolation_1d(signal=b[0], x_sig=b[1], x_grid=bin_phases))
+        binned.append(kernel_interpolation_1d(signal=b[0], x_sig=b[1], x_grid=tap_grid))
     return np.array(binned)
 
 

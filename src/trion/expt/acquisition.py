@@ -227,7 +227,7 @@ class SteppedRetraction(BaseScan):
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
         targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
-        tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+        tracked_channels = ['z_target', 'x', 'y', 'z', 'amp', 'phase']
         self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_milliseconds)
         self.afm.engage(self.setpoint)
 
@@ -256,7 +256,7 @@ class SteppedRetraction(BaseScan):
             data = single_point(self.device, self.signals, self.npts, self.clock_channel)
             current = list(self.afm.get_current())
             self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
-            afm_tracking.append([t, i] + current)
+            afm_tracking.append([i, t] + current)
             self.afm.scan.Resume()
 
         while not self.afm.scan.IsCompleted:
@@ -267,8 +267,7 @@ class SteppedRetraction(BaseScan):
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
-            # ToDo: should the dimension always be idx ???
-            da = xr.DataArray(data=afm_tracking[:, i + 1], dims='z_target', coords={'z_target': afm_tracking[:, 0]})
+            da = xr.DataArray(data=afm_tracking[:, i + 1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array(self.t)})
             self.afm_data[c] = da
@@ -690,7 +689,6 @@ class DelayScan(BaseScan):
         logger.info('DelayScan complete')
         self.stop_time = datetime.now()
         
-
 
 def transfer_func_acq(
         device: str,
