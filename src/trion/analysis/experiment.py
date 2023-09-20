@@ -63,6 +63,9 @@ class Measurement(ABC):
     
     def __repr__(self) -> str:
         return f'<TRION measurement: {self.name}>'
+    
+    def __del__(self):
+        self.file.close()
 
     def to_h5(self):
         """ Write hdf5 demod file in standard directory
