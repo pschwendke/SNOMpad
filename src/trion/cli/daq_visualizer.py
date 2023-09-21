@@ -209,7 +209,6 @@ noise_table = column(
 
 # SET UP PLOTS #########################################################################################################
 def setup_harm_plot():
-    # Currently, only sig_a is displayed
     init_data = {str(h): np.ones(harm_plot_size) for h in range(max_harm+1)}
     init_data.update({'t': np.zeros(harm_plot_size)})
     plot_data = ColumnDataSource(init_data)
