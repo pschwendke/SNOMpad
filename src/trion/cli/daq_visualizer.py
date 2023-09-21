@@ -29,7 +29,7 @@ max_harm = 5  # highest harmonics that is plotted, should be lower than 8 (becau
 buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
-    # Signals.sig_b,
+    Signals.sig_b,
     Signals.tap_x,
     Signals.tap_y,
     Signals.ref_x,
@@ -81,12 +81,12 @@ def stop(button):
 def update():
     if go_button.active:
         try:
-            tap_nbins = tap_input.value
-            ref_nbins = ref_input.value
+            tap = tap_input.value
+            ref = ref_input.value
             t = perf_counter()
             data = buffer.tail(n=npts_input.value)
-            rtn = update_harmonics(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
-            update_raw_and_phase(data=data, tap_nbins=tap_nbins, ref_nbins=ref_nbins)
+            rtn = update_harmonics(data=data, tap=tap, ref=ref)
+            update_raw_and_phase(data=data, tap_res=tap, ref_res=ref)
             update_message_box(msg=rtn, t=t)
             update_signal_to_noise()
         except Exception as e:
@@ -94,15 +94,16 @@ def update():
             raise
         
     
-def update_harmonics(data, tap_nbins, ref_nbins):
+def update_harmonics(data, tap, ref):
     global harm_scaling
     rtn_value = 0
     try:
         if pshet_button.active is True:
-            coefficients = np.abs(pshet(data=data, signals=signals, tap_nbins=tap_nbins, ref_nbins=ref_nbins,
-                                        chopped=chop_button.active))
+            coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
+                                        chopped=chop_button.active, normalize=False))
         else:
-            coefficients = shd(data=data, signals=signals, tap_nbins=tap_nbins, chopped=chop_button.active)
+            coefficients = shd(data=data, signals=signals, tap_res=tap,
+                               chopped=chop_button.active, normalize=False)
         coefficients = np.abs(coefficients[: max_harm+1])  # add a button to toggle abs()
 
         if harm_scaling[0] == 0:
@@ -125,24 +126,24 @@ def update_harmonics(data, tap_nbins, ref_nbins):
     return rtn_value
 
 
-def update_raw_and_phase(data, tap_nbins, ref_nbins):
+def update_raw_and_phase(data, tap_res, ref_res):
     theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     # phase data
     if pshet_button.active is True:
 
         returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
-                                      bins=[tap_nbins, ref_nbins], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+                                      bins=[tap_res, ref_res], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
     else:
         returns = binned_statistic(x=theta_tap, values=None, statistic='count',
-                                   bins=tap_nbins, range=[-np.pi, np.pi])
+                                   bins=tap_res, range=[-np.pi, np.pi])
         binned = returns.statistic[np.newaxis, :]
     new_data = {'binned': [binned]}
     phase_plot_data.data = new_data
 
     # raw data
-    new_data = {c.value: data[-raw_plot_tail:, signals.index(c)] for c in signals if c.value in ['sig_a', 'chop']}
+    new_data = {c.value: data[-raw_plot_tail:, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
     if raw_theta_button.active == 1:  # 'raw vs theta_ref'
         new_data.update({'theta': theta_ref[-raw_plot_tail:]})
     else:  # 'raw vs theta_tap'
@@ -186,7 +187,6 @@ pshet_button = Toggle(label='pshet', active=False, width=100)
 chop_button = Toggle(label='chop', active=False, width=100)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
-# phase_sampling_button = RadioButtonGroup(labels=['histogram', 'scatter'], active=1)
 
 tap_input = NumericInput(title='# tap bins', value=64, mode='int', low=16, high=256, width=100)
 ref_input = NumericInput(title='# ref bins', value=64, mode='int', low=16, high=256, width=100)
@@ -223,7 +223,7 @@ def setup_harm_plot():
 
 
 def setup_raw_plot():
-    channels = ['sig_a', 'chop']
+    channels = ['sig_a', 'sig_b', 'chop']
     init_data = {c: np.zeros(raw_plot_tail) for c in channels}
     init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_plot_tail)})
     plot_data = ColumnDataSource(init_data)
