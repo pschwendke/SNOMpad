@@ -88,6 +88,7 @@ class BaseScan(ABC):
         self.neaserver_version = None
         self.afm = None
         self.delay_stage = None
+        self.log_handler = None
         self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
                               'modulation', 'signals', 'chopped',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
@@ -100,9 +101,12 @@ class BaseScan(ABC):
                               'trion_version', 'neaclient_version', 'neaserver_version']
 
     def prepare(self):
-        logger.info('Preparing Scan')
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
+        self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
+        self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        logging.getLogger().addHandler(self.log_handler)
+        logger.info('Preparing Scan')
         self.connected = self.connect()
 
         if self.parent_scan is None:
@@ -153,10 +157,13 @@ class BaseScan(ABC):
             if self.afm is not None:
                 self.afm.disconnect()
             self.afm = None
-            self.file.close()
+            if self.file is not None:
+                self.file.close()
             if self.delay_stage is not None:
                 self.delay_stage.disconnect()
                 self.delay_stage = None
+            logging.getLogger().removeHandler(self.log_handler)
+            self.log_handler.close()
         return False
 
     def __del__(self):
@@ -317,8 +324,8 @@ class NoiseScan(ContinuousScan):
         super().__init__(npts=npts, setpoint=setpoint, modulation='shd', signals=signals)
         self.acquisition_mode = Scan.noise_sampling
         self.x_target, self.y_target = x_target, y_target
-        self.afm_sampling_milliseconds = 0.4
-        self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_milliseconds // 1), 1
+        self.afm_sampling_ms = 0.4
+        self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_ms // 1), 1
         self.x_size, self.y_size = 0, 0
         self.afm_angle = 0
 
@@ -327,7 +334,7 @@ class NoiseScan(ContinuousScan):
         if self.x_target is None or self.y_target is None:
             self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
         self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
-                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_milliseconds, serpent=True)
+                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_ms, serpent=True)
 
     def acquire(self):
         # ToDo this could be merged at some time with parent class
@@ -335,7 +342,6 @@ class NoiseScan(ContinuousScan):
         excess = 0
         daq_data = []
         while not self.afm.scan.IsCompleted:
-            print(f'Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
             n_read = excess
             while n_read < self.npts:  # this slicing seems redundant. Someone should rewrite this.
                 sleep(.001)
@@ -349,7 +355,8 @@ class NoiseScan(ContinuousScan):
 
         logger.info('Acquisition complete')
         self.nea_data = to_numpy(self.nea_data)
-        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x')) for k, v in self.nea_data.items()}
+        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x'), coords={'x': np.linspace(0, 1, self.x_res), 'y': [0]}
+                                         ) for k, v in self.nea_data.items()}
         self.nea_data = xr.Dataset(self.nea_data)
         logger.info('Scan complete')
         self.stop_time = datetime.now()
