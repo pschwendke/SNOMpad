@@ -240,8 +240,39 @@ class Line(Measurement):
 
 
 class Noise(Measurement):
+    def __init__(self, file: h5py.File):
+        super().__init__(file=file)
+        self.z_spectrum = None
+        self.z_frequencies = None
+        self.amp_spectrum = None
+        self.amp_frequencies = None
+        self.optical_spectrum = None
+        self.optical_frequencies = None
+
     def demod(self):
-        raise NotImplementedError
+        nea_data = self.nea_data['Z'].values.flatten()
+        nea_data = nea_data[~np.isnan(nea_data)]  # cut away any NANs
+        integration_seconds = self.metadata['afm_sampling_ms'] * 1e-3
+        n = len(nea_data)
+        self.z_spectrum = np.abs(np.fft.rfft(nea_data, n))
+        self.z_frequencies = np.fft.rfftfreq(n, integration_seconds)
+
+        signals = [Signals[s] for s in self.metadata['signals']]
+       
+        daq_data = np.array(self.file['daq_data']['1'])
+        tap_x = daq_data[:, signals.index(Signals.tap_x)]
+        tap_y = daq_data[:, signals.index(Signals.tap_y)]
+        tap_p = np.arctan2(tap_y, tap_x)
+        amplitude = tap_x / np.cos(tap_p)
+        n = len(amplitude)
+        dt_seconds = 5e-6  # time between DAQ samples
+        self.amp_spectrum = np.abs(np.fft.rfft(amplitude, n))
+        self.amp_frequencies = np.fft.rfftfreq(n, dt_seconds)
+
+        sig_a = daq_data[:, signals.index(Signals.sig_a)]
+        sig_b = daq_data[:, signals.index(Signals.sig_b)]
+        self.optical_spectrum = np.vstack([np.abs(np.fft.rfft(sig_a, n)), np.abs(np.fft.rfft(sig_b, n))])
+        self.optical_frequencies = np.fft.rfftfreq(n, dt_seconds)
 
     def plot(self):
         raise NotImplementedError
