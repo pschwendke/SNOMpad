@@ -9,6 +9,7 @@ import sys
 import os
 from datetime import datetime
 import colorcet as cc
+from h5py import File
 
 from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div
@@ -16,11 +17,10 @@ from bokeh.layouts import column, row, gridplot
 
 from trion.analysis.signals import Signals
 from trion.expt.scans import NoiseScan
-from trion.analysis.experiment import load
+from trion.analysis.experiment import Noise
 
 import logging
-# logging.basicConfig(format='%(asctime)s - %(levelname)-7s - %(name)s - %(message)s', level='INFO')
-# logging.basicConfig(format='%(asctime)s  %(message)s', level='INFO')
+
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
@@ -34,17 +34,19 @@ signals = [
 date = datetime.now()
 directory = f'Z:/data/_DATA/SNOM/{date.strftime("%Y")}/{date.strftime("%y%m%d")}'
 
+
 def change_to_directory():
     if not os.path.isdir(directory):
         os.mkdir(directory)
     os.chdir(directory)
     logger.info(f'changed to {directory}')
 
+
 def prepare_data(name: str):
     global z_plot_data, am_plot_data, optical_plot_data
     logger.info('preparing scan data for GUI')
     filename = f'{directory}/{name}.h5'
-    scan = load(filename)
+    scan = Noise(file=File(filename, 'r'))
     scan.demod()
     z_plot_data.data = {
         'x': scan.z_frequencies,
@@ -63,6 +65,7 @@ def prepare_data(name: str):
     message_box.text = name
     message_box.styles['background-color'] = '#AAAAAA'
 
+
 # CALLBACKS ############################################################################################################
 def start():
     message_box.text = 'Scan started'
@@ -76,6 +79,7 @@ def start():
     message_box.styles['background-color'] = '#FFFFFF'
     logger.info(f'scan name: {scan.name}')
     prepare_data(scan.name)
+
 
 def delete_last():
     filename = f'{directory}/{message_box.text}.h5'
@@ -92,9 +96,11 @@ def delete_last():
         message_box.text = err_msg
         message_box.styles['background-color'] = '#FF7777'
 
+
 def elab_entry():
     message_box.text = 'not implemented yet'
     message_box.styles['background-color'] = '#FFFF99'
+
 
 def stop():
     # ToDo some of these messages will not print (?!)
@@ -130,6 +136,8 @@ message_box.styles = {
 
 # SET UP PLOTS #########################################################################################################
 cmap = cc.b_glasbey_category10
+
+
 def setup_am_plot():
     init_data = {
         'x': np.linspace(0, 1, 100),
@@ -141,6 +149,7 @@ def setup_am_plot():
     fig.line(x='x', y='y', source=plot_data)
     return fig, plot_data
 
+
 def setup_z_plot():
     init_data = {
         'x': np.linspace(0, 1, 100),
@@ -151,6 +160,7 @@ def setup_z_plot():
     fig.xaxis.axis_label = 'frequency (Hz)'
     fig.line(x='x', y='y', source=plot_data)
     return fig, plot_data
+
 
 def setup_optical_plot():
     init_data = {

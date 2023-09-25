@@ -301,7 +301,7 @@ class ContinuousScan(BaseScan):
 
 
 class NoiseScan(ContinuousScan):
-    def __init__(self, sampling_seconds: float, signals: None, x_target=None, y_target=None,
+    def __init__(self, sampling_seconds: float, signals=None, x_target=None, y_target=None,
                  npts: int = 5_000, setpoint: float = 0.8):
         """
         Parameters
