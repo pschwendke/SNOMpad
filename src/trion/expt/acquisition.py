@@ -171,15 +171,15 @@ class ContinuousPoint(ContinuousScan):
 
 
 class SteppedRetraction(BaseScan):
-    def __init__(self, modulation: str, z_size: int = 0.2, z_res: int = 200, signals=None, chopped=False, t=None,
-                 t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 75_000, setpoint: float = 0.8,
+    def __init__(self, modulation: str, z_size: float = 0.2, z_res: int = 200, signals=None, chopped=False, t=None,
+                 t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 50_000, setpoint: float = 0.8,
                  parent_scan=None, identifier=None):
         """
         Parameters
         ----------
         modulation: str
             type of modulation of optical signals, e.g. 'pshet'
-        z_size: int
+        z_size: float
             height or distance dz of the retraction curve in micrometers
         z_res: int
             number of steps (pixels) acquired during retraction curve
@@ -450,7 +450,7 @@ class ContinuousRetraction(ContinuousScan):
         ----------
         modulation: str
             either 'shd' or 'pshet'
-        z_size: int
+        z_size: float
             height or distance dz of the retraction curve
         npts: int
             number of samples from the DAQ that are saved in one chunk
