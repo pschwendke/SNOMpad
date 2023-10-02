@@ -1,9 +1,3 @@
-# This is a Bokeh server app. To function, it must be run using the
-# Bokeh server at the command line:
-#
-#     bokeh serve --show noise_visualizer.py
-#
-# Running "python noise_visualizer.py" will NOT work.
 import numpy as np
 import sys
 import os
@@ -15,18 +9,23 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Dropdown, Select
 from bokeh.layouts import column, row, gridplot
 
-# from trion.analysis.signals import Signals
-# from trion.expt.scans import NoiseScan
-# from trion.expt.acquisition import SteppedRetraction, ContinuousRetraction
-# from trion.analysis.experiment import load, Noise
+from trion.analysis.signals import Signals
+from trion.expt.scans import NoiseScan
+from trion.expt.acquisition import SteppedRetraction, ContinuousRetraction
+from trion.analysis.experiment import load, Noise
 
 import logging
+
+if __name__ == '__main__':
+    os.system('bokeh serve --show GUI_Retraction.py')
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
 date = datetime.now()
 directory = f'Z:/data/_DATA/SNOM/{date.strftime("%Y")}/{date.strftime("%y%m%d")}'
+
+max_harm = 6
 
 
 def change_to_directory():
@@ -37,58 +36,58 @@ def change_to_directory():
 
 
 def prepare_data(name: str):
-    # global z_plot_data, am_plot_data, optical_plot_data
-    # logger.info('preparing scan data for GUI')
-    # filename = f'{directory}/{name}.h5'
-    # scan = Noise(file=File(filename, 'r'))
-    # scan.demod()
-    # z_plot_data.data = {
-    #     'x': scan.z_frequencies,
-    #     'y': scan.z_spectrum
-    # }
-    # am_plot_data.data = {
-    #     'x': scan.amp_frequencies,
-    #     'y': scan.amp_spectrum
-    # }
-    # optical_plot_data.data = {
-    #     'x': scan.optical_frequencies,
-    #     'sig_a': scan.optical_spectrum[0],
-    #     'sig_b': scan.optical_spectrum[1]
-    # }
-    #
-    # message_box.text = name
-    # message_box.styles['background-color'] = '#AAAAAA'
-    pass
+    global amp_plot_data, phase_plot_data, optical_plot_data
+    logger.info('preparing scan data for GUI')
+    filename = f'{directory}/{name}.h5'
+    scan = load(filename)
+    scan.demod()
+    data = scan.demod_data
+
+    amp_data = {'z': data['z'].values, 'amp': data['amp'].values}
+    phase_data = {'z': data['z'].values, 'phase': data['phase'].values}
+    optical_data = {'z': data['z'].values}
+    optical_data.update({str(o): data[f'opt_amp{o:02}'].values for o in range(max_harm + 1)})
+    amp_plot_data.data = amp_data
+    phase_plot_data.data = phase_data
+    optical_plot_data.data = optical_data
+
+    message_box.text = name
+    message_box.styles['background-color'] = '#AAAAAA'
+
 
 # CALLBACKS ############################################################################################################
 def start():
-    # message_box.text = 'Scan started'
-    # message_box.styles['background-color'] = '#03F934'
-    #
-    # change_to_directory()
-    # scan_class = [SteppedRetraction, ContinuousRetraction][scan_type_button.active]
-    # modulation = mod_button.labels[mod_button.active]
-    # if pump_probe_button.active is True:
-    #     scan = scan_class(modulation=modulation, z_size=z_size_input.value, x_target=x_target_input.value,
-    #                       y_target=y_target_input.value, setpoint=setpoint_input.value,
-    #                       t=t_input.value, t0_mm=t0_input.value, t_unit=t_unit_button.labels[t_unit_button.acitve], chopped=True)
-    # else:
-    #     scan = scan_class(modulation=modulation, z_size=z_size_input.value, x_target=x_target_input.value,
-    #                       y_target=y_target_input.value, setpoint=setpoint_input.value)
-    # scan.start()
-    #
-    # message_box.text = 'Scan complete'
-    # message_box.styles['background-color'] = '#FFFFFF'
-    # logger.info(f'scan name: {scan.name}')
-    # prepare_data(scan.name)
-    pass
+    message_box.text = 'Scan started'
+    message_box.styles['background-color'] = '#03F934'
 
-#
-# z_res: int = 200, t=None,
-#                  t_unit=None, t0_mm=None, npts: int = 75_000,
-# npts: int = 5_000,
-#                   t=None, t_unit=None, t0_mm=None, z_res: int = 200,
-#                  afm_sampling_ms: int = 300
+    change_to_directory()
+    scan_class = [SteppedRetraction, ContinuousRetraction][scan_type_button.active]
+    modulation = mod_button.labels[mod_button.active]
+
+    params = {
+        'modulation': modulation,
+        'z_size': z_size_input.value,
+        'z_res': z_res_input.value,
+        'npts': npts_input.value,
+        'x_target': x_target_input.value,
+        'y_target': y_target_input.value,
+        'setpoint': setpoint_input.value,
+        'metadata': metadata
+    }
+
+    if scan_type_button.active == 1:
+        params.update({'afm_sampling_ms': sampling_ms_input.value})
+    if pump_probe_button.active:
+        params.update({'t': t_input.value, 't0_mm': t0_input.value, 'chopped': True,
+                       't_unit': t_unit_button.labels[t_unit_button.acitve]})
+
+    scan = scan_class(**params)
+    scan.start()
+
+    message_box.text = 'Scan complete'
+    message_box.styles['background-color'] = '#FFFFFF'
+    logger.info(f'scan name: {scan.name}')
+    prepare_data(scan.name)
 
 
 def delete_last():
@@ -117,7 +116,6 @@ def stop():
     message_box.text = 'server stopped'
     message_box.styles['background-color'] = '#FF7777'
     sys.exit()  # Stop the bokeh server
-
 
 
 # WIDGETS ##############################################################################################################
@@ -169,6 +167,21 @@ pump_nm = NumericInput(title='pump color (nm)', value=None, low=0, high=1500, mo
 pump_mW = NumericInput(title='pump power (mW)', value=None, low=0, high=10, mode='float', width=110)
 pump_FWHM = NumericInput(title='pump FWHM (nm)', value=None, low=0, high=100, mode='float', width=110)
 
+metadata = {
+    'sample': sample_input.value,
+    'user': user_input.value,
+    'tip': tip_input.value,
+    'tapping_amp_nm': amp_input.value,
+    'tapping_frequency_Hz': freq_input.value,
+    'light_source': laser_input.value,
+    'probe_color_nm': probe_nm.value,
+    'probe_power_mW': probe_mW.value,
+    'probe_FWHM_nm': probe_FWHM.value,
+    'pump_color_nm': pump_nm.value,
+    'pump_power_mW': pump_mW.value,
+    'pump_FWHM_nm': pump_FWHM.value
+}
+
 message_box = Div(text='message box')
 message_box.styles = {
     'width': '300px',
@@ -182,48 +195,48 @@ message_box.styles = {
 cmap = cc.b_glasbey_category10
 
 
-def setup_am_plot():
+def setup_amp_plot():
     init_data = {
-        'x': np.linspace(0, 1, 100),
-        'y': np.ones(100)
+        'z': np.linspace(0, 1, 100),
+        'amp': np.ones(100)
     }
     plot_data = ColumnDataSource(init_data)
-    fig = figure(title='AFM amplitude modulation', aspect_ratio=3, x_axis_type='log', y_axis_type='log')
-    fig.xaxis.axis_label = 'frequency (Hz)'
-    fig.line(x='x', y='y', source=plot_data)
+    fig = figure(title='AFM tapping amplitude', aspect_ratio=3)
+    fig.xaxis.axis_label = 'dz (µm)'
+    fig.line(x='z', y='amp', source=plot_data)
     return fig, plot_data
 
 
-def setup_z_plot():
+def setup_phase_plot():
     init_data = {
-        'x': np.linspace(0, 1, 100),
-        'y': np.ones(100)
+        'z': np.linspace(0, 1, 100),
+        'phase': np.ones(100)
     }
     plot_data = ColumnDataSource(init_data)
-    fig = figure(title='AFM z-piezo response', aspect_ratio=3, x_axis_type='log', y_axis_type='log')
-    fig.xaxis.axis_label = 'frequency (Hz)'
-    fig.line(x='x', y='y', source=plot_data)
+    fig = figure(title='AFM tapping phase', aspect_ratio=3)
+    fig.xaxis.axis_label = 'dz (µm)'
+    fig.line(x='z', y='phase', source=plot_data)
     return fig, plot_data
 
 
 def setup_optical_plot():
-    init_data = {
-        'x': np.linspace(0, 1, 100),
-        'sig_a': np.ones(100),
-        'sig_b': np.ones(100)
-    }
+    init_data = {'z': np.linspace(0, 1, 100)}
+    init_data.update({str(o): np.ones(100) for o in range(max_harm + 1)})
     plot_data = ColumnDataSource(init_data)
-    fig = figure(title='optical data', aspect_ratio=3, x_axis_type='log', y_axis_type='log')
-    fig.xaxis.axis_label = 'frequency (Hz)'
-    fig.line(x='x', y='sig_a', source=plot_data, legend_label='sig_a', line_color=cmap[0])
-    fig.line(x='x', y='sig_b', source=plot_data, legend_label='sig_b', line_color=cmap[1])
+
+    fig = figure(title='optical data', aspect_ratio=3)
+    fig.xaxis.axis_label = 'dz (µm)'
+    for o in range(max_harm + 1):
+        line = fig.line(x='z', y=str(o), source=plot_data, legend_label=f'o{o}a', line_color=cmap[o])
+        if o > 4:
+            line.visible = False
     fig.legend.click_policy = 'hide'
     return fig, plot_data
 
 
 # GUI OUTPUT ###########################################################################################################
-am_plot, am_plot_data = setup_am_plot()
-z_plot, z_plot_data = setup_z_plot()
+amp_plot, amp_plot_data = setup_amp_plot()
+phase_plot, phase_plot_data = setup_phase_plot()
 optical_plot, optical_plot_data = setup_optical_plot()
 
 controls_box = column([
@@ -246,8 +259,7 @@ controls_box = column([
     message_box
 ], sizing_mode='fixed')
 
-plot_box = gridplot([[am_plot], [optical_plot], [z_plot]], sizing_mode='stretch_width',
-                    merge_tools=False)
+plot_box = gridplot([[amp_plot], [phase_plot], [optical_plot]], sizing_mode='stretch_width', merge_tools=False)
 
 gui = row([plot_box, controls_box], sizing_mode='stretch_width')
 
