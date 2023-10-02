@@ -31,8 +31,9 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
 
 
 class BaseScan(ABC):
-    def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0',
-                 t=None, t_unit=None, t0_mm=None, chopped=False, parent_scan=None, identifier=None):
+    def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0', metadata: dict = None,
+                 t: float = None, t_unit: str = None, t0_mm: float = None, chopped=False, parent_scan=None,
+                 identifier: str = None):
         """
         Parameters
         ----------
@@ -44,6 +45,9 @@ class BaseScan(ABC):
             should be 'Dev1' for now.
         clock_channel: str
             should be 'pfi0', as labelled on the DAQ
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         t: float
             if not None, delay stage will be moved to this position before scan
         t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
@@ -89,7 +93,8 @@ class BaseScan(ABC):
         self.afm = None
         self.delay_stage = None
         self.log_handler = None
-        self.metadata_list = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
+        self.metadata = metadata
+        self.metadata_keys = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
                               'modulation', 'signals', 'chopped',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
@@ -97,7 +102,7 @@ class BaseScan(ABC):
                               'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
                               't', 't_start', 't_stop', 't_unit', 't0_mm',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
-                              'afm_angle_deg', 'tapping_frequency_Hz', 'ref_mirror_frequency_Hz',
+                              'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
                               'trion_version', 'neaclient_version', 'neaserver_version']
 
     def prepare(self):
@@ -199,19 +204,20 @@ class BaseScan(ABC):
             xr_to_h5_datasets(ds=self.nea_data, group=self.file['nea_data'])
 
         logger.info('Collecting metadata')
-        metadata = {}
-        # ToDo collect metadata from lab book
-        for m in self.metadata_list:
+        metadata_collector = {}
+        for m in self.metadata_keys:
             if m in self.__dict__.keys():
-                metadata[m] = self.__dict__[m]
+                metadata_collector[m] = self.__dict__[m]
+            elif m in self.metadata.keys():
+                metadata_collector[m] = self.metadata[m]
             else:
-                metadata[m] = None
-        metadata['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
-        metadata['acquisition_time'] = str(self.stop_time - self.date)
-        metadata['modulation'] = self.modulation.value
-        metadata['signals'] = [s.value for s in self.signals]
-        metadata['acquisition_mode'] = self.acquisition_mode.value
-        for k, v in metadata.items():
+                metadata_collector[m] = None
+        metadata_collector['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
+        metadata_collector['acquisition_time'] = str(self.stop_time - self.date)
+        metadata_collector['modulation'] = self.modulation.value
+        metadata_collector['signals'] = [s.value for s in self.signals]
+        metadata_collector['acquisition_mode'] = self.acquisition_mode.value
+        for k, v in metadata_collector.items():
             if v is not None:
                 logger.debug(f'writing metadata ({k}: {v})')
                 self.file.attrs[k] = v

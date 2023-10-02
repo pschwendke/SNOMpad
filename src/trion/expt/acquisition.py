@@ -76,7 +76,7 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
 
 
 class ContinuousPoint(ContinuousScan):
-    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None,
+    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, metadata=None,
                  setpoint: float = 0.8, chopped=False, signals=None, x_target=None, y_target=None, in_contact=True,
                  parent_scan=None, identifier=None):
         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
@@ -95,6 +95,9 @@ class ContinuousPoint(ContinuousScan):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         setpoint: float
             AFM setpoint when engaged
         chopped: bool
@@ -112,8 +115,8 @@ class ContinuousPoint(ContinuousScan):
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, chopped=chopped,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
+                         chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         # ToDo Fix Bug: modulation is not set automatically
         self.acquisition_mode = Scan.point
@@ -173,7 +176,7 @@ class ContinuousPoint(ContinuousScan):
 class SteppedRetraction(BaseScan):
     def __init__(self, modulation: str, z_size: float = 0.2, z_res: int = 200, signals=None, chopped=False, t=None,
                  t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 50_000, setpoint: float = 0.8,
-                 parent_scan=None, identifier=None):
+                 parent_scan=None, identifier=None, metadata=None):
         """
         Parameters
         ----------
@@ -205,8 +208,11 @@ class SteppedRetraction(BaseScan):
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, metadata=metadata,
                          t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         self.afm_sampling_milliseconds = 50
@@ -275,7 +281,7 @@ class SteppedRetraction(BaseScan):
 
 class SteppedImage(BaseScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
-                 x_size: float, y_size: float, npts: int = 75_000, setpoint: float = 0.8,
+                 x_size: float, y_size: float, npts: int = 75_000, setpoint: float = 0.8, metadata=None,
                  signals=None, chopped=False, t=None, t_unit=None, t0_mm=None, parent_scan=None, identifier=None):
         """
         Parameters
@@ -298,6 +304,9 @@ class SteppedImage(BaseScan):
             number of samples per chunk acquired by the DAQ
         setpoint: float
             AFM setpoint when engaged
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
         chopped: bool
@@ -313,7 +322,7 @@ class SteppedImage(BaseScan):
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, metadata=metadata,
                          t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.stepped_image
@@ -363,7 +372,7 @@ class SteppedImage(BaseScan):
 class SteppedLineScan(BaseScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
                  npts: int, chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8,
-                 parent_scan=None, identifier=None):
+                 parent_scan=None, identifier=None, metadata=None):
         """
         Parameters
         ----------
@@ -397,8 +406,11 @@ class SteppedLineScan(BaseScan):
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         """
-        super().__init__(modulation=modulation, signals=signals, chopped=chopped,
+        super().__init__(modulation=modulation, signals=signals, chopped=chopped, metadata=metadata,
                          t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.stepped_line
@@ -444,7 +456,7 @@ class SteppedLineScan(BaseScan):
 class ContinuousRetraction(ContinuousScan):
     def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: float = 0.8, signals=None,
                  chopped=False, t=None, t_unit=None, t0_mm=None, x_target=None, y_target=None, z_res: int = 200,
-                 afm_sampling_ms: int = 300, parent_scan=None, identifier=None):
+                 afm_sampling_ms: int = 300, parent_scan=None, identifier=None, metadata=None):
         """
         Parameters
         ----------
@@ -478,8 +490,11 @@ class ContinuousRetraction(ContinuousScan):
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
                          chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.continuous_retraction
@@ -502,7 +517,7 @@ class ContinuousImage(ContinuousScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0, signals=None,
                  chopped=False, t=None, t_unit=None, t0_mm=None, npts: int = 5_000, setpoint: float = 0.8,
-                 parent_scan=None, identifier=None):
+                 parent_scan=None, identifier=None, metadata=None):
         """
         Parameters
         ----------
@@ -542,8 +557,11 @@ class ContinuousImage(ContinuousScan):
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals,
+        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
                          chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
         self.acquisition_mode = Scan.continuous_image
@@ -567,7 +585,7 @@ class ContinuousLineScan(ContinuousScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float,
                  res: int = 200, n_lines: int = 10, afm_sampling_ms: float = 50, npts: int = 5_000,
                  chopped=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8,
-                 parent_scan=None, identifier=None):
+                 parent_scan=None, identifier=None, metadata=None):
         """
         Parameters
         ----------
@@ -605,9 +623,13 @@ class ContinuousLineScan(ContinuousScan):
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         identifier: str
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         """
         super().__init__(modulation=modulation, signals=signals, chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
-                         npts=npts, setpoint=setpoint, parent_scan=parent_scan, identifier=identifier)
+                         npts=npts, setpoint=setpoint, parent_scan=parent_scan, identifier=identifier,
+                         metadata=metadata, )
         self.acquisition_mode = Scan.continuous_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -632,7 +654,7 @@ class ContinuousLineScan(ContinuousScan):
 
 class DelayScan(BaseScan):
     def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, n_step: int,
-                 t0_mm=None, continuous: bool = True, scale: str = 'lin', **scan_kwargs):
+                 t0_mm=None, continuous: bool = True, scale: str = 'lin', metadata=None, **scan_kwargs):
         """
         Parameters
         ----------
@@ -656,10 +678,13 @@ class DelayScan(BaseScan):
             are used, e.g. SteppedLineScan
         scale: str
             spacing of n_step acquisitions along t axis. Liner when 'lin' is passed. 'log' produces logarithmic spacing.
+        metadata: dict
+            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+            Specified variables, e.g. self.name have higher priority than passed metadata.
         scan_kwargs:
             keyword arguments that are passed to scan class
         """
-        super().__init__(modulation=modulation, t=t_start, t_unit=t_unit, t0_mm=t0_mm)
+        super().__init__(modulation=modulation, t=t_start, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata)
         self.acquisition_mode = Scan.delay_collection
         self.scan_kwargs = scan_kwargs
 
