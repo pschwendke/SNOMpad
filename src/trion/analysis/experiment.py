@@ -114,11 +114,10 @@ class Point(Measurement):
 
 class Retraction(Measurement):
     def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
-        """ Creates xr.Dataset in self.demod_data. Dimensions are 'z_target' for stepped retraction and 'z' for
-        continuous retraction. Dataset contains one DataArray for every tracked channel, and one complex-valued
-        DataArray for demodulated harmonics, with extra dimension 'order'.
-        When demod_filename is a str, a demod file is created in the given filename. When filename is '', the file is
-        saved in the '_ANALYSIS' directory on the server.
+        """ Creates xr.Dataset in self.demod_data. Dataset contains one DataArray for every tracked channel,
+        and one complex-valued DataArray for demodulated harmonics, with extra dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
+        the file is saved in the '_ANALYSIS' directory on the server.
         When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
         is already present in demod file, it will be read from the file.
 
@@ -128,7 +127,7 @@ class Retraction(Measurement):
             max harmonic order that should be returned.
         demod_npts: int
             min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
-        demod_filename: str
+        demod_filename: str or 'auto'
             path and filename of demod file
         **kwargs
             keyword arguments that are passed to demod function, i.e. shd() or pshet()
@@ -146,22 +145,21 @@ class Retraction(Measurement):
         # reshape data to new z resolution (create new pixels)
         z = self.afm_data['z'].values
         z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
-
-        idx = self.afm_data['idx'].values
-        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
-
-        amp = self.afm_data['amp'].values
-        amp = amp[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
-        self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
-
-        phase = self.afm_data['phase'].values
-        phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
-        self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
-
         if self.mode == Scan.stepped_retraction:
             z_target = self.afm_data['z_target'].values
             z_target = z_target[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
             self.demod_data['z_target'] = xr.DataArray(data=z_target, dims='z', coords={'z': z})
+
+        amp = self.afm_data['amp'].values
+        amp = amp[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
+        phase = self.afm_data['phase'].values
+        phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        phase = (phase + np.pi) / 2 / np.pi * 360
+        self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
+
+        idx = self.afm_data['idx'].values
+        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
 
         # ToDo: check for demod file
 
@@ -182,45 +180,46 @@ class Retraction(Measurement):
         # ToDo: create or write to demod file
 
     def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=False):
-        import matplotlib.pyplot as plt
-        if self.demod_data is None:
-            self.demod()
-        if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
-            orders = np.arange(max_order)
-
-        fig, ax1 = plt.subplots()
-        cmap = cc.glasbey_category10
-        x = (self.demod_data['z'].values - self.demod_data['z'].values.min())
-
-        if afm_phase:
-            ax2 = ax1.twinx()
-            y = self.demod_data['phase'].values / 2 / np.pi * 360  # degrees
-            ax2.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
-            ax2.set_ylabel('AFM phase (degrees)', color='gray')
-
-        if afm_amp:
-            ax3 = ax1.twinx()
-            y = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
-            ax3.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
-            ax3.tick_params(right=False, labelright=False)
-            ax3.legend(loc='upper right')
-
-        for o in orders:
-            y = np.real(self.demod_data['optical'].values[:, o].squeeze())
-            y /= np.abs(y).max()
-            ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
-
-        ax1.grid(visible=grid, which='major', axis='both')
-        ax1.set_ylabel('optical amplitude (normalized)')
-        ax1.set_xlabel('dz (nm)')
-        ax1.legend(loc='lower right')
-
-        if save:
-            plt.savefig(f'{self.afm_data.attrs["name"]}.png', dpi=300, bbox_inches='tight')
-            plt.savefig(f'{self.afm_data.attrs["name"]}.svg')
-        if show:
-            plt.show()
-        plt.close()
+        # import matplotlib.pyplot as plt
+        # if self.demod_data is None:
+        #     self.demod()
+        # if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
+        #     orders = np.arange(max_order)
+        #
+        # fig, ax1 = plt.subplots()
+        # cmap = cc.glasbey_category10
+        # x = (self.demod_data['z'].values - self.demod_data['z'].values.min())
+        #
+        # if afm_phase:
+        #     ax2 = ax1.twinx()
+        #     y = self.demod_data['phase'].values / 2 / np.pi * 360  # degrees
+        #     ax2.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
+        #     ax2.set_ylabel('AFM phase (degrees)', color='gray')
+        #
+        # if afm_amp:
+        #     ax3 = ax1.twinx()
+        #     y = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
+        #     ax3.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
+        #     ax3.tick_params(right=False, labelright=False)
+        #     ax3.legend(loc='upper right')
+        #
+        # for o in orders:
+        #     y = np.real(self.demod_data['optical'].values[:, o].squeeze())
+        #     y /= np.abs(y).max()
+        #     ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
+        #
+        # ax1.grid(visible=grid, which='major', axis='both')
+        # ax1.set_ylabel('optical amplitude (normalized)')
+        # ax1.set_xlabel('dz (nm)')
+        # ax1.legend(loc='lower right')
+        #
+        # if save:
+        #     plt.savefig(f'{self.afm_data.attrs["name"]}.png', dpi=300, bbox_inches='tight')
+        #     plt.savefig(f'{self.afm_data.attrs["name"]}.svg')
+        # if show:
+        #     plt.show()
+        # plt.close()
+        raise NotImplementedError
 
 
 class Image(Measurement):
@@ -232,8 +231,84 @@ class Image(Measurement):
 
 
 class Line(Measurement):
-    def demod(self):
-        raise NotImplementedError
+    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
+        """ Creates xr.Dataset in self.demod_data. The dimension along line scan is called 'r'.
+        Dataset contains one DataArray for every tracked channel, and one complex-valued DataArray for demodulated
+        harmonics, with extra dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
+        the file is saved in the '_ANALYSIS' directory on the server.
+        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
+        is already present in demod file, it will be read from the file.
+
+        Parameters
+        ----------
+        max_order: int
+            max harmonic order that should be returned.
+        demod_npts: int
+            min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
+        demod_filename: str or 'auto'
+            path and filename of demod file
+        **kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        if not demod_npts and self.mode == Scan.stepped_line:
+            chunk_size = 1  # one chunk of DAQ data per demodulated pixel
+        elif not demod_npts and self.mode == Scan.continuous_line:
+            chunk_size = 5
+        else:
+            chunk_size = demod_npts // self.file.attrs['npts'] + 1
+        n = len(self.file['daq_data'].keys())
+        r_res = n // chunk_size
+        self.demod_data = xr.Dataset()
+
+        # reshape data to new r resolution (create new pixels)
+        x = self.afm_data['x'].values
+        x = x[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+        y = self.afm_data['y'].values
+        y = y[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+        z = self.afm_data['z'].values
+        z = z[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+        r = np.sqrt(x**2 + z**2)
+        r -= r.min()
+        self.demod_data['x'] = xr.DataArray(data=x, dims='r', coords={'r': r})
+        self.demod_data['y'] = xr.DataArray(data=y, dims='r', coords={'r': r})
+        self.demod_data['z'] = xr.DataArray(data=z, dims='r', coords={'r': r})
+        if self.mode == Scan.stepped_line:
+            x_target = self.afm_data['x_target'].values
+            x_target = x_target[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+            self.demod_data['x_target'] = xr.DataArray(data=x_target, dims='r', coords={'r': r})
+            y_target = self.afm_data['y_target'].values
+            y_target = y_target[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+            self.demod_data['y_target'] = xr.DataArray(data=y_target, dims='r', coords={'r': r})
+
+        amp = self.afm_data['amp'].values
+        amp = amp[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+        self.demod_data['amp'] = xr.DataArray(data=amp, dims='r', coords={'r': r})
+        phase = self.afm_data['phase'].values
+        phase = phase[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
+        phase = (phase + np.pi) / 2 / np.pi * 360
+        self.demod_data['phase'] = xr.DataArray(data=phase, dims='r', coords={'r': r})
+
+        idx = self.afm_data['idx'].values
+        idx = idx[:r_res * chunk_size].reshape((r_res, chunk_size))
+
+        # ToDo: check for demod file
+
+        # demodulate DAQ data for every pixel
+        harmonics = np.zeros((r_res, max_order + 1), dtype=complex)
+        for px, _ in tqdm(enumerate(harmonics)):
+            data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[px]])
+            if self.modulation == Demodulation.shd:
+                coefficients = shd(data=data, signals=self.signals, **kwargs)
+            elif self.modulation == Demodulation.pshet:
+                coefficients = pshet(data=data, signals=self.signals, **kwargs)
+            else:
+                raise NotImplementedError
+            harmonics[px] = coefficients[:max_order + 1]
+        self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
+                                                  coords={'r': r, 'order': np.arange(max_order + 1)})
+
+        # ToDo: create or write to demod file
 
     def plot(self):
         raise NotImplementedError
@@ -284,60 +359,6 @@ class Delay(Measurement):
 
     def plot(self):
         raise NotImplementedError
-
-
-# class Noise(Measurement):
-#     def __init__(self, file: h5py.File):
-#         super().__init__(file)
-#         self.z_spectrum = None
-#         self.z_frequencies = None
-#         self.amp_spectrum = None
-#         self.amp_frequencies = None
-#         self.optical_spectrum = None
-#         self.optical_frequencies = None
-#
-#     def demod(self):
-#         nea_data = self.afm_data['Z'].values.flatten()
-#         nea_data = nea_data[~np.isnan(nea_data)]  # for some reason NANs appear at the end
-#         integration_seconds = self.afm_data.attrs['afm_sampling_milliseconds'] * 1e-3
-#         n = len(nea_data)
-#         self.z_spectrum = np.abs(np.fft.rfft(nea_data, n))
-#         self.z_frequencies = np.fft.rfftfreq(n, integration_seconds)
-#
-#         signals = [Signals[s] for s in self.afm_data.attrs['signals']]
-#         if Signals.tap_x in signals:
-#             npz = np.load(self.directory + self.afm_data.attrs['daq_data_filename'])
-#             daq_data = np.vstack([i for i in npz.values()]).T
-#             tap_x = daq_data[:, signals.index(Signals.tap_x)]
-#             tap_y = daq_data[:, signals.index(Signals.tap_y)]
-#             tap_p = np.arctan2(tap_y, tap_x)
-#             amplitude = tap_x / np.cos(tap_p)
-#             n = len(amplitude)
-#             dt_seconds = 5e-6  # time between DAQ samples
-#             self.amp_spectrum = np.abs(np.fft.rfft(amplitude, n))
-#             self.amp_frequencies = np.fft.rfftfreq(n, dt_seconds)
-#
-#             if Signals.sig_a in signals:
-#                 sig_a = daq_data[:, signals.index(Signals.sig_a)]
-#                 self.optical_spectrum = np.abs(np.fft.rfft(sig_a, n))
-#                 self.optical_frequencies = np.fft.rfftfreq(n, dt_seconds)
-#
-#     def plot(self):
-#         pass
-#
-#     def export(self):
-#         if self.z_spectrum is not None:
-#             filename = self.afm_data.attrs['name'] + '.npz'
-#             data = np.vstack([self.z_frequencies, self.z_spectrum]).T
-#             export_data(filename, data, ['t', 'z'])
-#         if self.amp_spectrum is not None:
-#             filename = self.afm_data.attrs['name'] + '.npz'
-#             data = np.vstack([self.amp_frequencies, self.amp_spectrum]).T
-#             export_data(filename, data, ['t', 'amplitude'])
-#         if self.optical_spectrum is not None:
-#             filename = self.afm_data.attrs['name'] + '.npz'
-#             data = np.vstack([self.optical_frequencies, self.optical_spectrum]).T
-#             export_data(filename, data, ['t', 'sig_a'])
 
 
 # TODO: Should probably factor this out into an object to specify the acquisition (roles + channels.. the channel map),
