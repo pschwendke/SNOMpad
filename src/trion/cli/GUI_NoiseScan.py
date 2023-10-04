@@ -1,9 +1,3 @@
-# This is a Bokeh server app. To function, it must be run using the
-# Bokeh server at the command line:
-#
-#     bokeh serve --show noise_visualizer.py
-#
-# Running "python noise_visualizer.py" will NOT work.
 import numpy as np
 import sys
 import os
@@ -20,6 +14,9 @@ from trion.expt.scans import NoiseScan
 from trion.analysis.experiment import Noise
 
 import logging
+
+if __name__ == '__main__':
+    os.system('bokeh serve --show GUI_Retraction.py')
 
 logger = logging.getLogger()
 logger.setLevel('INFO')

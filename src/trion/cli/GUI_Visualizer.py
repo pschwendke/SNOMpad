@@ -1,11 +1,6 @@
-# This is a Bokeh server app. To function, it must be run using the
-# Bokeh server at the command line:
-#
-#     bokeh serve --show daq_visualizer.py
-#
-# Running "python daq_visualizer.py" will NOT work.
 import numpy as np
 import sys
+import os
 import threading
 from time import sleep, perf_counter
 from scipy.stats import binned_statistic, binned_statistic_2d
@@ -19,6 +14,9 @@ from trion.analysis.signals import Signals
 from trion.analysis.demod import shd, pshet
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
+
+if __name__ == '__main__':
+    os.system('bokeh serve --show GUI_Retraction.py')
 
 callback_interval = 80  # ms
 buffer_size = 200_000
