@@ -113,7 +113,7 @@ class Point(Measurement):
 
 
 class Retraction(Measurement):
-    def demod(self, tap_res: int = 64, ref_res: int = 64, npts=None, demod_filename=None, method='binning', **kwargs):
+    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
         """ Creates xr.Dataset in self.demod_data. Dimensions are 'z_target' for stepped retraction and 'z' for
         continuous retraction. Dataset contains one DataArray for every tracked channel, and one complex-valued
         DataArray for demodulated harmonics, with extra dimension 'order'.
@@ -124,62 +124,62 @@ class Retraction(Measurement):
 
         Parameters
         ----------
-        tap_res: int
-            resolution of discrete uniform phase domain on theta_tap axis
-        ref_res: int
-            resolution of discrete uniform phase domain on theta_ref axis
-        npts: int
+        max_order: int
+            max harmonic order that should be returned.
+        demod_npts: int
             min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
         demod_filename: str
             path and filename of demod file
-        method: str in ['binning', 'kernel']
-            method to average over phase domain and find harmonic contributions
-        kwargs
+        **kwargs
             keyword arguments that are passed to demod function, i.e. shd() or pshet()
         """
-        if not npts and self.mode == Scan.stepped_retraction:
+        if not demod_npts and self.mode == Scan.stepped_retraction:
             chunk_size = 1  # one chunk of DAQ data per demodulated pixel
-        elif not npts and self.mode == Scan.continuous_retraction:
+        elif not demod_npts and self.mode == Scan.continuous_retraction:
             chunk_size = 5
         else:
-            chunk_size = npts // self.file.attrs['npts'] + 1
-        max_order = int(tap_res // 2 + 1)
+            chunk_size = demod_npts // self.file.attrs['npts'] + 1
         n = len(self.file['daq_data'].keys())
         z_res = n // chunk_size
         self.demod_data = xr.Dataset()
 
+        # reshape data to new z resolution (create new pixels)
         z = self.afm_data['z'].values
-        idx = self.afm_data['idx'].values
-        amp = self.afm_data['amp'].values
-        phase = self.afm_data['phase'].values
-        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
         z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+
+        idx = self.afm_data['idx'].values
+        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
+
+        amp = self.afm_data['amp'].values
         amp = amp[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
-        phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
+
+        phase = self.afm_data['phase'].values
+        phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
+
         if self.mode == Scan.stepped_retraction:
             z_target = self.afm_data['z_target'].values
             z_target = z_target[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
             self.demod_data['z_target'] = xr.DataArray(data=z_target, dims='z', coords={'z': z})
+
+        # ToDo: check for demod file
 
         # demodulate DAQ data for every pixel
         harmonics = np.zeros((z_res, max_order), dtype=complex)
         for p, h in tqdm(enumerate(harmonics)):
             data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[p]])
             if self.modulation == Demodulation.shd:
-                coefficients = shd(data=data, signals=self.signals, tap_nbins=tap_res, **kwargs)
+                coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, tap_nbins=tap_res, ref_nbins=ref_res, **kwargs)
+                coefficients = pshet(data=data, signals=self.signals, **kwargs)
             else:
                 raise NotImplementedError
             h = coefficients
         self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
                                                   coords={'z': z, 'order': np.arange(max_order)})
 
-        # ToDo: Metadata
-        # ToDo: create demod file
-        #  and read from demod file
+        # ToDo: create or write to demod file
 
     def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=False):
         import matplotlib.pyplot as plt

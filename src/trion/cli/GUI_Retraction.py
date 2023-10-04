@@ -3,16 +3,13 @@ import sys
 import os
 from datetime import datetime
 import colorcet as cc
-from h5py import File
 
 from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Dropdown, Select
 from bokeh.layouts import column, row, gridplot
 
-from trion.analysis.signals import Signals
-from trion.expt.scans import NoiseScan
 from trion.expt.acquisition import SteppedRetraction, ContinuousRetraction
-from trion.analysis.experiment import load, Noise
+from trion.analysis.experiment import load
 
 import logging
 
