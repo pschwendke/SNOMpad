@@ -22,7 +22,7 @@ logger.setLevel('INFO')
 date = datetime.now()
 directory = f'Z:/data/_DATA/SNOM/{date.strftime("%Y")}/{date.strftime("%y%m%d")}'
 
-max_harm = 6
+max_harm = 4
 
 
 def change_to_directory():
@@ -43,7 +43,10 @@ def prepare_data(name: str):
     amp_data = {'z': data['z'].values, 'amp': data['amp'].values}
     phase_data = {'z': data['z'].values, 'phase': data['phase'].values}
     optical_data = {'z': data['z'].values}
-    optical_data.update({str(o): data['optical'].sel(order=o).values for o in range(max_harm + 1)})
+    for o in range(max_harm + 1):
+        d = np.abs(data['optical'].sel(order=o).values)
+        d /= d.max()
+        optical_data[str(o)] = d
     amp_plot_data.data = amp_data
     phase_plot_data.data = phase_data
     optical_plot_data.data = optical_data
@@ -144,7 +147,7 @@ setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low
 t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
 t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
 t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=250, width=100)
-sampling_ms_input = NumericInput(title='AFM sampling time (ms)', value=80, mode='float', low=.1, high=60, width=100)
+sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=60, width=100)
 
 # metadata
 metadata_title = Div(text='METADATA')
@@ -224,7 +227,7 @@ def setup_optical_plot():
     fig = figure(title='optical data', aspect_ratio=3)
     fig.xaxis.axis_label = 'dz (µm)'
     for o in range(max_harm + 1):
-        line = fig.line(x='z', y=str(o), source=plot_data, legend_label=f'o{o}a', line_color=cmap[o])
+        line = fig.line(x='z', y=str(o), source=plot_data, legend_label=f'abs({o})', line_color=cmap[o])
         if o > 4:
             line.visible = False
     fig.legend.click_policy = 'hide'
@@ -254,11 +257,11 @@ controls_box = column([
     row([pump_nm, pump_mW, pump_FWHM]),
 
     message_box
-], sizing_mode='fixed')
+])
 
 plot_box = gridplot([[amp_plot], [phase_plot], [optical_plot]], sizing_mode='stretch_width', merge_tools=False)
 
 gui = row([plot_box, controls_box], sizing_mode='stretch_width')
 
 curdoc().add_root(gui)
-curdoc().title = 'Noise Scan'
+curdoc().title = 'Retraction Curve'

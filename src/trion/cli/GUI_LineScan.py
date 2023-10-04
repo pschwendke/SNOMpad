@@ -14,7 +14,7 @@ from trion.analysis.experiment import load
 import logging
 
 if __name__ == '__main__':
-    os.system('bokeh serve --show GUI_Retraction.py')
+    os.system('bokeh serve --show GUI_LineScan.py')
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
@@ -22,7 +22,7 @@ logger.setLevel('INFO')
 date = datetime.now()
 directory = f'Z:/data/_DATA/SNOM/{date.strftime("%Y")}/{date.strftime("%y%m%d")}'
 
-max_harm = 6
+max_harm = 4
 
 
 def change_to_directory():
@@ -37,14 +37,24 @@ def prepare_data(name: str):
     logger.info('preparing scan data for GUI')
     filename = f'{directory}/{name}.h5'
     scan = load(filename)
-    scan.demod()
+    try:
+        scan.demod(demod_npts=200_000, binning='binning', pshet_demod='sidebands')
+    except RuntimeError as e:
+        if 'empty bins' in str(e):
+            scan.demod()
+        else:
+            raise
+    
     data = scan.demod_data
 
-    z_data = {'r': data['r'].values, 'amp': data['z'].values}
+    z_data = {'r': data['r'].values, 'z': data['z'].values}
     amp_data = {'r': data['r'].values, 'amp': data['amp'].values}
     phase_data = {'r': data['r'].values, 'phase': data['phase'].values}
     optical_data = {'r': data['r'].values}
-    optical_data.update({str(o): data['optical'].sel(order=o).values for o in range(max_harm + 1)})
+    for o in range(max_harm + 1):
+        d = np.abs(data['optical'].sel(order=o).values)
+        d /= d.max()
+        optical_data[str(o)] = d
     z_plot_data.data = z_data
     amp_plot_data.data = amp_data
     phase_plot_data.data = phase_data
@@ -139,9 +149,9 @@ scan_type_button = RadioButtonGroup(labels=['stepped', 'continuous'], active=1)
 mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
 pump_probe_button = Toggle(label='pump-probe', active=False, width=100)
 
-res_input = NumericInput(title='x resolution', value=200, mode='int', low=1, high=10000, width=80)
-n_lines_input = NumericInput(title='# of passes (lines)', value=10, mode='int', low=1, high=10000, width=80)
-npts_input = NumericInput(title='npts', mode='int', value=5_000, low=0, high=200_000, width=80)
+res_input = NumericInput(title='resolution', value=200, mode='int', low=1, high=10000, width=60)
+n_lines_input = NumericInput(title='# of passes', value=10, mode='int', low=1, high=10000, width=70)
+npts_input = NumericInput(title='npts', mode='int', value=5_000, low=0, high=200_000, width=60)
 x_start_input = NumericInput(title='x start pos (µm)', value=None, mode='float', low=0, high=100, width=100)
 y_start_input = NumericInput(title='y start pos (µm)', value=None, mode='float', low=0, high=100, width=100)
 x_stop_input = NumericInput(title='x stop pos (µm)', value=None, mode='float', low=0, high=100, width=100)
@@ -150,7 +160,7 @@ setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low
 t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
 t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
 t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=250, width=100)
-sampling_ms_input = NumericInput(title='AFM sampling time (ms)', value=80, mode='float', low=.1, high=60, width=100)
+sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=60, width=100)
 
 # metadata
 metadata_title = Div(text='METADATA')
@@ -242,7 +252,7 @@ def setup_optical_plot():
     fig = figure(title='optical data', aspect_ratio=3)
     fig.xaxis.axis_label = 'r (µm)'
     for o in range(max_harm + 1):
-        line = fig.line(x='r', y=str(o), source=plot_data, legend_label=f'o{o}a', line_color=cmap[o])
+        line = fig.line(x='r', y=str(o), source=plot_data, legend_label=f'abs({o})', line_color=cmap[o])
         if o > 4:
             line.visible = False
     fig.legend.click_policy = 'hide'
@@ -273,7 +283,7 @@ controls_box = column([
     row([pump_nm, pump_mW, pump_FWHM]),
 
     message_box
-], sizing_mode='fixed')
+])
 
 plot_box = gridplot([[z_plot], [amp_plot], [phase_plot], [optical_plot]],
                     sizing_mode='stretch_width', merge_tools=False)
@@ -281,4 +291,4 @@ plot_box = gridplot([[z_plot], [amp_plot], [phase_plot], [optical_plot]],
 gui = row([plot_box, controls_box], sizing_mode='stretch_width')
 
 curdoc().add_root(gui)
-curdoc().title = 'Noise Scan'
+curdoc().title = 'Line Scan'

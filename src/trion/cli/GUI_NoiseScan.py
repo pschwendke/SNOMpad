@@ -16,7 +16,7 @@ from trion.analysis.experiment import Noise
 import logging
 
 if __name__ == '__main__':
-    os.system('bokeh serve --show GUI_Retraction.py')
+    os.system('bokeh serve --show GUI_NoiseScan.py')
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
@@ -184,7 +184,7 @@ controls_box = column([
     row([start_button, stop_server_button]),
     row([delete_last_button, elab_button]),
     message_box
-], sizing_mode='fixed')
+])
 
 plot_box = gridplot([[am_plot], [optical_plot], [z_plot]], sizing_mode='stretch_width',
                     merge_tools=False)

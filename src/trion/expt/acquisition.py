@@ -229,6 +229,7 @@ class SteppedRetraction(BaseScan):
 
     def routine(self):
         self.prepare()
+        (f'preparing stepped retraction: size={self.z_size:.2} , resolution={self.z_res:.2}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -345,6 +346,7 @@ class SteppedImage(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
+        (f'preparing stepped image scan: center {self.x_center:.2},{self.y_center:.2} , size={self.x_size:.2},{self.y_size:.2}')
         self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
@@ -430,6 +432,7 @@ class SteppedLineScan(BaseScan):
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
+        logger.info(f'preparing stepped line scan from {x_pos[0].:2},{y_pos[0].:2} to {x_pos[-1].:2},{y_pos[-1].:2}')
         self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
@@ -507,6 +510,7 @@ class ContinuousRetraction(ContinuousScan):
 
     def prepare(self):
         super().prepare()
+        (f'preparing continuous retraction: size={self.z_size:.2} , resolution={self.z_res:.2}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -577,6 +581,8 @@ class ContinuousImage(ContinuousScan):
 
     def prepare(self):
         super().prepare()
+        logger.info(f"""preparing continuous image scan: center {self.x_center:.2},{self.y_center:.2},
+                    size={self.x_size:.2},{self.y_size:.2}""")
         self.afm.prepare_image(self.modulation, self.x_center, self.y_center, self.x_size, self.y_size,
                                self.x_res, self.y_res, self.afm_angle_deg, self.afm_sampling_ms)
 
@@ -646,8 +652,9 @@ class ContinuousLineScan(ContinuousScan):
         y_center = .5 * (self.y_start + self.y_stop)
         dx = np.abs(self.x_stop - self.x_start)
         dy = np.abs(self.y_stop - self.x_start)
-        angle = np.arctan2(dy, dx)
+        angle = np.arctan2(dy, dx) / 2 / np.pi * 360
         length = np.sqrt(dx**2 + dy**2)
+        logger.info(f'preparing continuous line scan: length={length:.3} um, angle={angle:.2} deg')
         self.afm.prepare_image(mod=self.modulation, x_center=x_center, y_center=y_center, x_size=length, y_size=0,
                                x_res=self.x_res, y_res=self.y_res, angle=angle, sampling_time_ms=self.afm_sampling_ms)
 

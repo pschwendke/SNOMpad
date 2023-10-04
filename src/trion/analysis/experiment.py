@@ -155,7 +155,7 @@ class Retraction(Measurement):
         self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
         phase = self.afm_data['phase'].values
         phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
-        phase = (phase + np.pi) / 2 / np.pi * 360
+        phase = phase / 2 / np.pi * 360
         self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
 
         idx = self.afm_data['idx'].values
@@ -286,7 +286,7 @@ class Line(Measurement):
         self.demod_data['amp'] = xr.DataArray(data=amp, dims='r', coords={'r': r})
         phase = self.afm_data['phase'].values
         phase = phase[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
-        phase = (phase + np.pi) / 2 / np.pi * 360
+        phase = phase / 2 / np.pi * 360
         self.demod_data['phase'] = xr.DataArray(data=phase, dims='r', coords={'r': r})
 
         idx = self.afm_data['idx'].values

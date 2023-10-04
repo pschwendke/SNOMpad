@@ -16,7 +16,7 @@ from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
 
 if __name__ == '__main__':
-    os.system('bokeh serve --show GUI_Retraction.py')
+    os.system('bokeh serve --show GUI_Visualizer.py')
 
 callback_interval = 80  # ms
 buffer_size = 200_000

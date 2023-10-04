@@ -208,7 +208,7 @@ class BaseScan(ABC):
         for m in self.metadata_keys:
             if m in self.__dict__.keys():
                 metadata_collector[m] = self.__dict__[m]
-            elif m in self.metadata.keys():
+            elif self.metadata is not None and m in self.metadata.keys():
                 metadata_collector[m] = self.metadata[m]
             else:
                 metadata_collector[m] = None
