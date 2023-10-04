@@ -8,7 +8,7 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Dropdown, Select
 from bokeh.layouts import column, row, gridplot
 
-from trion.expt.acquisition import SteppedRetraction, ContinuousRetraction
+from trion.expt.acquisition import SteppedLineScan, ContinuousLineScan
 from trion.analysis.experiment import load
 
 import logging
@@ -33,17 +33,19 @@ def change_to_directory():
 
 
 def prepare_data(name: str):
-    global amp_plot_data, phase_plot_data, optical_plot_data
+    global z_plot_data, amp_plot_data, phase_plot_data, optical_plot_data
     logger.info('preparing scan data for GUI')
     filename = f'{directory}/{name}.h5'
     scan = load(filename)
     scan.demod()
     data = scan.demod_data
 
-    amp_data = {'z': data['z'].values, 'amp': data['amp'].values}
-    phase_data = {'z': data['z'].values, 'phase': data['phase'].values}
-    optical_data = {'z': data['z'].values}
+    z_data = {'r': data['r'].values, 'amp': data['z'].values}
+    amp_data = {'r': data['r'].values, 'amp': data['amp'].values}
+    phase_data = {'r': data['r'].values, 'phase': data['phase'].values}
+    optical_data = {'r': data['r'].values}
     optical_data.update({str(o): data['optical'].sel(order=o).values for o in range(max_harm + 1)})
+    z_plot_data.data = z_data
     amp_plot_data.data = amp_data
     phase_plot_data.data = phase_data
     optical_plot_data.data = optical_data
@@ -58,22 +60,24 @@ def start():
     message_box.styles['background-color'] = '#03F934'
 
     change_to_directory()
-    scan_class = [SteppedRetraction, ContinuousRetraction][scan_type_button.active]
+    scan_class = [SteppedLineScan, ContinuousLineScan][scan_type_button.active]
     modulation = mod_button.labels[mod_button.active]
 
     params = {
         'modulation': modulation,
-        'z_size': z_size_input.value,
-        'z_res': z_res_input.value,
+        'x_start': x_start_input.value,
+        'x_stop': x_stop_input.value,
+        'y_start': y_start_input.value,
+        'y_stop': y_stop_input.value,
+        'res': res_input.value,
         'npts': npts_input.value,
-        'x_target': x_target_input.value,
-        'y_target': y_target_input.value,
         'setpoint': setpoint_input.value,
         'metadata': metadata
     }
 
     if scan_type_button.active == 1:
-        params.update({'afm_sampling_ms': sampling_ms_input.value})
+        params.update({'afm_sampling_ms': sampling_ms_input.value,
+                       'n_lines': n_lines_input.value})
     if pump_probe_button.active:
         params.update({'t': t_input.value, 't0_mm': t0_input.value, 'chopped': True,
                        't_unit': t_unit_button.labels[t_unit_button.acitve]})
@@ -135,11 +139,13 @@ scan_type_button = RadioButtonGroup(labels=['stepped', 'continuous'], active=1)
 mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
 pump_probe_button = Toggle(label='pump-probe', active=False, width=100)
 
-z_size_input = NumericInput(title='z size (µm)', value=0.2, mode='float', low=0, high=1, width=80)
-z_res_input = NumericInput(title='z resolution', value=200, mode='int', low=1, high=10000, width=80)
+res_input = NumericInput(title='x resolution', value=200, mode='int', low=1, high=10000, width=80)
+n_lines_input = NumericInput(title='# of passes (lines)', value=10, mode='int', low=1, high=10000, width=80)
 npts_input = NumericInput(title='npts', mode='int', value=5_000, low=0, high=200_000, width=80)
-x_target_input = NumericInput(title='x position (µm)', value=None, mode='float', low=0, high=100, width=100)
-y_target_input = NumericInput(title='y position (µm)', value=None, mode='float', low=0, high=100, width=100)
+x_start_input = NumericInput(title='x start pos (µm)', value=None, mode='float', low=0, high=100, width=100)
+y_start_input = NumericInput(title='y start pos (µm)', value=None, mode='float', low=0, high=100, width=100)
+x_stop_input = NumericInput(title='x stop pos (µm)', value=None, mode='float', low=0, high=100, width=100)
+y_stop_input = NumericInput(title='y stop pos (µm)', value=None, mode='float', low=0, high=100, width=100)
 setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low=0, high=1, width=80)
 t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
 t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
@@ -192,39 +198,51 @@ message_box.styles = {
 cmap = cc.b_glasbey_category10
 
 
+def setup_z_plot():
+    init_data = {
+        'r': np.linspace(0, 1, 100),
+        'z': np.ones(100)
+    }
+    plot_data = ColumnDataSource(init_data)
+    fig = figure(title='AFM topography', aspect_ratio=3)
+    fig.xaxis.axis_label = 'r (µm)'
+    fig.line(x='r', y='z', source=plot_data)
+    return fig, plot_data
+
+
 def setup_amp_plot():
     init_data = {
-        'z': np.linspace(0, 1, 100),
+        'r': np.linspace(0, 1, 100),
         'amp': np.ones(100)
     }
     plot_data = ColumnDataSource(init_data)
     fig = figure(title='AFM tapping amplitude', aspect_ratio=3)
-    fig.xaxis.axis_label = 'dz (µm)'
-    fig.line(x='z', y='amp', source=plot_data)
+    fig.xaxis.axis_label = 'r (µm)'
+    fig.line(x='r', y='amp', source=plot_data)
     return fig, plot_data
 
 
 def setup_phase_plot():
     init_data = {
-        'z': np.linspace(0, 1, 100),
+        'r': np.linspace(0, 1, 100),
         'phase': np.ones(100)
     }
     plot_data = ColumnDataSource(init_data)
     fig = figure(title='AFM tapping phase', aspect_ratio=3)
-    fig.xaxis.axis_label = 'dz (µm)'
-    fig.line(x='z', y='phase', source=plot_data)
+    fig.xaxis.axis_label = 'r (µm)'
+    fig.line(x='r', y='phase', source=plot_data)
     return fig, plot_data
 
 
 def setup_optical_plot():
-    init_data = {'z': np.linspace(0, 1, 100)}
+    init_data = {'r': np.linspace(0, 1, 100)}
     init_data.update({str(o): np.ones(100) for o in range(max_harm + 1)})
     plot_data = ColumnDataSource(init_data)
 
     fig = figure(title='optical data', aspect_ratio=3)
-    fig.xaxis.axis_label = 'dz (µm)'
+    fig.xaxis.axis_label = 'r (µm)'
     for o in range(max_harm + 1):
-        line = fig.line(x='z', y=str(o), source=plot_data, legend_label=f'o{o}a', line_color=cmap[o])
+        line = fig.line(x='r', y=str(o), source=plot_data, legend_label=f'o{o}a', line_color=cmap[o])
         if o > 4:
             line.visible = False
     fig.legend.click_policy = 'hide'
@@ -235,14 +253,15 @@ def setup_optical_plot():
 amp_plot, amp_plot_data = setup_amp_plot()
 phase_plot, phase_plot_data = setup_phase_plot()
 optical_plot, optical_plot_data = setup_optical_plot()
+z_plot, z_plot_data = setup_z_plot()
 
 controls_box = column([
     row([start_button, stop_server_button, delete_last_button, elab_button]),
 
     row([parameter_title]),
     row([scan_type_button, mod_button, pump_probe_button]),
-    row([z_size_input, z_res_input, npts_input, setpoint_input]),
-    row([x_target_input, y_target_input, sampling_ms_input]),
+    row([x_start_input, y_start_input, x_stop_input, y_stop_input]),
+    row([res_input, n_lines_input, npts_input, setpoint_input, sampling_ms_input]),
 
     row([t_input, t_unit_button, t0_input]),
 
@@ -256,7 +275,8 @@ controls_box = column([
     message_box
 ], sizing_mode='fixed')
 
-plot_box = gridplot([[amp_plot], [phase_plot], [optical_plot]], sizing_mode='stretch_width', merge_tools=False)
+plot_box = gridplot([[z_plot], [amp_plot], [phase_plot], [optical_plot]],
+                    sizing_mode='stretch_width', merge_tools=False)
 
 gui = row([plot_box, controls_box], sizing_mode='stretch_width')
 
