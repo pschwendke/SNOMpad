@@ -166,18 +166,18 @@ class Retraction(Measurement):
         # ToDo: check for demod file
 
         # demodulate DAQ data for every pixel
-        harmonics = np.zeros((z_res, max_order), dtype=complex)
-        for p, h in tqdm(enumerate(harmonics)):
-            data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[p]])
+        harmonics = np.zeros((z_res, max_order + 1), dtype=complex)
+        for px, _ in tqdm(enumerate(harmonics)):
+            data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[px]])
             if self.modulation == Demodulation.shd:
                 coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
                 coefficients = pshet(data=data, signals=self.signals, **kwargs)
             else:
                 raise NotImplementedError
-            h = coefficients
+            harmonics[px] = coefficients[:max_order + 1]
         self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
-                                                  coords={'z': z, 'order': np.arange(max_order)})
+                                                  coords={'z': z, 'order': np.arange(max_order + 1)})
 
         # ToDo: create or write to demod file
 
