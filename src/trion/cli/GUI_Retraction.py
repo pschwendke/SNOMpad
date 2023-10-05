@@ -64,6 +64,21 @@ def start():
     scan_class = [SteppedRetraction, ContinuousRetraction][scan_type_button.active]
     modulation = mod_button.labels[mod_button.active]
 
+    metadata = {
+        'sample': sample_input.value,
+        'user': user_input.value,
+        'tip': tip_input.value,
+        'tapping_amp_nm': amp_input.value,
+        'tapping_frequency_Hz': freq_input.value,
+        'light_source': laser_input.value,
+        'probe_color_nm': probe_nm.value,
+        'probe_power_mW': probe_mW.value,
+        'probe_FWHM_nm': probe_FWHM.value,
+        'pump_color_nm': pump_nm.value,
+        'pump_power_mW': pump_mW.value,
+        'pump_FWHM_nm': pump_FWHM.value
+    }
+
     params = {
         'modulation': modulation,
         'z_size': z_size_input.value,
@@ -166,21 +181,6 @@ probe_FWHM = NumericInput(title='probe FWHM (nm)', value=None, low=0, high=100, 
 pump_nm = NumericInput(title='pump color (nm)', value=None, low=0, high=1500, mode='float', width=110)
 pump_mW = NumericInput(title='pump power (mW)', value=None, low=0, high=10, mode='float', width=110)
 pump_FWHM = NumericInput(title='pump FWHM (nm)', value=None, low=0, high=100, mode='float', width=110)
-
-metadata = {
-    'sample': sample_input.value,
-    'user': user_input.value,
-    'tip': tip_input.value,
-    'tapping_amp_nm': amp_input.value,
-    'tapping_frequency_Hz': freq_input.value,
-    'light_source': laser_input.value,
-    'probe_color_nm': probe_nm.value,
-    'probe_power_mW': probe_mW.value,
-    'probe_FWHM_nm': probe_FWHM.value,
-    'pump_color_nm': pump_nm.value,
-    'pump_power_mW': pump_mW.value,
-    'pump_FWHM_nm': pump_FWHM.value
-}
 
 message_box = Div(text='message box')
 message_box.styles = {
