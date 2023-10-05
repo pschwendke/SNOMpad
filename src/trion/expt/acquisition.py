@@ -159,7 +159,7 @@ class ContinuousPoint(ContinuousScan):
         for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
-                da = da.expand_dims(dim={'t': np.array(self.t)})
+                da = da.expand_dims(dim={'t': np.array([self.t])})
             self.afm_data[c] = da
         logger.info('Acquisition complete')
         self.stop_time = datetime.now()
@@ -229,7 +229,7 @@ class SteppedRetraction(BaseScan):
 
     def routine(self):
         self.prepare()
-        (f'preparing stepped retraction: size={self.z_size:.2} , resolution={self.z_res:.2}')
+        (f'preparing stepped retraction: size={self.z_size:.2} , resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -276,7 +276,7 @@ class SteppedRetraction(BaseScan):
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i + 1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
-                da = da.expand_dims(dim={'t': np.array(self.t)})
+                da = da.expand_dims(dim={'t': np.array([self.t])})
             self.afm_data[c] = da
 
 
@@ -367,7 +367,7 @@ class SteppedImage(BaseScan):
             ch = df[['x', 'y', c]].groupby(['y', 'x']).sum().unstack()
             da = xr.DataArray(ch, dims=('y', 'x'), coords={'x': x_pos, 'y': y_pos})
             if self.t is not None:
-                da = da.expand_dims(dim={'t': np.array(self.t)})
+                da = da.expand_dims(dim={'t': np.array([self.t])})
             self.afm_data[c] = da
 
 
@@ -432,7 +432,7 @@ class SteppedLineScan(BaseScan):
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        logger.info(f'preparing stepped line scan from {x_pos[0].:2},{y_pos[0].:2} to {x_pos[-1].:2},{y_pos[-1].:2}')
+        logger.info(f'preparing stepped line scan from {x_pos[0]:.2},{y_pos[0]:.2} to {x_pos[-1]:.2},{y_pos[-1]:.2}')
         self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
@@ -452,7 +452,7 @@ class SteppedLineScan(BaseScan):
         for i, c in enumerate(tracked_channels):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
-                da = da.expand_dims(dim={'t': np.array(self.t)})
+                da = da.expand_dims(dim={'t': np.array([self.t])})
             self.afm_data[c] = da
 
 
@@ -510,7 +510,7 @@ class ContinuousRetraction(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-        (f'preparing continuous retraction: size={self.z_size:.2} , resolution={self.z_res:.2}')
+        (f'preparing continuous retraction: size={self.z_size:.2} , resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)

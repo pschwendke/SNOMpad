@@ -120,7 +120,7 @@ class DLStage:
             if not returns[:2] == 'TE':
                 raise RuntimeError(f'Expected reply to TE, got {returns[:2]} instead.')
         except serial.SerialException:
-            logging.error('Serial Exception: delay stage can not be found or can not be configured')
+            logger.error('Serial Exception: delay stage can not be found or can not be configured')
 
     def __del__(self):
         self.disconnect()
@@ -159,7 +159,7 @@ class DLStage:
             raise RuntimeError(f'Expected reply to TE, got {error_code[:2]} instead.')
         if error_code[2] != '@':
             error_msg = last_error_code[error_code[2]]
-            logging.error('Error communicating with delay stage: ' + error_msg)
+            logger.error('Error communicating with delay stage: ' + error_msg)
 
         return ret
 
@@ -178,13 +178,13 @@ class DLStage:
     def log_status(self):
         carr, err, state = self.get_status()
         if carr != 0:
-            logging.info('Delay stage carriage status: ' + status_code[carr])
+            logger.info('Delay stage carriage status: ' + status_code[carr])
         if state != 0:
-            logging.info('Delay stage controller status: ' + ctrl_state_code[state])
+            logger.info('Delay stage controller status: ' + ctrl_state_code[state])
         if err != 0:
             for mask, msg in ctrl_error_code.items():
                 if err & mask:
-                    logging.info('Delay stage error message: ' + msg)
+                    logger.info('Delay stage error message: ' + msg)
 
     # PREPARE DELAY STAGE #############################################################################################
     def reset(self):
@@ -198,7 +198,7 @@ class DLStage:
         if status == 0:
             self.command('IE')
         else:
-            logging.error('Could not initialize delay stage.'
+            logger.error('Could not initialize delay stage.'
                           'Check if carriage is at end of stage (it should not be).')
 
     def search_home(self):
@@ -301,7 +301,7 @@ class DLStage:
             self.velocity = velocity
             return
         else:
-            logging.error('Delay stage error: could not prepare to move')
+            logger.error('Delay stage error: could not prepare to move')
 
     def move_abs(self, val: float, unit: str, velocity: float = 100):
         """ Moves the carriage to a certain position. The position can be given as position on axis or delay time.
