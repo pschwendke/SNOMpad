@@ -5,7 +5,7 @@ from datetime import datetime
 import colorcet as cc
 
 from bokeh.plotting import figure, ColumnDataSource, curdoc
-from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Dropdown, Select
+from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Select
 from bokeh.layouts import column, row, gridplot
 
 from trion.expt.acquisition import SteppedRetraction, ContinuousRetraction

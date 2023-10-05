@@ -118,7 +118,6 @@ class ContinuousPoint(ContinuousScan):
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
                          chopped=chopped, t=t, t_unit=t_unit, t0_mm=t0_mm,
                          parent_scan=parent_scan, identifier=identifier)
-        # ToDo Fix Bug: modulation is not set automatically
         self.acquisition_mode = Scan.point
         self.xy_unit = 'um'
         self.x_target = x_target
@@ -229,7 +228,7 @@ class SteppedRetraction(BaseScan):
 
     def routine(self):
         self.prepare()
-        (f'preparing stepped retraction: size={self.z_size:.2} , resolution={self.z_res}')
+        logger.info(f'preparing stepped retraction: size={self.z_size:.2}, resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -346,8 +345,8 @@ class SteppedImage(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        (f'preparing stepped image scan: center {self.x_center:.2},{self.y_center:.2} , size={self.x_size:.2},{self.y_size:.2}')
-        self.afm.set_pshet(self.modulation)
+        logger.info(f"""preparing stepped image scan: center {self.x_center:.2},{self.y_center:.2} ,
+                        size={self.x_size:.2},{self.y_size:.2}""")
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
         afm_tracking = []
@@ -433,7 +432,6 @@ class SteppedLineScan(BaseScan):
 
         self.prepare()
         logger.info(f'preparing stepped line scan from {x_pos[0]:.2},{y_pos[0]:.2} to {x_pos[-1]:.2},{y_pos[-1]:.2}')
-        self.afm.set_pshet(self.modulation)
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
         afm_tracking = []
@@ -510,7 +508,7 @@ class ContinuousRetraction(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-        (f'preparing continuous retraction: size={self.z_size:.2} , resolution={self.z_res}')
+        logger.info(f'preparing continuous retraction: size={self.z_size:.2}, resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)

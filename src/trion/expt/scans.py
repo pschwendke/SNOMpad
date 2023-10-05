@@ -139,8 +139,8 @@ class BaseScan(ABC):
         if self.parent_scan is None:
             logger.info('Connecting')
             self.afm = NeaSNOM()
+            self.afm.set_pshet(self.modulation)
             if self.t_unit is not None:
-                logger.info('Initializing delay stage')
                 self.delay_stage = DLStage()
                 ret = self.delay_stage.prepare()
                 if ret is not True:
