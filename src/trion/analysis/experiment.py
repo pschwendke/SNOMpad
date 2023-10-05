@@ -179,47 +179,55 @@ class Retraction(Measurement):
 
         # ToDo: create or write to demod file
 
-    def plot(self, max_order: int = 4, orders=None, afm_amp=False, afm_phase=False, grid=True, show=True, save=False):
-        # import matplotlib.pyplot as plt
-        # if self.demod_data is None:
-        #     self.demod()
-        # if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
-        #     orders = np.arange(max_order)
-        #
-        # fig, ax1 = plt.subplots()
-        # cmap = cc.glasbey_category10
-        # x = (self.demod_data['z'].values - self.demod_data['z'].values.min())
-        #
-        # if afm_phase:
-        #     ax2 = ax1.twinx()
-        #     y = self.demod_data['phase'].values / 2 / np.pi * 360  # degrees
-        #     ax2.plot(x, y, color='gray', marker='.', ms=3, lw=.5)
-        #     ax2.set_ylabel('AFM phase (degrees)', color='gray')
-        #
-        # if afm_amp:
-        #     ax3 = ax1.twinx()
-        #     y = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
-        #     ax3.plot(x, y, marker='.', ms=3, lw=.5, label='AFM amplitude (scaled)', color='darkblue', alpha=.5)
-        #     ax3.tick_params(right=False, labelright=False)
-        #     ax3.legend(loc='upper right')
-        #
-        # for o in orders:
-        #     y = np.real(self.demod_data['optical'].values[:, o].squeeze())
-        #     y /= np.abs(y).max()
-        #     ax1.plot(x, y, marker='.', lw=1, label=str(o), color=cmap[o])
-        #
-        # ax1.grid(visible=grid, which='major', axis='both')
-        # ax1.set_ylabel('optical amplitude (normalized)')
-        # ax1.set_xlabel('dz (nm)')
-        # ax1.legend(loc='lower right')
-        #
-        # if save:
-        #     plt.savefig(f'{self.afm_data.attrs["name"]}.png', dpi=300, bbox_inches='tight')
-        #     plt.savefig(f'{self.afm_data.attrs["name"]}.svg')
-        # if show:
-        #     plt.show()
-        # plt.close()
-        raise NotImplementedError
+    def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
+        import matplotlib.pyplot as plt
+        if self.demod_data is None:
+            self.demod()
+        if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
+            orders = np.arange(max_order + 1)
+
+        if self.modulation == Demodulation.pshet:
+            fig, ax = plt.subplots(3, 1, sharex='col', figsize=(8, 8))
+        else:
+            fig, ax = plt.subplots(2, 1, sharex='col', figsize=(8, 8))
+        harm_cmap = cc.glasbey_category10
+
+        z = (self.demod_data['z'].values - self.demod_data['z'].values.min()) * 1e3  # nm
+
+        a = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
+        ax[0].plot(z, a, marker='.', lw=1, color='C00')
+        ax[0].set_ylabel('AFM amplitude (scaled)', color='C00')
+        ax[0].grid(visible=grid, which='major', axis='both')
+
+        ax_phase = ax[0].twinx()
+        p = self.demod_data['phase'].values
+        ax_phase.plot(z, p, color='C01', marker='.', lw=1)
+        ax_phase.set_ylabel('AFM phase (degrees)', color='C01')
+
+        for o in orders:
+            sig = np.abs(self.demod_data['optical'].values[:, o])
+            sig /= np.abs(sig).max()
+            ax[1].plot(z, sig, marker='.', lw=1, label=f'abs({o})', color=harm_cmap[o])
+        ax[1].grid(visible=grid, which='major', axis='both')
+        ax[1].set_ylabel('optical amplitude (scaled)')
+        ax[1].legend(loc='upper right')
+
+        if self.modulation == Demodulation.pshet:
+            for o in orders:
+                sig = np.angle(self.demod_data['optical'].values[:, o])
+                ax[2].plot(z, sig, marker='.', lw=1, label=f'phase({o})', color=harm_cmap[o])
+            ax[2].grid(visible=grid, which='major', axis='both')
+            ax[2].set_ylabel('optical phase')
+            ax[2].set_xlabel('dz (nm)')
+            ax[2].legend(loc='upper right')
+        ax[-1].set_xlabel('dz (nm)')
+
+        if save:
+            plt.savefig(f'{self.name}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{self.name}.svg', bbox_inches='tight')
+        if show:
+            plt.show()
+        plt.close()
 
 
 class Image(Measurement):
@@ -310,8 +318,61 @@ class Line(Measurement):
 
         # ToDo: create or write to demod file
 
-    def plot(self):
-        raise NotImplementedError
+    def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
+        import matplotlib.pyplot as plt
+        if self.demod_data is None:
+            self.demod()
+        if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
+            orders = np.arange(max_order + 1)
+
+        if self.modulation == Demodulation.pshet:
+            fig, ax = plt.subplots(3, 1, sharex='col', figsize=(8, 8))
+        else:
+            fig, ax = plt.subplots(2, 1, sharex='col', figsize=(8, 8))
+        harm_cmap = cc.glasbey_category10
+
+        r = self.demod_data['r'].values * 1e3  # nm
+
+        z = (self.demod_data['z'].values - self.demod_data['z'].values.min()) * 1e3  # nm
+        ax[0].plot(r, z, marker='.', lw=1, color='C00')
+        ax[0].set_ylabel('AFM topography (nm)', color='C00')
+        ax[0].grid(visible=grid, which='major', axis='both')
+
+        ax_amp = ax[0].twinx()
+        a = self.demod_data['amp'].values
+        ax_amp.plot(r, a, color='C01', marker='.', lw=1, label='AFM amplitude')
+        ax_amp.tick_params(right=False, labelright=False)
+        ax_amp.legend(loc='upper right')
+
+        ax_phase = ax[0].twinx()
+        p = self.demod_data['phase'].values
+        ax_phase.plot(r, p, color='C02', marker='.', lw=1)
+        ax_phase.set_ylabel('AFM phase (degrees)', color='C02')
+
+        for o in orders:
+            sig = np.abs(self.demod_data['optical'].values[:, o])
+            sig /= np.abs(sig).max()
+            ax[1].plot(r, sig, marker='.', lw=1, label=f'abs({o})', color=harm_cmap[o])
+        ax[1].grid(visible=grid, which='major', axis='both')
+        ax[1].set_ylabel('optical amplitude (scaled)')
+        ax[1].legend(loc='upper right')
+
+        if self.modulation == Demodulation.pshet:
+            for o in orders:
+                sig = np.angle(self.demod_data['optical'].values[:, o])
+                ax[2].plot(r, sig, marker='.', lw=1, label=f'phase({o})', color=harm_cmap[o])
+            ax[2].grid(visible=grid, which='major', axis='both')
+            ax[2].set_ylabel('optical phase')
+            ax[2].set_xlabel('dz (nm)')
+            ax[2].legend(loc='upper right')
+        ax[-1].set_xlabel('r (nm)')
+
+        if save:
+            plt.savefig(f'{self.name}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{self.name}.svg', bbox_inches='tight')
+        if show:
+            plt.show()
+        plt.close()
 
 
 class Noise(Measurement):
@@ -349,8 +410,45 @@ class Noise(Measurement):
         self.optical_spectrum = np.vstack([np.abs(np.fft.rfft(sig_a, n)), np.abs(np.fft.rfft(sig_b, n))])
         self.optical_frequencies = np.fft.rfftfreq(n, dt_seconds)
 
-    def plot(self):
-        raise NotImplementedError
+    def plot(self, save=False, show=True):
+        import matplotlib.pyplot as plt
+        if self.z_spectrum is None:
+            self.demod()
+
+        fig, ax = plt.subplots(3, 1, sharex='col', figsize=(8, 8))
+
+        f = self.z_frequencies
+        sig = self.z_spectrum
+        ax[0].plot(f, sig, lw=1)
+        ax[0].set_xscale('log')
+        ax[0].set_yscale('log')
+        ax[0].set_ylabel('z piezo movement')
+
+        f = self.amp_frequencies
+        sig = self.amp_spectrum
+        ax[1].plot(f, sig, lw=1)
+        ax[1].set_xscale('log')
+        ax[1].set_yscale('log')
+        ax[1].set_ylabel('deflection laser')
+
+        f = self.optical_frequencies
+        sig_a = self.optical_spectrum[0]
+        sig_b = self.optical_spectrum[1]
+        ax[2].plot(f, sig_a, lw=1, label='sig_a')
+        ax[2].plot(f, sig_b, lw=1, label='sig_b')
+        ax[2].set_xscale('log')
+        ax[2].set_yscale('log')
+        ax[2].set_xlabel('frequency (Hz)')
+        ax[2].set_ylabel('probe scatter')
+
+        plt.legend()
+
+        if save:
+            plt.savefig(f'{self.name}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{self.name}.svg', bbox_inches='tight')
+        if show:
+            plt.show()
+        plt.close()
 
 
 class Delay(Measurement):
