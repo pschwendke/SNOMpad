@@ -713,7 +713,7 @@ class DelayScan(BaseScan):
         self.prepare()
         for i, t in enumerate(self.t_targets):
             logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
-            scan = self.scan_class(modulation=self.modulation, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
+            scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
                                    parent_scan=self, identifier=f'delay_position_{i}', **self.scan_kwargs)
             scan.start()
         logger.info('DelayScan complete')
