@@ -105,8 +105,50 @@ def load(filename: str) -> Measurement:
     
 
 class Point(Measurement):
-    def demod(self):
-        raise NotImplementedError
+    def demod(self, max_order: int = 5, demod_filename=None, **kwargs):
+        """ Creates a dictionary in self.demod_data. dict contains one np.ndarray for every tracked channel,
+        and one complex-valued xr.DataArray for demodulated harmonics, with dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
+        the file is saved in the '_ANALYSIS' directory on the server.
+        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
+        is already present in demod file, it will be read from the file.
+
+        Parameters
+        ----------
+        max_order: int
+            max harmonic order that should be returned.
+        demod_filename: str or 'auto'
+            path and filename of demod file
+        **kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        self.demod_data = {
+            'x': self.afm_data['x'].values.mean(),
+            'y': self.afm_data['y'].values.mean(),
+            'z': self.afm_data['z'].values.mean(),
+            'amp': self.afm_data['amp'].values.mean(),
+            'phase': self.afm_data['phase'].values.mean() / 2 / np.pi * 360
+        }
+        if 't' in self.afm_data.dims:
+            self.demod_data['t'] = self.afm_data['t'].values[0]
+
+        # ToDo: check for demod file
+
+        idx = self.afm_data['idx'].values
+        # harmonics = np.zeros(max_order + 1, dtype=complex)
+        # for px, _ in tqdm(enumerate(harmonics)):
+        data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx])
+        if self.modulation == Demodulation.shd:
+            coefficients = shd(data=data, signals=self.signals, **kwargs)
+        elif self.modulation == Demodulation.pshet:
+            coefficients = pshet(data=data, signals=self.signals, **kwargs)
+        else:
+            raise NotImplementedError
+        harmonics = coefficients[:max_order + 1]
+        self.demod_data['optical'] = xr.DataArray(data=harmonics, dims='order',
+                                                  coords={'order': np.arange(max_order + 1)})
+
+        # ToDo: create or write to demod file
 
     def plot(self):
         raise NotImplementedError
