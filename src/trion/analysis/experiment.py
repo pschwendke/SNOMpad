@@ -436,7 +436,7 @@ class Noise(Measurement):
         self.z_frequencies = np.fft.rfftfreq(n, integration_seconds)
 
         signals = [Signals[s] for s in self.metadata['signals']]
-       
+
         daq_data = np.array(self.file['daq_data']['1'])
         tap_x = daq_data[:, signals.index(Signals.tap_x)]
         tap_y = daq_data[:, signals.index(Signals.tap_y)]
@@ -494,8 +494,34 @@ class Noise(Measurement):
 
 
 class Delay(Measurement):
-    def demod(self):
-        raise NotImplementedError
+    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
+        if self.metadata['scan_type'] == 'point':
+            meas_class = Point
+        else:
+            raise NotImplementedError
+            # Todo: extend for other scan types
+
+        delay_positions = []
+        for k, v in self.file.items():
+            if 't' in v.attrs.keys():
+                pos = meas_class(v)
+                pos.demod(max_order=max_order, demod_npts=demod_npts, **kwargs)
+                delay_positions.append(pos.demod_data)
+                # Todo: collect demod files
+
+        t = np.array([pos['t'] for pos in delay_positions])
+        optical = np.vstack([pos['optical'].values for pos in delay_positions])
+
+        self.demod_data = xr.Dataset({
+            'x': xr.DataArray(data=np.array([pos['x'] for pos in delay_positions]), dims='t', coords={'t': t}),
+            'y': xr.DataArray(data=np.array([pos['y'] for pos in delay_positions]), dims='t', coords={'t': t}),
+            'z': xr.DataArray(data=np.array([pos['z'] for pos in delay_positions]), dims='t', coords={'t': t}),
+            'amp': xr.DataArray(data=np.array([pos['amp'] for pos in delay_positions]), dims='t', coords={'t': t}),
+            'phase': xr.DataArray(data=np.array([pos['phase'] for pos in delay_positions]), dims='t',
+                                  coords={'t': t}),
+            'optical': xr.DataArray(data=optical, dims=('t', 'order'),
+                                    coords={'t': t, 'order': np.arange(max_order + 1)})
+        })
 
     def plot(self):
         raise NotImplementedError

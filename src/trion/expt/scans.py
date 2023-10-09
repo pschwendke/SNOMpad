@@ -33,7 +33,7 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
 class BaseScan(ABC):
     def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0', metadata: dict = None,
                  t: float = None, t_unit: str = None, t0_mm: float = None, chopped=False, parent_scan=None,
-                 identifier: str = None):
+                 delay_idx=None):
         """
         Parameters
         ----------
@@ -58,7 +58,7 @@ class BaseScan(ABC):
             if True, chop signal will be acquired
         parent_scan: BaseScan
             when a BaseScan object is passed, no file is created, but data saved into parent's file
-        identifier: str
+        delay_idx: str or int
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         try:
@@ -79,7 +79,7 @@ class BaseScan(ABC):
         self.t0_mm = t0_mm
         self.chopped = chopped
         self.parent_scan = parent_scan
-        self.identifier = identifier
+        self.delay_idx = delay_idx
         self.connected = False
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
@@ -100,7 +100,7 @@ class BaseScan(ABC):
                               'probe_power_mW', 'pump_power_mW',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
                               'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
-                              't', 't_start', 't_stop', 't_unit', 't0_mm',
+                              't', 't_start', 't_stop', 't_unit', 't0_mm', 'delay_idx', 'scan_type',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
                               'trion_version', 'neaclient_version', 'neaserver_version']
@@ -108,18 +108,19 @@ class BaseScan(ABC):
     def prepare(self):
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
-        self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-        logging.getLogger().addHandler(self.log_handler)
         logger.info('Preparing Scan')
         self.connected = self.connect()
-
         if self.parent_scan is None:
             filename = self.name + '.h5'
             logger.info(f'Creating scan file: {filename}')
             self.file = h5py.File(filename, 'w')
+
+            self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
+            self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+            logging.getLogger().addHandler(self.log_handler)
         else:  # acts as a separate file, for all that we care about:
-            self.file = self.parent_scan.file.create_group(self.identifier)
+            logger.info(f'Creating sub file for delay position: {self.delay_idx}')
+            self.file = self.parent_scan.file.create_group(f'delay_idx_{self.delay_idx}')
         self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
         self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
         self.file.create_group('nea_data')  # data returned by NeaScan API
