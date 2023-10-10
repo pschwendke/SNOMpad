@@ -17,7 +17,8 @@ from trion.analysis.signals import Signals, Scan
 from trion.expt.buffer import ExtendingArrayBuffer
 from trion.expt.buffer.base import Overfill
 from trion.expt.daq import DaqController
-from trion.expt.scans import ContinuousScan, BaseScan
+from trion.expt.nea_ctrl import to_numpy
+from trion.expt.scans import ContinuousScan, BaseScan, logger
 
 import nidaqmx
 from nidaqmx.constants import (Edge, TaskMode)
@@ -105,9 +106,9 @@ class ContinuousPoint(ContinuousScan):
         signals: Iterable[Signals]
             signals that are acquired from the DAQ
         x_target: float
-            x coordinate of retraction curve. Must be passed together with y_target
+            x coordinate of acquisition. Must be passed together with y_target
         y_target: float
-            y coordinate of retraction curve. Must be passed together with x_target
+            y coordinate of acquisition. Must be passed together with x_target
         in_contact: bool
             If True, the samples are acquired while AFM is in contact
         parent_scan: BaseScan
@@ -165,7 +166,7 @@ class ContinuousPoint(ContinuousScan):
 
     def routine(self):
         self.prepare()
-        if self.in_contact:
+        if self.in_contact and self.parent_scan is None:
             self.afm.engage(self.setpoint)
         self.ctrl.start()
         self.acquire()
@@ -211,9 +212,9 @@ class SteppedRetraction(BaseScan):
             Specified variables, e.g. self.name have higher priority than passed metadata.
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts,
                          parent_scan=parent_scan, delay_idx=delay_idx)
-        self.afm_sampling_milliseconds = 50
+        self.afm_sampling_ms = 50
         self.acquisition_mode = Scan.stepped_retraction
         self.xy_unit = 'um'
         self.z_size = z_size
@@ -222,8 +223,6 @@ class SteppedRetraction(BaseScan):
         self.y_center = None
         self.x_target = x_target
         self.y_target = y_target
-        self.npts = npts
-        self.setpoint = setpoint
 
     def routine(self):
         self.prepare()
@@ -233,7 +232,7 @@ class SteppedRetraction(BaseScan):
             self.afm.goto_xy(self.x_target, self.y_target)
         targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
         tracked_channels = ['z_target', 'x', 'y', 'z', 'amp', 'phase']
-        self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_milliseconds)
+        self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_ms)
         self.afm.engage(self.setpoint)
 
         logger.info('Starting acquisition')
@@ -322,7 +321,7 @@ class SteppedImage(BaseScan):
             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts,
                          parent_scan=parent_scan, delay_idx=delay_idx)
         self.acquisition_mode = Scan.stepped_image
         self.xy_unit = 'um'
@@ -332,8 +331,6 @@ class SteppedImage(BaseScan):
         self.y_res = y_res
         self.x_center = x_center
         self.y_center = y_center
-        self.npts = npts
-        self.setpoint = setpoint
 
     def routine(self):
         x_pos, y_pos = [
@@ -411,7 +408,7 @@ class SteppedLineScan(BaseScan):
             Specified variables, e.g. self.name have higher priority than passed metadata.
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm,
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts,
                          parent_scan=parent_scan, delay_idx=delay_idx)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
@@ -420,8 +417,6 @@ class SteppedLineScan(BaseScan):
         self.x_stop = x_stop
         self.y_stop = y_stop
         self.linescan_res = res
-        self.npts = npts
-        self.setpoint = setpoint
 
     def routine(self):
         x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
@@ -658,7 +653,8 @@ class ContinuousLineScan(ContinuousScan):
 
 class DelayScan(BaseScan):
     def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, n_step: int,
-                 t0_mm=None, continuous: bool = True, scale: str = 'lin', metadata=None, **scan_kwargs):
+                 t0_mm=None, continuous: bool = True, scale: str = 'lin', setpoint: float = 0.8, metadata=None,
+                 x_target=None, y_target=None, **scan_kwargs):
         """
         Parameters
         ----------
@@ -682,16 +678,25 @@ class DelayScan(BaseScan):
             are used, e.g. SteppedLineScan
         scale: str
             spacing of n_step acquisitions along t axis. Liner when 'lin' is passed. 'log' produces logarithmic spacing.
+        setpoint: float
+            AFM setpoint when engaged
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
+        x_target: float
+            point acquisition only: x coordinate of acquisition. Must be passed together with y_target
+        y_target: float
+            point acquisition only: y coordinate of acquisition. Must be passed together with x_target
         scan_kwargs:
             keyword arguments that are passed to scan class
         """
-        super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata)
+        super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
+                         setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
         self.scan_kwargs = scan_kwargs
         self.scan_type = scan
+        self.x_target = x_target
+        self.y_target = y_target
 
         if scale == 'lin':
             self.t_targets = np.linspace(t_start, t_stop, n_step)
@@ -699,7 +704,7 @@ class DelayScan(BaseScan):
             self.t_targets = np.logspace(np.log10(t_start), np.log10(t_stop), n_step)
         else:
             raise NotImplementedError(f'scale has to be lin or log. "{scale}" was passed.')
-        
+
         try:
             i = ['point', 'retraction', 'line', 'image'].index(scan)
         except ValueError:
@@ -711,6 +716,11 @@ class DelayScan(BaseScan):
 
     def routine(self):
         self.prepare()
+        if self.scan_type in ['point', 'retraction']:
+            if self.x_target is not None and self.y_target is not None:
+                logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+                self.afm.goto_xy(self.x_target, self.y_target)
+            self.afm.engage(self.setpoint)
         for i, t in enumerate(self.t_targets):
             logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
             scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
@@ -719,6 +729,68 @@ class DelayScan(BaseScan):
         logger.info('DelayScan complete')
         self.stop_time = datetime.now()
         
+
+class NoiseScan(ContinuousScan):
+    def __init__(self, sampling_seconds: float, signals=None, x_target=None, y_target=None,
+                 npts: int = 5_000, setpoint: float = 0.8):
+        """
+        Parameters
+        ----------
+        signals: iterable
+            list of Signals. If None, the signals will be determined by modulation and pump_probe
+        sampling_seconds: float
+            number of seconds to acquire
+        x_target: float
+            x coordinate of acquisition in um. Must be passed together with y_target
+        y_target: float
+            y coordinate of acquisition in um. Must be passed together with x_target
+        npts: int
+            number of samples per chunk acquired by the DAQ
+        setpoint: float
+            AFM setpoint when engaged
+        """
+        if signals is None:
+            signals = [Signals['sig_a'], Signals['tap_x'], Signals['tap_y']]
+        super().__init__(npts=npts, setpoint=setpoint, modulation='shd', signals=signals)
+        self.acquisition_mode = Scan.noise_sampling
+        self.x_target, self.y_target = x_target, y_target
+        self.afm_sampling_ms = 0.4
+        self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_ms // 1), 1
+        self.x_size, self.y_size = 0, 0
+        self.afm_angle = 0
+
+    def prepare(self):
+        super().prepare()
+        if self.x_target is None or self.y_target is None:
+            self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
+        self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
+                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_ms, serpent=True)
+
+    def acquire(self):
+        # ToDo this could be merged at some time with parent class
+        logger.info('Starting scan')
+        excess = 0
+        daq_data = []
+        while not self.afm.scan.IsCompleted:
+            n_read = excess
+            while n_read < self.npts:  # this slicing seems redundant. Someone should rewrite this.
+                sleep(.001)
+                n = self.ctrl.reader.read()
+                n_read += n
+            excess = n_read - self.npts
+            daq_data.append(self.buffer.get(n=self.npts, offset=excess))
+
+        daq_data = np.vstack(daq_data)
+        self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
+
+        logger.info('Acquisition complete')
+        self.nea_data = to_numpy(self.nea_data)
+        self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x'), coords={'x': np.linspace(0, 1, self.x_res), 'y': [0]}
+                                         ) for k, v in self.nea_data.items()}
+        self.nea_data = xr.Dataset(self.nea_data)
+        logger.info('Scan complete')
+        self.stop_time = datetime.now()
+
 
 def transfer_func_acq(
         device: str,
