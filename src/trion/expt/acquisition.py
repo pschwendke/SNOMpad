@@ -654,7 +654,7 @@ class ContinuousLineScan(ContinuousScan):
 class DelayScan(BaseScan):
     def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, n_step: int,
                  t0_mm=None, continuous: bool = True, scale: str = 'lin', setpoint: float = 0.8, metadata=None,
-                 x_target=None, y_target=None, **scan_kwargs):
+                 **scan_kwargs):
         """
         Parameters
         ----------
@@ -683,20 +683,17 @@ class DelayScan(BaseScan):
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
-        x_target: float
-            point acquisition only: x coordinate of acquisition. Must be passed together with y_target
-        y_target: float
-            point acquisition only: y coordinate of acquisition. Must be passed together with x_target
         scan_kwargs:
             keyword arguments that are passed to scan class
         """
         super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
                          setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
-        self.scan_kwargs = scan_kwargs
         self.scan_type = scan
-        self.x_target = x_target
-        self.y_target = y_target
+        if scan_kwargs['x_target'] is not None and scan_kwargs['y_target'] is not None:
+            self.x_target = scan_kwargs.pop('x_target')
+            self.y_target = scan_kwargs.pop('y_target')
+        self.scan_kwargs = scan_kwargs
 
         if scale == 'lin':
             self.t_targets = np.linspace(t_start, t_stop, n_step)
@@ -716,10 +713,10 @@ class DelayScan(BaseScan):
 
     def routine(self):
         self.prepare()
-        if self.scan_type in ['point', 'retraction']:
-            if self.x_target is not None and self.y_target is not None:
-                logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
-                self.afm.goto_xy(self.x_target, self.y_target)
+        if self.x_target is not None and self.y_target is not None:
+            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            self.afm.goto_xy(self.x_target, self.y_target)
+        if self.scan_type == 'point' and self.scan_kwargs['in_contact']:
             self.afm.engage(self.setpoint)
         for i, t in enumerate(self.t_targets):
             logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
