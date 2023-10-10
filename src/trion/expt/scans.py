@@ -31,7 +31,8 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
 
 
 class BaseScan(ABC):
-    def __init__(self, modulation: str, signals=None, pump_probe=False, device='Dev1', clock_channel='pfi0',
+    def __init__(self, modulation: str, signals=None, pump_probe=False, setpoint: float = 0.8, npts: int = 5_000,
+                 device='Dev1', clock_channel='pfi0',
                  metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None,
                  parent_scan=None, delay_idx=None):
         """
@@ -48,6 +49,10 @@ class BaseScan(ABC):
             should be 'Dev1' for now.
         clock_channel: str
             should be 'pfi0', as labelled on the DAQ
+        setpoint: float
+            AFM setpoint when engaged
+        npts: int
+            number of samples from the DAQ that are saved in one chunk
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
@@ -71,6 +76,10 @@ class BaseScan(ABC):
             signals = [Signals[s] for s in sig_list[modulation]]
             if pump_probe:
                 signals.append(Signals['chop'])
+        if npts > 200_000:
+            logger.error(f'npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
+            npts = 200_000
+        self.npts = npts
         self.signals = signals
         self.device = device
         self.clock_channel = clock_channel
@@ -78,6 +87,7 @@ class BaseScan(ABC):
         self.t = t
         self.t_unit = t_unit
         self.t0_mm = t0_mm
+        self.setpoint = setpoint
         self.pump_probe = pump_probe
         self.parent_scan = parent_scan
         self.delay_idx = delay_idx
@@ -109,30 +119,31 @@ class BaseScan(ABC):
     def prepare(self):
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        logger.info('Preparing Scan')
-        self.connected = self.connect()
         if self.parent_scan is None:
-            filename = self.name + '.h5'
-            logger.info(f'Creating scan file: {filename}')
-            self.file = h5py.File(filename, 'w')
-
             self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
             self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
             logging.getLogger().addHandler(self.log_handler)
+
+            logger.info('Preparing Scan')
+            filename = self.name + '.h5'
+            logger.info(f'Creating scan file: {filename}')
+            self.file = h5py.File(filename, 'w')
         else:  # acts as a separate file, for all that we care about:
             logger.info(f'Creating sub file for delay position: {self.delay_idx}')
             self.file = self.parent_scan.file.create_group(f'delay_idx_{self.delay_idx}')
+        self.connected = self.connect()
         self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
         self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
         self.file.create_group('nea_data')  # data returned by NeaScan API
 
-        if self.t_unit is not None:
+        if self.pump_probe:
             if self.t0_mm is not None:
                 self.delay_stage.reference = self.t0_mm
-            logger.info(f'Moving to delay position: {self.t} {self.t_unit}')
-            self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
-            self.delay_stage.wait_for_stage()
-            self.delay_stage.log_status()
+            if self.t is not None:
+                logger.info(f'Moving to delay position: {self.t:.2} {self.t_unit}')
+                self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
+                self.delay_stage.wait_for_stage()
+                self.delay_stage.log_status()
 
     def connect(self):
         """
@@ -191,6 +202,9 @@ class BaseScan(ABC):
         try:
             self.routine()
             self.export()
+        except RuntimeError as e:
+            if str(e) == 'Acquisition was interrupted in GUI':
+                logger.error(e)
         finally:
             self.connected = self.disconnect()
         

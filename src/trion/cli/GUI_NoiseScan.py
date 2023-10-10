@@ -10,7 +10,7 @@ from bokeh.models import Button, NumericInput, Div
 from bokeh.layouts import column, row, gridplot
 
 from trion.analysis.signals import Signals
-from trion.expt.scans import NoiseScan
+from trion.expt.acquisition import NoiseScan
 from trion.analysis.experiment import Noise
 
 import logging
@@ -36,7 +36,7 @@ def change_to_directory():
     if not os.path.isdir(directory):
         os.mkdir(directory)
     os.chdir(directory)
-    logger.info(f'changed to {directory}')
+    logger.info(f'changed to directory {directory}')
 
 
 def prepare_data(name: str):
@@ -78,6 +78,10 @@ def start():
     prepare_data(scan.name)
 
 
+def interrupt():
+    raise RuntimeError('Acquisition was interrupted in GUI')
+
+
 def delete_last():
     filename = f'{directory}/{message_box.text}.h5'
     logfile = f'{directory}/{message_box.text}.log'
@@ -109,6 +113,9 @@ def stop():
 # WIDGETS ##############################################################################################################
 start_button = Button(label='START')
 start_button.on_click(start)
+
+stop_button = Button(label='STOP')
+stop_button.on_click(interrupt)
 
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
@@ -180,8 +187,8 @@ z_plot, z_plot_data = setup_z_plot()
 optical_plot, optical_plot_data = setup_optical_plot()
 
 controls_box = column([
-    row([sampling_s_input, setpoint_input]),
-    row([start_button, stop_server_button]),
+    row([start_button, sampling_s_input, setpoint_input]),
+    row([stop_button, stop_server_button]),
     row([delete_last_button, elab_button]),
     message_box
 ])
