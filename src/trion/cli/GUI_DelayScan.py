@@ -93,7 +93,7 @@ def start():
     if scan_type_button.active == 1:
         params.update({'afm_sampling_ms': sampling_ms_input.value})
     if pump_probe_button.active:
-        params.update({'t': t_input.value, 't0_mm': t0_input.value, 'chopped': True,
+        params.update({'t': t_input.value, 't0_mm': t0_input.value, 'pump_probe': True,
                        't_unit': t_unit_button.labels[t_unit_button.acitve]})
 
     scan = scan_class(**params)

@@ -31,16 +31,19 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
 
 
 class BaseScan(ABC):
-    def __init__(self, modulation: str, signals=None, device='Dev1', clock_channel='pfi0', metadata: dict = None,
-                 t: float = None, t_unit: str = None, t0_mm: float = None, chopped=False, parent_scan=None,
-                 delay_idx=None):
+    def __init__(self, modulation: str, signals=None, pump_probe=False, device='Dev1', clock_channel='pfi0',
+                 metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None,
+                 parent_scan=None, delay_idx=None):
         """
         Parameters
         ----------
         modulation: str
             either 'shd' or 'pshet'
         signals: iterable
-            list of Signals. If None, the signals will be determined by modulation and chopped
+            list of Signals. If None, the signals will be determined by modulation and pump_probe
+        pump_probe: bool
+            if True, chop signal will be acquired and delay stage will be connected and moved to t position.
+            t and t_unit must be passed as well.
         device: str
             should be 'Dev1' for now.
         clock_channel: str
@@ -54,8 +57,6 @@ class BaseScan(ABC):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        chopped: bool
-            if True, chop signal will be acquired
         parent_scan: BaseScan
             when a BaseScan object is passed, no file is created, but data saved into parent's file
         delay_idx: str or int
@@ -68,7 +69,7 @@ class BaseScan(ABC):
         if signals is None:
             sig_list = {'shd': ['sig_a', 'tap_x', 'tap_y'], 'pshet': ['sig_a', 'tap_x', 'tap_y', 'ref_x', 'ref_y']}
             signals = [Signals[s] for s in sig_list[modulation]]
-            if chopped:
+            if pump_probe:
                 signals.append(Signals['chop'])
         self.signals = signals
         self.device = device
@@ -77,7 +78,7 @@ class BaseScan(ABC):
         self.t = t
         self.t_unit = t_unit
         self.t0_mm = t0_mm
-        self.chopped = chopped
+        self.pump_probe = pump_probe
         self.parent_scan = parent_scan
         self.delay_idx = delay_idx
         self.connected = False
@@ -95,7 +96,7 @@ class BaseScan(ABC):
         self.log_handler = None
         self.metadata = metadata
         self.metadata_keys = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
-                              'modulation', 'signals', 'chopped',
+                              'modulation', 'signals', 'pump_probe',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
@@ -141,7 +142,7 @@ class BaseScan(ABC):
             logger.info('Connecting')
             self.afm = NeaSNOM()
             self.afm.set_pshet(self.modulation)
-            if self.t_unit is not None:
+            if self.pump_probe:
                 self.delay_stage = DLStage()
                 ret = self.delay_stage.prepare()
                 if ret is not True:
@@ -313,7 +314,7 @@ class NoiseScan(ContinuousScan):
         Parameters
         ----------
         signals: iterable
-            list of Signals. If None, the signals will be determined by modulation and chopped
+            list of Signals. If None, the signals will be determined by modulation and pump_probe
         sampling_seconds: float
             number of seconds to acquire
         x_target: float
