@@ -690,7 +690,7 @@ class DelayScan(BaseScan):
                          setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
         self.scan_type = scan
-        if scan_kwargs['x_target'] is not None and scan_kwargs['y_target'] is not None:
+        if 'x_target' in scan_kwargs and 'y_target' in scan_kwargs:
             self.x_target = scan_kwargs.pop('x_target')
             self.y_target = scan_kwargs.pop('y_target')
         self.scan_kwargs = scan_kwargs
@@ -719,7 +719,7 @@ class DelayScan(BaseScan):
         if self.scan_type == 'point' and self.scan_kwargs['in_contact']:
             self.afm.engage(self.setpoint)
         for i, t in enumerate(self.t_targets):
-            logger.info(f'Delay position {i} of {len(self.t_targets)}: t = {t} {self.t_unit}')
+            logger.info(f'Delay position {i+1} of {len(self.t_targets)}: t = {t:.2f} {self.t_unit}')
             scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
                                    pump_probe=True, parent_scan=self, delay_idx=i, **self.scan_kwargs)
             scan.start()

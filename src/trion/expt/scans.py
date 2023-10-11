@@ -140,7 +140,6 @@ class BaseScan(ABC):
             if self.t0_mm is not None:
                 self.delay_stage.reference = self.t0_mm
             if self.t is not None:
-                logger.info(f'Moving to delay position: {self.t:.2} {self.t_unit}')
                 self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
                 self.delay_stage.wait_for_stage()
                 self.delay_stage.log_status()

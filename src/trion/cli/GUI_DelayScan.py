@@ -57,6 +57,7 @@ def prepare_data(name: str):
 
 # CALLBACKS ############################################################################################################
 def start():
+    logger.info('Started scan in GUI')
     message_box.text = 'Scan started'
     message_box.styles['background-color'] = '#03F934'
 
@@ -82,17 +83,18 @@ def start():
         'scan': scan_type_button.labels[scan_type_button.active],
         't_start': t_start_input.value,
         't_stop': t_stop_input.value,
-        't_unit': t_unit_button.labels[t_unit_button.acitve],
+        't_unit': t_unit_button.labels[t_unit_button.active],
         't0_mm': t0_input.value,
         'n_step': n_step_input.value,
         'scale': scale_input.labels[scale_input.active],
-        'continuous': continuous_input.value,
+        'continuous': continuous_input.active,
         'setpoint': setpoint_input.value,
         'npts': npts_input.value,
         'metadata': metadata,
     }
 
-    if params['scan'] == 'pont':
+    if params['scan'] == 'point':
+        logger.info('Scan type: point scan')
         params.update({
             'x_target': x_target_input.value,
             'y_target': y_target_input.value,
@@ -152,8 +154,8 @@ elab_button.on_click(elab_entry)
 
 # scan parameters
 parameter_title = Div(text='SCAN PARAMETERS')
-parameter_title.styles = {'width': '300px', 'text-align': 'center', 'background-color': '#AAAAAA'}
-scan_type_button = RadioButtonGroup(labels=['point scan'], active=0)
+parameter_title.styles = {'width': '400px', 'text-align': 'center', 'background-color': '#AAAAAA'}
+scan_type_button = RadioButtonGroup(labels=['point'], active=0)
 continuous_input = Toggle(label='continuous', active=True, width=100)
 mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
 
@@ -169,6 +171,8 @@ t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=2
 sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=60, width=100)
 
 # specific for point scans
+point_title = Div(text='POINT SCAN PARAMETERS')
+point_title.styles = {'width': '400px', 'text-align': 'center', 'background-color': '#DDDDDD'}
 x_target_input = NumericInput(title='x position (µm)', value=None, mode='float', low=0, high=100, width=100)
 y_target_input = NumericInput(title='y position (µm)', value=None, mode='float', low=0, high=100, width=100)
 n_input = NumericInput(title='pts per px', mode='int', value=30_000, low=0, high=200_000, width=80)
@@ -176,7 +180,7 @@ in_contact_input = Toggle(label='in contact', active=True, width=100)
 
 # metadata
 metadata_title = Div(text='METADATA')
-metadata_title.styles = {'width': '300px', 'text-align': 'center', 'background-color': '#AAAAAA'}
+metadata_title.styles = {'width': '400px', 'text-align': 'center', 'background-color': '#AAAAAA'}
 sample_input = TextInput(title='sample name', value='', width=150)
 user_input = TextInput(title='user name', value='', width=150)
 
@@ -254,9 +258,12 @@ controls_box = column([
     row([parameter_title]),
     row([scan_type_button, mod_button, continuous_input]),
     row([npts_input, setpoint_input, sampling_ms_input]),
-    row([x_target_input, y_target_input, n_input, in_contact_input]),
 
-    row([t_start_input, t_stop_input, t_unit_button, n_step_input, scale_input, t0_input]),
+    row([t_start_input, t_stop_input, t_unit_button]),
+    row([n_step_input, scale_input, t0_input]),
+
+    row([point_title]),
+    row([x_target_input, y_target_input, n_input, in_contact_input]),
 
     row([metadata_title]),
     row([sample_input, user_input]),
