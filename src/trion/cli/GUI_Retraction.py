@@ -197,7 +197,6 @@ message_box.styles = {
     'background-color': '#FFFFFF'
 }
 
-
 # SET UP PLOTS #########################################################################################################
 cmap = cc.b_glasbey_category10
 

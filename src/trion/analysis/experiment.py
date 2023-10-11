@@ -494,7 +494,7 @@ class Noise(Measurement):
 
 
 class Delay(Measurement):
-    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
+    def demod(self, max_order: int = 5, demod_filename=None, **kwargs):
         if self.metadata['scan_type'] == 'point':
             meas_class = Point
         else:
@@ -505,7 +505,7 @@ class Delay(Measurement):
         for k, v in self.file.items():
             if 't' in v.attrs.keys():
                 pos = meas_class(v)
-                pos.demod(max_order=max_order, demod_npts=demod_npts, **kwargs)
+                pos.demod(max_order=max_order, **kwargs)
                 delay_positions.append(pos.demod_data)
                 # Todo: collect demod files
 
@@ -513,6 +513,7 @@ class Delay(Measurement):
         optical = np.vstack([pos['optical'].values for pos in delay_positions])
 
         self.demod_data = xr.Dataset({
+            # ToDo: does this also work for retraction, line, and images?
             'x': xr.DataArray(data=np.array([pos['x'] for pos in delay_positions]), dims='t', coords={'t': t}),
             'y': xr.DataArray(data=np.array([pos['y'] for pos in delay_positions]), dims='t', coords={'t': t}),
             'z': xr.DataArray(data=np.array([pos['z'] for pos in delay_positions]), dims='t', coords={'t': t}),
