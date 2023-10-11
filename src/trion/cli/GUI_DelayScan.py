@@ -52,7 +52,7 @@ def prepare_data(name: str):
     optical_plot_data.data = optical_data
 
     message_box.text = name
-    message_box.styles['background-color'] = '#AAAAAA'
+    message_box.styles['background-color'] = '#03F934'
 
 
 # CALLBACKS ############################################################################################################
@@ -109,10 +109,6 @@ def start():
     prepare_data(scan.name)
 
 
-def interrupt():
-    raise RuntimeError('Acquisition was interrupted in GUI')
-
-
 def delete_last():
     filename = f'{directory}/{message_box.text}.h5'
     logfile = f'{directory}/{message_box.text}.log'
@@ -144,9 +140,6 @@ def stop():
 # WIDGETS ##############################################################################################################
 start_button = Button(label='START')
 start_button.on_click(start)
-
-stop_button = Button(label='STOP')
-stop_button.on_click(interrupt)
 
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
@@ -256,7 +249,7 @@ phase_plot, phase_plot_data = setup_phase_plot()
 optical_plot, optical_plot_data = setup_optical_plot()
 
 controls_box = column([
-    row([start_button, stop_button, stop_server_button, delete_last_button, elab_button]),
+    row([start_button, stop_server_button, delete_last_button, elab_button]),
 
     row([parameter_title]),
     row([scan_type_button, mod_button, continuous_input]),

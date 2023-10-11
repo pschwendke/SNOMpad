@@ -202,9 +202,8 @@ class BaseScan(ABC):
         try:
             self.routine()
             self.export()
-        except RuntimeError as e:
-            if str(e) == 'Acquisition was interrupted in GUI':
-                logger.error(e)
+        except KeyboardInterrupt:
+            logger.error('Acquisition was interrupted by user')
         finally:
             self.connected = self.disconnect()
         
