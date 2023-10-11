@@ -124,6 +124,7 @@ class DLStage:
         logger.info(f'Connected to delay stage on port {port}')
 
     def __del__(self):
+        logger.debug('DLStage.__del__()')
         self.disconnect()
 
     def disconnect(self):
@@ -138,13 +139,13 @@ class DLStage:
         """
         eol = '\r\n'
         msg = cmd + val + eol
-        logger.debug('Message to delay stage: ' + msg)
+        logger.debug(f'Command to delay stage: {msg}')
         self.ser.write(msg.encode())
 
         if cmd in ['TS', 'TP'] or (cmd in ['RF', 'MM', 'VA'] and val == '?'):  # return value expected
-            returns = self.ser.readlines()
-            logger.debug('Message from delay stage: ' + str(returns))
-            returns = returns[0].decode().strip()
+            returns = self.ser.readline()
+            logger.debug(f'Return from delay stage after command ({msg.encode()}): {returns}')
+            returns = returns.decode().strip()
             ret_cmd, ret_msg = returns[:len(cmd)], returns[len(cmd):]
             if not ret_cmd == cmd:
                 raise RuntimeError(f'Expected reply to {cmd}, got {ret_cmd} instead.')
@@ -161,7 +162,7 @@ class DLStage:
             raise RuntimeError(f'Expected reply to TE, got {error_code[:2]} instead.')
         if error_code[2] != '@':
             error_msg = last_error_code[error_code[2]]
-            logger.error('Error communicating with delay stage: ' + error_msg)
+            logger.error(f'Error communicating with delay stage: {error_msg}')
 
         return ret
 
@@ -332,6 +333,7 @@ class DLStage:
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         val = str(val)
+        logger.info(f'Moving to delay position {val:.2} mm with {velocity} mm/s')
         self.prepare_move(velocity=velocity)
         self.command(cmd='PA', val=val)
 
@@ -360,6 +362,7 @@ class DLStage:
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         step = str(step)
+        logger.info(f'Moving delay position by {step:.2} mm with {velocity} mm/s')
         self.prepare_move(velocity=velocity)
         self.command(cmd='PR', val=step)
 
