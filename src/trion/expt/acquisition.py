@@ -659,7 +659,7 @@ class DelayScan(BaseScan):
         Parameters
         ----------
         modulation: str
-            either 'shd' or 'pshet'
+            either 'shd', 'pshet', or 'none'. 'none' only works for point scans.
         scan: str
             Defines the type of scan to be performed at every delay position.
             Str has to be one of 'point', 'retraction', 'line', or 'image'.

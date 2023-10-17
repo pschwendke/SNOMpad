@@ -70,9 +70,11 @@ class BaseScan(ABC):
         try:
             self.modulation = Demodulation[modulation]
         except KeyError:
-            logger.error(f'BaseScan only takes "shd" and "pshet" as modulation values. "{modulation}" was passed.')
+            logger.error(f'BaseScan only takes "shd", "pshet", and "none" as modulation values. "{modulation}" was passed.')
         if signals is None:
-            sig_list = {'shd': ['sig_a', 'tap_x', 'tap_y'], 'pshet': ['sig_a', 'tap_x', 'tap_y', 'ref_x', 'ref_y']}
+            sig_list = {'shd': ['sig_a', 'tap_x', 'tap_y'],
+                        'pshet': ['sig_a', 'tap_x', 'tap_y', 'ref_x', 'ref_y'],
+                        'none': ['sig_a']}
             signals = [Signals[s] for s in sig_list[modulation]]
             if pump_probe:
                 signals.append(Signals['chop'])
@@ -151,7 +153,8 @@ class BaseScan(ABC):
         if self.parent_scan is None:
             logger.info('Connecting')
             self.afm = NeaSNOM()
-            self.afm.set_pshet(self.modulation)
+            if self.modulation is not Demodulation.none:
+                self.afm.set_pshet(self.modulation)
             if self.pump_probe:
                 self.delay_stage = DLStage()
                 ret = self.delay_stage.prepare()
