@@ -11,7 +11,7 @@ from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, Li
 from bokeh.layouts import layout, column, row
 
 from trion.analysis.signals import Signals
-from trion.analysis.demod import shd, pshet
+from trion.analysis.demod import shd, pshet, sort_chopped
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController
 
@@ -96,21 +96,43 @@ def update_harmonics(data, tap, ref):
     global harm_scaling
     rtn_value = 0
     try:
-        if pshet_button.active is True:
+        # if pshet:
+        if mod_button.labels[mod_button.active] == 'pshet':
             coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
                                         chopped=chop_button.active, normalize=False))
-        else:
+        # if shd:
+        elif mod_button.labels[mod_button.active] == 'shd':
             coefficients = shd(data=data, signals=signals, tap_res=tap,
                                chopped=chop_button.active, normalize=False)
+        
+        # if no mod:
+        elif mod_button.labels[mod_button.active] == 'no mod':
+            coefficients = np.zeros(max_harm+1)
+            if chop_button.active:
+                chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+                chopped = data[chopped_idx, signals.index(Signals.sig_a)].mean()
+                pumped = data[pumped_idx, signals.index(Signals.sig_a)].mean()
+                pump_probe = (pumped - chopped) / chopped
+                coefficients[0] = chopped
+                coefficients[1] = pumped
+                coefficients[2] = pump_probe
+                rtn_value = '(0) probe only -- (1) pump only -- (2) pump-probe'
+            else:
+                coefficients[0] = data[:, signals.index(Signals.sig_a)].mean()
+                coefficients[1] = data[:, signals.index(Signals.sig_b)].mean()
+                rtn_value = '(0) sig_a -- (1) sig_b'
+
         coefficients = np.abs(coefficients[: max_harm+1])  # add a button to toggle abs()
 
-        if harm_scaling[0] == 0:
-            harm_scaling = np.ones(max_harm+1) / coefficients
-        for i, over_limit in enumerate(coefficients * harm_scaling > 1):
-            if over_limit:
-                harmonics_plot_data.data[str(i)] /= coefficients[i] * harm_scaling[i]
-                harm_scaling[i] = 1 / coefficients[i]
-        coefficients *= harm_scaling
+        # normalize modulated data
+        if mod_button.labels[mod_button.active] != 'no mod':
+            if harm_scaling[0] == 0:
+                harm_scaling = np.ones(max_harm+1) / coefficients
+            for i, over_limit in enumerate(coefficients * harm_scaling > 1):
+                if over_limit:
+                    harmonics_plot_data.data[str(i)] /= coefficients[i] * harm_scaling[i]
+                    harm_scaling[i] = 1 / coefficients[i]
+            coefficients *= harm_scaling
 
         new_data = {str(i): np.array([coefficients[i]]) for i in range(max_harm+1)}
         new_data.update({'t': np.array([perf_counter()])})
@@ -125,11 +147,12 @@ def update_harmonics(data, tap, ref):
 
 
 def update_raw_and_phase(data, tap_res, ref_res):
+    if mod_button.labels[mod_button.active] == 'no mod':
+        return
     theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     # phase data
-    if pshet_button.active is True:
-
+    if mod_button.labels[mod_button.active] == 'pshet':
         returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
                                       bins=[tap_res, ref_res], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
@@ -180,15 +203,15 @@ def update_signal_to_noise():
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
 
-go_button = Toggle(label='GO', active=False, width=100)
-pshet_button = Toggle(label='pshet', active=False, width=100)
-chop_button = Toggle(label='chop', active=False, width=100)
+go_button = Toggle(label='GO', active=False, width=60)
+mod_button = RadioButtonGroup(labels=['no mod', 'shd', 'pshet'], active=1)
+chop_button = Toggle(label='chop', active=False, width=60)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
 
-tap_input = NumericInput(title='# tap bins', value=64, mode='int', low=16, high=256, width=100)
-ref_input = NumericInput(title='# ref bins', value=64, mode='int', low=16, high=256, width=100)
-npts_input = NumericInput(title='# of samples', value=50_000, mode='int', low=10_000, high=buffer_size, width=100)
+tap_input = NumericInput(title='# tap bins', value=64, mode='int', low=16, high=256, width=90)
+ref_input = NumericInput(title='# ref bins', value=64, mode='int', low=16, high=256, width=90)
+npts_input = NumericInput(title='# of samples', value=50_000, mode='int', low=10_000, high=buffer_size, width=90)
 
 message_box = Div(text='message box')
 message_box.styles = {
@@ -210,6 +233,7 @@ def setup_harm_plot():
     init_data = {str(h): np.ones(harm_plot_size) for h in range(max_harm+1)}
     init_data.update({'t': np.zeros(harm_plot_size)})
     plot_data = ColumnDataSource(init_data)
+
     fig = figure(aspect_ratio=4)  # toolbar_location=None
     for h in range(max_harm+1):
         fig.line(x='t', y=str(h), source=plot_data, line_color=harm_colors[h], line_width=2,
@@ -256,7 +280,7 @@ acquisition_loop.start()
 
 # GUI OUTPUT ###########################################################################################################
 controls_box = column([
-    row([go_button, pshet_button, chop_button]),
+    row([go_button, chop_button, mod_button]),
     row([tap_input, ref_input, npts_input]),
     raw_theta_button,
     stop_server_button,
