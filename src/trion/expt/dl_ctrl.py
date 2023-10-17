@@ -221,6 +221,10 @@ class DLStage:
         if state < 60:
             self.search_home()
             self.wait_for_stage()
+        if state >= 80:
+            self.motor_enabled = True
+            self.search_home()
+            self.wait_for_stage()
         return self.is_ready
 
     # MOVING DELAY STAGE ##############################################################################################
