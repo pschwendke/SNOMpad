@@ -690,6 +690,8 @@ class DelayScan(BaseScan):
                          setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
         self.scan_type = scan
+        self.x_target = None
+        self.y_target = None
         if 'x_target' in scan_kwargs and 'y_target' in scan_kwargs:
             self.x_target = scan_kwargs.pop('x_target')
             self.y_target = scan_kwargs.pop('y_target')

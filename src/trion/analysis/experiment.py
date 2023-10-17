@@ -10,7 +10,7 @@ from typing import Iterable
 from abc import ABC, abstractmethod
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
-from trion.analysis.demod import shd, pshet
+from trion.analysis.demod import shd, pshet, sort_chopped
 
 
 def h5_to_xr_dataset(group: h5py.Group):
@@ -142,6 +142,16 @@ class Point(Measurement):
             coefficients = shd(data=data, signals=self.signals, **kwargs)
         elif self.modulation == Demodulation.pshet:
             coefficients = pshet(data=data, signals=self.signals, **kwargs)
+        elif self.modulation == Demodulation.none:
+            coefficients = np.zeros(max_order+1)
+            if self.metadata['pump_probe']:
+                chopped_idx, pumped_idx = sort_chopped(data[:, self.signals.index(Signals.chop)])
+                chopped = data[chopped_idx, self.signals.index(Signals.sig_a)].mean()
+                pumped = data[pumped_idx, self.signals.index(Signals.sig_a)].mean()
+                pump_probe = (pumped - chopped) / chopped
+                coefficients[0] = pump_probe
+            else:
+                coefficients[0] = data[:, self.signals.index(Signals.sig_a)].mean()
         else:
             raise NotImplementedError
         harmonics = coefficients[:max_order + 1]
@@ -501,13 +511,18 @@ class Delay(Measurement):
             raise NotImplementedError
             # Todo: extend for other scan types
 
-        delay_positions = []
+        group_names = []  # I have the feeling this is more complicated than it should
         for k, v in self.file.items():
             if 't' in v.attrs.keys():
-                pos = meas_class(v)
-                pos.demod(max_order=max_order, **kwargs)
-                delay_positions.append(pos.demod_data)
-                # Todo: collect demod files
+                group_names.append(k)
+        group_names_sorted = np.array(group_names)
+        group_names_sorted[[int(g.split('_')[-1]) for g in group_names]] = group_names
+        delay_positions = []
+        for n in tqdm(group_names_sorted):
+            pos = meas_class(self.file[n])
+            pos.demod(max_order=max_order, **kwargs)
+            delay_positions.append(pos.demod_data)
+            # Todo: collect demod files
 
         t = np.array([pos['t'] for pos in delay_positions])
         optical = np.vstack([pos['optical'].values for pos in delay_positions])
