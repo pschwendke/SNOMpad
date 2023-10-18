@@ -122,7 +122,10 @@ def update_harmonics(data, tap, ref):
                 coefficients[1] = data[:, signals.index(Signals.sig_b)].mean()
                 rtn_value = '(0) sig_a -- (1) sig_b'
 
-        coefficients = np.abs(coefficients[: max_harm+1])  # add a button to toggle abs()
+        if abs_button.active:
+            coefficients = np.abs(coefficients[: max_harm+1])
+        else:
+            coefficients = np.real(coefficients[: max_harm+1])
 
         # normalize modulated data
         if mod_button.labels[mod_button.active] != 'no mod':
@@ -206,6 +209,7 @@ stop_server_button.on_click(stop)
 go_button = Toggle(label='GO', active=False, width=60)
 mod_button = RadioButtonGroup(labels=['no mod', 'shd', 'pshet'], active=1)
 chop_button = Toggle(label='chop', active=False, width=60)
+abs_button = Toggle(label='abs', active=True, width=60)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
 
@@ -237,7 +241,7 @@ def setup_harm_plot():
     fig = figure(aspect_ratio=4)  # toolbar_location=None
     for h in range(max_harm+1):
         fig.line(x='t', y=str(h), source=plot_data, line_color=harm_colors[h], line_width=2,
-                 syncable=False, legend_label=f'a{h:02}')
+                 syncable=False, legend_label=f'{h:02}')
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
     return fig, plot_data
@@ -249,15 +253,14 @@ def setup_raw_plot():
     init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_plot_tail)})
     plot_data = ColumnDataSource(init_data)
     fig = figure(height=400, width=400)  # toolbar_location=None
-    for c in channels:
-        fig.scatter(x='theta', y=c, source=plot_data, marker='dot', size=10, syncable=False, legend_label=c)
+    for i, c in enumerate(channels):
+        fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=harm_colors[i], size=10, syncable=False, legend_label=c)
     fig.legend.location = 'top_right'
     fig.legend.click_policy = 'hide'
     return fig, plot_data
 
 
 def setup_phase_plot():
-    # only display histogram
     init_data = {'binned': [np.random.uniform(size=(64, 64))]}
     plot_data = ColumnDataSource(init_data)
     fig = figure(height=400, width=400, toolbar_location=None)
@@ -282,7 +285,7 @@ acquisition_loop.start()
 controls_box = column([
     row([go_button, chop_button, mod_button]),
     row([tap_input, ref_input, npts_input]),
-    raw_theta_button,
+    row([raw_theta_button, abs_button]),
     stop_server_button,
     noise_table,
     message_box
