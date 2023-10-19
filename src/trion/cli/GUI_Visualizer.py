@@ -2,6 +2,7 @@ import numpy as np
 import sys
 import os
 import threading
+import logging
 from time import sleep, perf_counter
 from scipy.stats import binned_statistic, binned_statistic_2d
 
@@ -19,6 +20,9 @@ if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')
 
 callback_interval = 80  # ms
+logger = logging.getLogger()
+logger.setLevel('INFO')
+
 buffer_size = 200_000
 harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
@@ -65,10 +69,11 @@ class Acquisitor:
             daq.start()
             while go_button.active:
                 sleep(.1)
-                daq.reader.read()
+                daq.reader.read()            
         finally:
             daq.close()
         self.waiting_loop()
+            # go_button.active = False
 
 
 # CALLBACKS ############################################################################################################

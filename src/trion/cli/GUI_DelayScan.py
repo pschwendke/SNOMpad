@@ -45,7 +45,8 @@ def prepare_data(name: str):
     optical_data = {'t': data['t'].values}
     for o in range(max_harm + 1):
         d = np.abs(data['optical'].sel(order=o).values)
-        d /= d.max()
+        if d.max() > 0:
+            d /= d.max()
         optical_data[str(o)] = d
     amp_plot_data.data = amp_data
     phase_plot_data.data = phase_data
@@ -157,7 +158,7 @@ parameter_title = Div(text='SCAN PARAMETERS')
 parameter_title.styles = {'width': '400px', 'text-align': 'center', 'background-color': '#AAAAAA'}
 scan_type_button = RadioButtonGroup(labels=['point'], active=0)
 continuous_input = Toggle(label='continuous', active=True, width=100)
-mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
+mod_button = RadioButtonGroup(labels=['none', 'shd', 'pshet'], active=1)
 
 npts_input = NumericInput(title='chunk size', mode='int', value=5_000, low=0, high=200_000, width=80)
 setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low=0, high=1, width=80)

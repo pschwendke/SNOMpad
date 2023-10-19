@@ -83,28 +83,39 @@ def phased_ft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
     return np.real(ft)
 
 
+# def sort_chopped(chop: np.ndarray) -> tuple:
+#     """ Takes optical chop signal, returns boolean indices of chopped and pumped shots
+#     """
+#     hi_sig = chop[chop > np.median(chop)]
+#     lo_sig = chop[chop < np.median(chop)]
+#     model = GaussianModel()
+
+#     # fit gaussian to chop signal for pumped shots
+#     values, edges = np.histogram(hi_sig, bins=100)
+#     A = values.max()
+#     result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
+#                        method='leastsqr')
+#     hilim = result.best_values['center'] - 3 * result.best_values['sigma']
+#     pumped = chop > hilim
+
+#     # fit gaussian to chop signal for chopped shots
+#     values, edges = np.histogram(lo_sig, bins=100)
+#     A = values.max()
+#     result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
+#                        method='leastsqr')
+#     lolim = result.best_values['center'] + 3 * result.best_values['sigma']
+#     chopped = chop < lolim
+
+#     return chopped, pumped
+
 def sort_chopped(chop: np.ndarray) -> tuple:
     """ Takes optical chop signal, returns boolean indices of chopped and pumped shots
     """
     hi_sig = chop[chop > np.median(chop)]
     lo_sig = chop[chop < np.median(chop)]
-    model = GaussianModel()
 
-    # fit gaussian to chop signal for pumped shots
-    values, edges = np.histogram(hi_sig, bins=100)
-    A = values.max()
-    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
-                       method='leastsqr')
-    hilim = result.best_values['center'] - 3 * result.best_values['sigma']
-    pumped = chop > hilim
-
-    # fit gaussian to chop signal for chopped shots
-    values, edges = np.histogram(lo_sig, bins=100)
-    A = values.max()
-    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
-                       method='leastsqr')
-    lolim = result.best_values['center'] + 3 * result.best_values['sigma']
-    chopped = chop < lolim
+    pumped = np.abs(chop - hi_sig.mean()) < (3 * hi_sig.std())
+    chopped = np.abs(chop - lo_sig.mean()) < (3 * lo_sig.std())
 
     return chopped, pumped
 
