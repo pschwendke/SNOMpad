@@ -5,7 +5,6 @@
 # acquisition scripts
 import numpy as np
 import xarray as xr
-import pandas as pd
 import logging
 from time import sleep
 from typing import Iterable
@@ -346,24 +345,23 @@ class SteppedImage(BaseScan):
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
         afm_tracking = []
-        for i, (y, x) in enumerate(tqdm(targets)):
+        for idx, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
             data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            self.file['daq_data'].create_dataset(str(idx), data=data, dtype='float32')
             current = list(self.afm.get_current())
-            afm_tracking.append([x, y, i] + current)
+            afm_tracking.append([idx] + current)
 
         logger.info('Acquisition complete')
         self.stop_time = datetime.now()
 
-        df = pd.DataFrame(afm_tracking, columns=tracked_channels)
         self.afm_data = xr.Dataset()
-        for c in tracked_channels:
-            ch = df[['x', 'y', c]].groupby(['y', 'x']).sum().unstack()
-            da = xr.DataArray(ch, dims=('y', 'x'), coords={'x': x_pos, 'y': y_pos})
+        for c, ch_name in enumerate(tracked_channels):
+            ch = np.array([[afm_tracking[targets.index((y, x))][c] for x in x_pos] for y in y_pos])
+            da = xr.DataArray(ch, dims=('y_target', 'x_target'), coords={'x_target': x_pos, 'y_target': y_pos})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array([self.t])})
-            self.afm_data[c] = da
+            self.afm_data[ch_name] = da
 
 
 class SteppedLineScan(BaseScan):
