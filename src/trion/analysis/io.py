@@ -114,7 +114,7 @@ def export_gwy(filename: str, data: xr.Dataset):
         xr.Dataset of xr.DataArrays of x/y data
     """
     container = GwyContainer()
-    metadata = data.attrs
+    metadata = data.attrs.copy()
     metastrings = {k: str(v) for k, v in metadata.items()}
     metacontainer = GwyContainer(metastrings)
 
@@ -127,15 +127,28 @@ def export_gwy(filename: str, data: xr.Dataset):
             raise RuntimeError(f'Expected 2-dimensional data, got dimension {image_data.ndim} instead')
         try:
             z_unit = d.attrs['z_unit']
+            if z_unit == 'um':
+                image_data *= 1e-6
+                z_unit = 'm'
+            if z_unit == 'nm':
+                image_data *= 1e-9
+                z_unit = 'm'
         except KeyError:
             z_unit = ''
         try:
-            xy_unit = metadata['xy_unit']
-            if xy_unit == 'um':
+            if metadata['xy_unit'] == 'um':
                 x_offset *= 1e-6
                 y_offset *= 1e-6
+                metadata['x_size'] *= 1e-6
+                metadata['y_size'] *= 1e-6
+            if metadata['xy_unit'] == 'nm':
+                x_offset *= 1e-9
+                y_offset *= 1e-9
+                metadata['x_size'] *= 1e-9
+                metadata['y_size'] *= 1e-9
         except KeyError:
-            xy_unit = 'm'
+            pass
+        xy_unit = 'm'
 
         container['/' + str(i) + '/data/title'] = t  # ToDo this somehow does not work for the first channel
         container['/' + str(i) + '/data'] = GwyDataField(image_data,
@@ -146,7 +159,8 @@ def export_gwy(filename: str, data: xr.Dataset):
                                                          si_unit_xy=GwySIUnit(unitstr=xy_unit),
                                                          si_unit_z=GwySIUnit(unitstr=z_unit),
                                                          )
-        container['/' + str(i) + '/base/palette'] = 'Warm'
+        if 'optical' in t and 'amp' in t:
+            container['/' + str(i) + '/base/palette'] = 'Warm'
         container['/' + str(i) + '/meta'] = metacontainer
 
     container['/filename'] = filename

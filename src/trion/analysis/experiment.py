@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from trion.analysis.demod import shd, pshet, sort_chopped
+from trion.analysis.io import export_gwy
 
 
 def h5_to_xr_dataset(group: h5py.Group):
@@ -169,7 +170,7 @@ class Retraction(Measurement):
         """ Creates xr.Dataset in self.demod_data. Dataset contains one DataArray for every tracked channel,
         and one complex-valued DataArray for demodulated harmonics, with extra dimension 'order'.
         When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
-        the file is saved in the '_ANALYSIS' directory on the server.
+        a filename is generated and saved in the working directory
         When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
         is already present in demod file, it will be read from the file.
 
@@ -228,6 +229,7 @@ class Retraction(Measurement):
             harmonics[px] = coefficients[:max_order + 1]
         self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
                                                   coords={'z': z, 'order': np.arange(max_order + 1)})
+        self.demod_data.attrs = self.metadata
 
         # ToDo: create or write to demod file
 
@@ -283,11 +285,134 @@ class Retraction(Measurement):
 
 
 class Image(Measurement):
-    def demod(self):
-        raise NotImplementedError
+    def demod(self, max_order: int = 5, demod_filename=None, **kwargs):
+        """ Creates xr.Dataset in self.demod_data. Dataset contains one DataArray for every tracked channel,
+        and one complex-valued DataArray for demodulated harmonics, with extra dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
+        a filename is generated and saved in the working directory.
+        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
+        is already present in demod file, it will be read from the file.
 
-    def plot(self):
-        raise NotImplementedError
+        Parameters
+        ----------
+        max_order: int
+            max harmonic order that should be returned.
+        demod_filename: str or 'auto'
+            path and filename of demod file
+        **kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        if self.mode == Scan.continuous_image:
+            raise NotImplementedError
+        self.demod_data = xr.Dataset()
+        x = self.afm_data.x_target.values
+        y = self.afm_data.y_target.values
+        z = self.afm_data.z.values
+        amp = self.afm_data.amp.values
+        phase = self.afm_data.phase.values
+
+        self.demod_data['z'] = xr.DataArray(data=z, dims=('y', 'x'), coords={'x': x, 'y': y})
+        self.demod_data['z'].attrs['z_unit'] = 'um'
+        self.demod_data['amp'] = xr.DataArray(data=amp, dims=('y', 'x'), coords={'x': x, 'y': y})
+        self.demod_data['amp'].attrs['z_unit'] = 'nm'
+        self.demod_data['phase'] = xr.DataArray(data=phase, dims=('y', 'x'), coords={'x': x, 'y': y})
+        self.demod_data['phase'].attrs['z_unit'] = 'rad'
+
+        # ToDo: check for demod file
+
+        harmonics = np.zeros((len(y), len(x), max_order + 1), dtype=complex)
+        #  this indexing needs to be redone when demodulating continuous images
+        for i in tqdm(self.afm_data.idx.values.flatten()):
+            data = np.array(self.file['daq_data'][str(i)])
+            if self.modulation == Demodulation.shd:
+                coefficients = shd(data=data, signals=self.signals, **kwargs)
+            elif self.modulation == Demodulation.pshet:
+                coefficients = pshet(data=data, signals=self.signals, **kwargs)
+            else:
+                raise NotImplementedError
+
+            y_idx, x_idx = np.where(self.afm_data.idx.values == i)
+            harmonics[y_idx, x_idx] = coefficients[:max_order + 1]
+        self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('y', 'x', 'order'),
+                                                  coords={'x': x, 'y': y, 'order': np.arange(max_order + 1)})
+        self.demod_data.attrs = self.metadata
+
+        # ToDo: create or write to demod file
+
+    def plot(self, max_order: int = 4, orders=None, show=True, save=False):
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import LinearSegmentedColormap
+        if self.demod_data is None:
+            self.demod()
+        if not (hasattr(orders, '__iter__') and all([type(h) is int for h in orders])):
+            orders = np.arange(max_order + 1)
+
+        cmap_topo = cc.m_dimgray
+        cmap_phase = cc.CET_C3[128:] + cc.CET_C3[:128]
+        cmap_amp = cc.m_gray
+        cmap_phase = LinearSegmentedColormap.from_list('cyclic', cmap_phase)
+        cmap_opt = cc.m_fire
+        lim = np.array([self.demod_data.x.values.min(), self.demod_data.x.values.max(),
+                        self.demod_data.y.values.max(), self.demod_data.y.values.min()])  # um
+
+        # ToDo make a decent layout for this
+        #  implement show and save
+        sig = self.demod_data.z.values * 1e3  # nm
+        sig -= sig.min()
+        plt.imshow(sig, extent=lim, cmap=cmap_topo)
+        plt.xlabel('x (um)')
+        plt.ylabel('y (um)')
+        plt.colorbar(label='topography (nm)')
+        plt.show()
+
+        sig = self.demod_data.phase / 2 / np.pi * 360  # deg
+        plt.imshow(sig, extent=lim, cmap=cmap_phase)
+        plt.xlabel('x (um)')
+        plt.ylabel('y (um)')
+        plt.colorbar(label=' AFM phase (degrees)')
+        plt.show()
+
+        sig = self.demod_data.amp  # nm
+        plt.imshow(sig, extent=lim, cmap=cmap_amp)
+        plt.xlabel('x (um)')
+        plt.ylabel('y (um)')
+        plt.colorbar(label='AFM amplitude (nm)')
+        plt.show()
+
+        for o in orders:
+            sig = self.demod_data.optical.sel(order=o)
+            plt.imshow(np.abs(sig), extent=lim, cmap=cmap_opt)
+            plt.xlabel('x (um)')
+            plt.ylabel('y (um)')
+            plt.colorbar(label=f'optical amplitude ({o}. harm) (arb. units)')
+            plt.show()
+
+            plt.imshow(np.angle(sig), extent=lim, cmap=cmap_phase)
+            plt.xlabel('x (um)')
+            plt.ylabel('y (um)')
+            plt.colorbar(label=f'optical phase ({o}. harm) (arb. units)')
+            plt.show()
+
+    def to_gwy(self, filename=None):
+        if self.demod_data is None:
+            self.demod()
+        if filename is None:
+            filename = self.name + '.gwy'
+
+        out_data = xr.Dataset()
+        out_data['z'] = self.demod_data['z']
+        out_data['amp'] = self.demod_data['amp']
+        out_data['phase'] = self.demod_data['phase']
+
+        for o in self.demod_data.order.values:
+            out_data[f'optical amplitude {o}'] = np.abs(self.demod_data.optical.sel(order=o))
+            out_data[f'optical amplitude {o}'].attrs['z_unit'] = 'V'
+            out_data[f'optical phase {o}'] = xr.ufuncs.angle(self.demod_data.optical.sel(order=o))
+            out_data[f'optical phase {o}'].attrs['z_unit'] = 'rad'
+
+        out_data.attrs = self.demod_data.attrs
+
+        export_gwy(filename=filename, data=out_data)
 
 
 class Line(Measurement):
@@ -296,7 +421,7 @@ class Line(Measurement):
         Dataset contains one DataArray for every tracked channel, and one complex-valued DataArray for demodulated
         harmonics, with extra dimension 'order'.
         When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
-        the file is saved in the '_ANALYSIS' directory on the server.
+        a filename is generated and saved in the working directory
         When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
         is already present in demod file, it will be read from the file.
 
@@ -367,6 +492,7 @@ class Line(Measurement):
             harmonics[px] = coefficients[:max_order + 1]
         self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
                                                   coords={'r': r, 'order': np.arange(max_order + 1)})
+        self.demod_data.attrs = self.metadata
 
         # ToDo: create or write to demod file
 
