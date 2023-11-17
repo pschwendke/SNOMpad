@@ -120,6 +120,20 @@ def export_gwy(filename: str, data: xr.Dataset):
 
     x_offset = (metadata['x_center'] - metadata['x_size'] / 2)
     y_offset = (metadata['y_center'] - metadata['y_size'] / 2)
+    try:
+        if metadata['xy_unit'] == 'um':
+            x_offset *= 1e-6
+            y_offset *= 1e-6
+            metadata['x_size'] *= 1e-6
+            metadata['y_size'] *= 1e-6
+        if metadata['xy_unit'] == 'nm':
+            x_offset *= 1e-9
+            y_offset *= 1e-9
+            metadata['x_size'] *= 1e-9
+            metadata['y_size'] *= 1e-9
+    except KeyError:
+        pass
+    xy_unit = 'm'
 
     for i, (t, d) in enumerate(data.data_vars.items()):
         image_data = d.values.astype('float64')  # only double precision floats in gwy files
@@ -135,21 +149,7 @@ def export_gwy(filename: str, data: xr.Dataset):
                 z_unit = 'm'
         except KeyError:
             z_unit = ''
-        try:
-            if metadata['xy_unit'] == 'um':
-                x_offset *= 1e-6
-                y_offset *= 1e-6
-                metadata['x_size'] *= 1e-6
-                metadata['y_size'] *= 1e-6
-            if metadata['xy_unit'] == 'nm':
-                x_offset *= 1e-9
-                y_offset *= 1e-9
-                metadata['x_size'] *= 1e-9
-                metadata['y_size'] *= 1e-9
-        except KeyError:
-            pass
-        xy_unit = 'm'
-
+        
         container['/' + str(i) + '/data/title'] = t  # ToDo this somehow does not work for the first channel
         container['/' + str(i) + '/data'] = GwyDataField(image_data,
                                                          xreal=metadata['x_size'],
