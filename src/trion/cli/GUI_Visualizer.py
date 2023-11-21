@@ -19,10 +19,10 @@ from trion.expt.daq import DaqController
 if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')
 
-callback_interval = 80  # ms
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
+callback_interval = 150  # ms
 buffer_size = 200_000
 harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
@@ -68,12 +68,12 @@ class Acquisitor:
         try:
             daq.start()
             while go_button.active:
-                sleep(.1)
+                sleep(.01)
                 daq.reader.read()            
         finally:
             daq.close()
-        self.waiting_loop()
             # go_button.active = False
+            self.waiting_loop()
 
 
 # CALLBACKS ############################################################################################################

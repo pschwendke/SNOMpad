@@ -37,8 +37,15 @@ def prepare_data(name: str):
     logger.info('preparing scan data for GUI')
     filename = f'{directory}/{name}.h5'
     scan = load(filename)
+    if [SteppedLineScan, ContinuousLineScan][scan_type_button.active] == 'continuous':
+        demod_npts = 200_000
+    else:
+        demod_npts = None
     try:
-        scan.demod(demod_npts=200_000, binning='binning', pshet_demod='sidebands')
+        if mod_button.labels[mod_button.active] == 'pshet':
+            scan.demod(demod_npts=demod_npts, binning='binning', pshet_demod='sidebands')
+        else:
+            scan.demod(demod_npts=demod_npts, binning='binning')
     except RuntimeError as e:
         if 'empty bins' in str(e):
             scan.demod()
@@ -175,7 +182,7 @@ setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low
 t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
 t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
 t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=250, width=100)
-sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=60, width=100)
+sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=500, width=100)
 
 # metadata
 metadata_title = Div(text='METADATA')
