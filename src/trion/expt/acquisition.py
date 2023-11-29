@@ -415,6 +415,13 @@ class SteppedLineScan(BaseScan):
         self.x_stop = x_stop
         self.y_stop = y_stop
         self.linescan_res = res
+        dx = self.x_stop - self.x_start
+        dy = self.y_stop - self.y_start
+        if self.y_start == self.y_stop:
+            self.afm_angle_deg = 0
+        else:
+            self.afm_angle_deg = np.arctan2(dy, dx) / 2 / np.pi * 360
+        self.x_size = np.sqrt(dx ** 2 + dy ** 2)
 
     def routine(self):
         x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
@@ -635,21 +642,23 @@ class ContinuousLineScan(ContinuousScan):
         self.x_res = res
         self.y_res = n_lines
         self.afm_sampling_ms = afm_sampling_ms
-
-    def prepare(self):
-        super().prepare()
-        x_center = .5 * (self.x_start + self.x_stop)
-        y_center = .5 * (self.y_start + self.y_stop)
+        self.x_center = .5 * (self.x_start + self.x_stop)
+        self.y_center = .5 * (self.y_start + self.y_stop)
         dx = self.x_stop - self.x_start
         dy = self.y_stop - self.y_start
         if self.y_start == self.y_stop:
-            angle = 0
+            self.afm_angle_deg = 0
         else:
-            angle = np.arctan2(dy, dx) / 2 / np.pi * 360
-        length = np.sqrt(dx**2 + dy**2)
-        logger.info(f'preparing continuous line scan: length={length:.3f} um, angle={angle:.2f} deg')
-        self.afm.prepare_image(mod=self.modulation, x_center=x_center, y_center=y_center, x_size=length, y_size=0,
-                               x_res=self.x_res, y_res=self.y_res, angle=angle, sampling_time_ms=self.afm_sampling_ms)
+            self.afm_angle_deg = np.arctan2(dy, dx) / 2 / np.pi * 360
+        self.x_size = np.sqrt(dx ** 2 + dy ** 2)
+
+    def prepare(self):
+        super().prepare()
+
+        logger.info('preparing continuous line scan: length={self.x_size:.3f} um, angle={self.afm_angle_deg:.2f} deg')
+        self.afm.prepare_image(mod=self.modulation, x_center=self.x_center, y_center=self.y_center,
+                               x_size=self.x_size, y_size=0, x_res=self.x_res, y_res=self.y_res,
+                               angle=self.afm_angle_deg, sampling_time_ms=self.afm_sampling_ms)
 
 
 class DelayScan(BaseScan):
@@ -757,14 +766,14 @@ class NoiseScan(ContinuousScan):
         self.afm_sampling_ms = 0.4
         self.x_res, self.y_res = int(sampling_seconds * 1e3 / self.afm_sampling_ms // 1), 1
         self.x_size, self.y_size = 0, 0
-        self.afm_angle = 0
+        self.afm_angle_deg = 0
 
     def prepare(self):
         super().prepare()
         if self.x_target is None or self.y_target is None:
             self.x_target, self.y_target = self.afm.nea_mic.TipPositionX, self.afm.nea_mic.TipPositionY
         self.afm.prepare_image(self.modulation, self.x_target, self.y_target, self.x_size, self.y_size,
-                               self.x_res, self.y_res, self.afm_angle, self.afm_sampling_ms, serpent=True)
+                               self.x_res, self.y_res, self.afm_angle_deg, self.afm_sampling_ms, serpent=True)
 
     def acquire(self):
         # ToDo this could be merged at some time with parent class
