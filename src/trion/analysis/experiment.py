@@ -223,7 +223,7 @@ class Retraction(Measurement):
             if self.modulation == Demodulation.shd:
                 coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, **kwargs)
+                coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
             else:
                 raise NotImplementedError
             harmonics[px] = coefficients[:max_order + 1]
@@ -325,9 +325,9 @@ class Image(Measurement):
         for i in tqdm(self.afm_data.idx.values.flatten()):
             data = np.array(self.file['daq_data'][str(i)])
             if self.modulation == Demodulation.shd:
-                coefficients = shd(data=data, signals=self.signals, **kwargs)
+                coefficients = shd(data=data, signals=self.signals, max_order=max_order, **kwargs)
             elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, **kwargs)
+                coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
             else:
                 raise NotImplementedError
 
@@ -486,7 +486,7 @@ class Line(Measurement):
             if self.modulation == Demodulation.shd:
                 coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, **kwargs)
+                coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
             else:
                 raise NotImplementedError
             harmonics[px] = coefficients[:max_order + 1]
