@@ -1,4 +1,4 @@
-# functions correct and polish datasets
+# functions to correct and polish datasets. Intended for image and line scan data.
 
 import numpy as np
 import xarray as xr
@@ -20,7 +20,6 @@ def linear_offset(values):
 def planar_offset(data: xr.DataArray, x_min=None, x_max=None, y_min=None, y_max=None) -> xr.DataArray:
     """ Fits planar offset xr.DataArray with coordinates 'x' and 'y', and returns offset values with same shape.
     """
-    # multiple linear regression would work. Aber keine Lust ...
     if x_min is None:
         x_min = data.x.values.min()
     if x_max is None:
@@ -137,7 +136,6 @@ def level_complex(data, x_min=None, x_max=None, y_min=None, y_max=None, show_mas
     """
     amp = align_rows_normalize(np.abs(data))
     amp = normalize_planar(amp, x_min, x_max, y_min, y_max, show_mask)
-    # amp -= amp.min()
     
     phase = data.copy()
     phase.values = np.angle(phase)
