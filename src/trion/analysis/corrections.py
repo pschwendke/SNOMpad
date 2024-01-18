@@ -7,30 +7,20 @@ from lmfit import Parameters, minimize
 
 
 def linear_offset(values):
-    """ Fits linear offset (linear function) to set of evenly spaced values, and returns offset values.
+    """ Determines linear offset (linear regression) to set of evenly spaced values, and returns offset values.
     """
-    # Todo: This is probably more efficient with linear regression
-    def obj_func(params, x, data):
-        m = params['m']
-        b = params['b']
-        model = (m * x + b)
-        residuals = data - model
-        return residuals
-
-    params = Parameters()
-    params.add('m', value=1)
-    params.add('b', value=1)
-
     x = np.linspace(0, 1, len(values))
-    fit = minimize(obj_func, params, args=(x, values))
-    offset = fit.params['m'] * x + fit.params['b']
+    coeff_matrix = np.vstack([x, np.ones(len(x))]).T
+    m, b = np.linalg.lstsq(coeff_matrix, values, rcond=None)[0]
+    offset = m * x + b
+
     return offset
 
 
 def planar_offset(data: xr.DataArray, x_min=None, x_max=None, y_min=None, y_max=None) -> xr.DataArray:
     """ Fits planar offset xr.DataArray with coordinates 'x' and 'y', and returns offset values with same shape.
     """
-    # ToDo: can we also do this with linear regression?
+    # multiple linear regression would work. Aber keine Lust ...
     if x_min is None:
         x_min = data.x.values.min()
     if x_max is None:
@@ -64,6 +54,7 @@ def planar_offset(data: xr.DataArray, x_min=None, x_max=None, y_min=None, y_max=
 
     x, y = np.meshgrid(data.x.values, data.y.values)
     offset = a * x + b * y + c
+
     return offset
 
 
