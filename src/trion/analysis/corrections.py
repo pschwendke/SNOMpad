@@ -6,12 +6,24 @@ import matplotlib.pyplot as plt
 from lmfit import Parameters, minimize
 
 
-def linear_offset(values):
+def linear_offset(data, x=None, x_min=None, x_max=None) -> np.ndarray:
     """ Determines linear offset (linear regression) to set of evenly spaced values, and returns offset values.
+    When x_min, or max are given, x_values need to be passed as well
     """
-    x = np.linspace(0, 1, len(values))
-    coeff_matrix = np.vstack([x, np.ones(len(x))]).T
-    m, b = np.linalg.lstsq(coeff_matrix, values, rcond=None)[0]
+    # if x_min is None:
+    #     x_min = data.x.values.min()
+    # if x_max is None:
+    #     x_max = data.x.values.max()
+
+    if all(arg is not None for arg in [x_min, x_max, x]):
+        i = np.logical_and(x_min < x, x < x_max)
+        data = data[i]
+        x_linreg = x[i]
+    else:
+        x_linreg = np.linspace(0, 1, len(data))
+        x = x_linreg
+    coeff_matrix = np.vstack([x_linreg, np.ones(len(x_linreg))]).T
+    m, b = np.linalg.lstsq(coeff_matrix, data, rcond=None)[0]
     offset = m * x + b
 
     return offset
@@ -57,18 +69,18 @@ def planar_offset(data: xr.DataArray, x_min=None, x_max=None, y_min=None, y_max=
     return offset
 
 
-def subtract_linear(line: np.ndarray) -> np.ndarray:
+def subtract_linear(line: np.ndarray, x=None, x_min=None, x_max=None):
     """ removes linear offset of values on 'line'.
     """
-    correction = linear_offset(line)
+    correction = linear_offset(line, x=x, x_min=x_min, x_max=x_max)
     leveled = line - correction
     return leveled
 
 
-def normalize_linear(line: np.ndarray) -> np.ndarray:
+def normalize_linear(line: np.ndarray, x=None, x_min=None, x_max=None):
     """ fits linear offset and computes factor to set linear offset of values on line to 1.
     """
-    offset = linear_offset(line)
+    offset = linear_offset(line, x=x, x_min=x_min, x_max=x_max)
     leveled = line / offset
     return leveled
 
