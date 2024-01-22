@@ -3,11 +3,13 @@ import xarray as xr
 import attr
 import colorcet as cc
 import h5py
+import inspect
 
 from tqdm import tqdm
 from itertools import chain
 from typing import Iterable
 from abc import ABC, abstractmethod
+from lmfit import Parameters, minimize
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from trion.analysis.demod import shd, pshet, sort_chopped
@@ -36,6 +38,7 @@ class Measurement(ABC):
         self.afm_data = None
         self.nea_data = None
         self.demod_data = None
+        self.stored_demod_data = None
         self.demod_filename = None
         self.mode = Scan[file.attrs['acquisition_mode']]
         self.signals = [Signals[s] for s in file.attrs['signals']]
@@ -61,9 +64,25 @@ class Measurement(ABC):
             ret += '\nNeaScan data:\n'
             ret += self.nea_data.__str__()
         return ret
-    
+
     def __repr__(self) -> str:
         return f'<TRION measurement: {self.name}>'
+
+    def demod_params(self, **kwargs):
+        """ collects demod parameters from arguments and function default values
+        """
+        param_list = ['tap_res', 'ref_res', 'chopped', 'normalize', 'tap_correction', 'binning', 'pshet_demod',
+                      'max_order', 'r_res', 'z_res', 'direction', 'line_no', 'trim_ratio', 'demod_npts']
+        demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
+        signature = inspect.signature(demod_func)
+        parameters = {
+            k: v.default
+            for k, v in signature.parameters.items()
+            if k in param_list
+        }
+        parameters.update(kwargs)
+
+        return parameters
 
     def to_h5(self):
         """ Write hdf5 demod file in standard directory
@@ -81,6 +100,187 @@ class Measurement(ABC):
     def plot(self):
         """ Plot (and save) demodulated data, e.g. images or curves
         """
+
+
+def sort_lines(scan: Measurement, trim_ratio: float = .05, plot=False):
+    """ The function takes a line-based scan (LineScan, Image), and defines left and right turning points of the lines.
+    The data taken in between is sorted into 'scan' 'rescan' and given a line number.
+
+    Parameters:
+    __________
+    scan: Measurement
+        Measurement object. Should work for Linescan and Image objects
+    trim_ratio: float
+        defines radius around line turning points that are cut off (pixels that are rejected) by the ratio to
+        the overall length of the line.
+    plot: bool
+        if true, a figure illustrating the sorting into approach, turning points and lines is plotted
+    """
+    # distance from start point
+    # for images, make this the distance from left and right side of the scan frame
+    xy_coords = np.vstack([scan.afm_data.x.values, scan.afm_data.y.values]).T
+    start_coord = np.array([scan.metadata['x_start'], scan.metadata['y_start']])
+    stop_coord = np.array([scan.metadata['x_stop'], scan.metadata['y_stop']])
+
+    start_dist = np.linalg.norm(start_coord - xy_coords, axis=1)
+    stop_dist = np.linalg.norm(stop_coord - xy_coords, axis=1)
+
+    status = 'approach'
+    line_counter = -1
+    line_labels = []
+
+    for i, xy in enumerate(xy_coords):
+        if status == 'approach':
+            if start_dist[i] < trim_ratio * scan.metadata['x_size']:
+                status = 'left trim'
+        elif status == 'left trim':
+            if start_dist[i] > trim_ratio * scan.metadata['x_size']:
+                status = 'scan'
+                line_counter += 1
+        elif status == 'scan':
+            if stop_dist[i] < trim_ratio * scan.metadata['x_size']:
+                status = 'right trim'
+        elif status == 'right trim':
+            if stop_dist[i] > trim_ratio * scan.metadata['x_size']:
+                status = 'rescan'
+        elif status == 'rescan':
+            if start_dist[i] < trim_ratio * scan.metadata['x_size']:
+                status = 'left trim'
+        if line_counter > scan.metadata['y_res'] - 1:
+            status = 'tail'
+
+        line_labels.append([line_counter, status])
+
+    scan.afm_data['line'] = xr.DataArray(data=np.array([l[0] for l in line_labels]), dims='idx')
+    scan.afm_data['direction'] = xr.DataArray(data=np.array([l[1] for l in line_labels]), dims='idx')
+    scan.afm_data.attrs['trim_ratio'] = trim_ratio
+
+    if plot:
+        import matplotlib.pyplot as plt
+
+        cmap = {
+            'approach': 'grey',
+            'scan': 'C00',
+            'rescan': 'C01',
+            'left trim': 'red',
+            'right trim': 'green',
+            'tail': 'grey'
+        }
+
+        fig, ax = plt.subplots(3, 1, sharex=True)
+
+        ax[0].scatter(scan.afm_data.idx.values, scan.afm_data.x.values,
+                      color=[cmap[d] for d in scan.afm_data.direction.values], marker='.')
+        ax[0].set_ylabel('x /um')
+        ax[1].scatter(scan.afm_data.idx.values, scan.afm_data.y.values,
+                      color=[cmap[d] for d in scan.afm_data.direction.values], marker='.')
+        ax[1].set_ylabel('y /um')
+        ax[2].plot(scan.afm_data.idx.values, scan.afm_data.line.values)
+        ax[2].set_ylabel('line #')
+        ax[2].set_xlabel('idx')
+        plt.show()
+
+
+def bin_line(scan: Measurement, res: int = 100, direction: str = 'scan', line_no: list = []):
+    """ Constructs a line on which measured data points should sit. Measured data points are selected via line number
+    and scan direction, and binned onto constructed line of given resolution.
+    Averaged AFM data and a list of indices of daq data is returned for every pixel on line.
+
+    Parameters:
+    __________
+    scan: Measurement
+        Measurement object. Should work for Linescan and Image objects
+    res: int
+        resolution of constructed line
+    direction: 'scan' or 'rescan'
+        scan direction of selected data
+    line_no: list
+        line numbers that should be evaluated. When [] is passed, all line numbers are evalueted.
+    """
+    dir_idx = scan.afm_data.idx[scan.afm_data.direction.values == direction].values
+    if line_no:
+        line_idx = []
+        for l in line_no:
+            line_idx.append(scan.afm_data.idx[scan.afm_data.line.values == l].values)
+        idx = np.intersect1d(dir_idx, np.hstack(line_idx))
+    else:
+        idx = dir_idx
+
+    def fit_line(x, y):
+        if np.isclose(np.abs(scan.metadata['afm_angle_deg']), 90):
+            raise RuntimeError('Scan direction is close to +/- 90°. This makes demod in cartesian coordinates diverge.')
+
+        def line_func(x, m, b):
+            return m * x + b
+
+        def obj_func(params, x, y):
+            model = line_func(x, params['m'], params['b'])
+            residuals = model - y
+            return residuals
+
+        params = Parameters()
+        params.add('m', value=0)
+        params.add('b', value=50)
+
+        fit = minimize(obj_func, params, args=(x, y), method='leastsqr')
+
+        return fit.params['m'], fit.params['b']
+
+    # create ideal line, distance from it, standard deviation etc. (as a goodness of scan parameter)
+    x = scan.afm_data.sel(idx=idx).x.values
+    y = scan.afm_data.sel(idx=idx).y.values
+
+    m, b = fit_line(x, y)
+
+    dist = (m * x - y + b) / np.sqrt(m ** 2 + 1)
+    avg = dist.mean()
+    std = dist.std()
+    # print(f'average distance from line: {avg*1e-6:.2E} m\nstandard deviation: {std*1e-6:.2E} m')
+
+    # I don't trust this model. REDO THIS
+
+    x_out = np.linspace(x[0], x[-1], res, endpoint=True)
+    y_out = m * x_out + b
+
+    dist_criterium = .5  # part of nearest neighbour distance
+    length = scan.metadata['x_size'] - (scan.metadata['x_size'] * scan.afm_data.attrs['trim_ratio'] * 2)
+    nn_dist = length / (res - 1)
+    cutoff = nn_dist * dist_criterium
+
+    # create pixel shaped arrays: z, amp, phase, optical. Combine in xr.Dataset
+    r = []
+    z = []
+    amp = []
+    phase = []
+    idxs = []
+    for i in range(res):
+        coord = np.sqrt((x_out[0] - x_out[i]) ** 2 + (y_out[0] - y_out[i]) ** 2)
+        r.append(coord)
+        nearest = (np.linalg.norm([x_out[i], y_out[i]] - np.vstack([x, y]).T, axis=1) < cutoff)
+        z.append(scan.afm_data.sel(idx=idx).z[nearest].values.mean())
+        amp.append(scan.afm_data.sel(idx=idx).amp[nearest].values.mean())
+        phase.append(scan.afm_data.sel(idx=idx).phase[nearest].values.mean())
+        idxs.append(scan.afm_data.sel(idx=idx).idx[nearest].values)
+
+    idxs = np.array(idxs, dtype=object)
+    npts_per_idx = np.array([len(i) for i in idxs]) * scan.metadata['npts']
+
+    ds = xr.Dataset()
+    ds['z'] = xr.DataArray(data=z, dims='r', coords={'r': r})
+    ds['amp'] = xr.DataArray(data=amp, dims='r')
+    ds['phase'] = xr.DataArray(data=phase, dims='r')
+    ds['idx'] = xr.DataArray(data=idxs, dims='r')
+
+    ds.attrs['fit control: avg dist (m)'] = avg * 1e-6
+    ds.attrs['fit control: std (m)'] = std * 1e-6
+    ds.attrs['npts per pixel: avg'] = npts_per_idx.mean()
+    ds.attrs['npts per pixel: min'] = npts_per_idx.min()
+    ds.attrs['npts per pixel: max'] = npts_per_idx.max()
+    ds.attrs['scan direction'] = direction
+    ds.attrs['line numbers'] = line_no
+    ds.attrs['resolution'] = res
+
+    return ds
 
 
 def load(filename: str) -> Measurement:
@@ -416,36 +616,15 @@ class Image(Measurement):
 
 
 class Line(Measurement):
-    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
-        """ Creates xr.Dataset in self.demod_data. The dimension along line scan is called 'r'.
-        Dataset contains one DataArray for every tracked channel, and one complex-valued DataArray for demodulated
-        harmonics, with extra dimension 'order'.
-        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
-        a filename is generated and saved in the working directory
-        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
-        is already present in demod file, it will be read from the file.
+    def __init__(self, file):  # this should move to super at some point
+        super().__init__(file)
+        self.stored_demod_data = {}
 
-        Parameters
-        ----------
-        max_order: int
-            max harmonic order that should be returned.
-        demod_npts: int
-            min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
-        demod_filename: str or 'auto'
-            path and filename of demod file
-        **kwargs
-            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+    def reshape_stepped(self, chunk_size):
+        """ Creates new Dataset self.demod_data with coordinate r along scan direction. AFM data is averaged onto new
+        coordinates. Variable 'idx' is list of indexes for data in self.daq_data corresponding to coordinates.
         """
-        if not demod_npts and self.mode == Scan.stepped_line:
-            chunk_size = 1  # one chunk of DAQ data per demodulated pixel
-        elif not demod_npts and self.mode == Scan.continuous_line:
-            chunk_size = 5
-        else:
-            chunk_size = demod_npts // self.file.attrs['npts'] + 1
-        n = len(self.file['daq_data'].keys())
-        r_res = n // chunk_size
-        self.demod_data = xr.Dataset()
-
+        r_res = self.demod_data.attrs['resolution']
         # reshape data to new r resolution (create new pixels)
         x = self.afm_data['x'].values
         x = x[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
@@ -477,23 +656,68 @@ class Line(Measurement):
         idx = self.afm_data['idx'].values
         idx = idx[:r_res * chunk_size].reshape((r_res, chunk_size))
 
+        return idx
+
+    def reshape_continuous(self, r_res: int = 100, plot=False, trim_ratio: float = .05, direction='scan', line_no=None):
+        """ Creates new Dataset self.demod_data with coordinate r along scan direction. AFM data is averaged onto new
+        coordinates. Variable 'idx' is list of indexes for data in self.daq_data corresponding to coordinates.
+        """
+        if line_no is None:
+            line_no = []
+        sort_lines(scan=self, trim_ratio=trim_ratio, plot=plot)
+        self.demod_data = bin_line(scan=self, res=r_res, direction=direction, line_no=line_no)
+        params = {'r_res': r_res, 'trim_ratio': trim_ratio, 'direction': direction, 'line_no': line_no}
+        self.demod_data.attrs['demod_params'] = params
+
+    def demod(self, max_order: int = 5, demod_npts=None, demod_filename=None, **kwargs):
+        """ Creates xr.Dataset in self.demod_data. The dimension along line scan is called 'r'.
+        Dataset contains one DataArray for every tracked channel, and one complex-valued DataArray for demodulated
+        harmonics, with extra dimension 'order'.
+        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
+        a filename is generated and saved in the working directory.
+        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
+        is already present in demod file, it will be read from the file.
+
+        Parameters
+        ----------
+        max_order: int
+            max harmonic order that should be returned.
+        demod_npts: int
+            min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
+        demod_filename: str or 'auto'
+            path and filename of demod file
+        **kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        if not demod_npts:
+            chunk_size = 1  # one chunk of DAQ data per demodulated pixel
+        else:
+            chunk_size = demod_npts // self.file.attrs['npts'] + 1
+        n = len(self.file['daq_data'].keys())
+        r_res = (n // chunk_size) / self.metadata['y_res']
+        self.demod_data = xr.Dataset()
+        self.demod_data.attrs = self.metadata
+        self.demod_data.attrs['resolution'] = r_res
+
         # ToDo: check for demod file
+        idx = self.reshape_stepped(chunk_size)
 
         # demodulate DAQ data for every pixel
         harmonics = np.zeros((r_res, max_order + 1), dtype=complex)
         for px, _ in tqdm(enumerate(harmonics)):
             data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[px]])
             if self.modulation == Demodulation.shd:
-                coefficients = shd(data=data, signals=self.signals, **kwargs)
+                coefficients, demod_params = shd(data=data, signals=self.signals, return_params=True, **kwargs)
             elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
+                coefficients, demod_params = pshet(data=data, signals=self.signals, max_order=max_order,
+                                                   return_params=True, **kwargs)
             else:
                 raise NotImplementedError
             harmonics[px] = coefficients[:max_order + 1]
         self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
                                                   coords={'r': r, 'order': np.arange(max_order + 1)})
-        self.demod_data.attrs = self.metadata
-
+        demod_params.update({'resolution': r_res})
+        self.demod_data.attrs['demod_params'] = demod_params
         # ToDo: create or write to demod file
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
