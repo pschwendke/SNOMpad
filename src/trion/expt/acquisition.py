@@ -414,7 +414,8 @@ class SteppedLineScan(BaseScan):
         self.y_start = y_start
         self.x_stop = x_stop
         self.y_stop = y_stop
-        self.linescan_res = res
+        self.x_res = res
+        self.y_res = 1  # only one pass during stepped acquisition -> 1 line
         dx = self.x_stop - self.x_start
         dy = self.y_stop - self.y_start
         if self.y_start == self.y_stop:
@@ -424,8 +425,8 @@ class SteppedLineScan(BaseScan):
         self.x_size = np.sqrt(dx ** 2 + dy ** 2)
 
     def routine(self):
-        x_pos = np.linspace(self.x_start, self.x_stop, self.linescan_res)
-        y_pos = np.linspace(self.y_start, self.y_stop, self.linescan_res)
+        x_pos = np.linspace(self.x_start, self.x_stop, self.x_res)
+        y_pos = np.linspace(self.y_start, self.y_stop, self.x_res)
         targets = list(zip(y_pos, x_pos))
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 

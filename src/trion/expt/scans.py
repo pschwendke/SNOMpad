@@ -112,7 +112,7 @@ class BaseScan(ABC):
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
-                              'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
+                              'x_start', 'x_stop', 'y_start', 'y_stop', 'xy_unit',
                               't', 't_start', 't_stop', 't_unit', 't0_mm', 'delay_idx', 'scan_type',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
