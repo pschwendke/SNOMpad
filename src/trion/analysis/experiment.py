@@ -9,7 +9,6 @@ from tqdm import tqdm
 from itertools import chain
 from typing import Iterable
 from abc import ABC, abstractmethod
-from lmfit import Parameters, minimize
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from trion.analysis.demod import shd, pshet, sort_chopped
