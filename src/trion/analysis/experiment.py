@@ -86,6 +86,7 @@ class Measurement(ABC):
     def demod_file(self, filename: str):
         """ creates or opens a file to read and write demodulated data
         """
+        # ToDo: this
         pass
 
     def to_h5(self):
@@ -644,7 +645,7 @@ class Line(Measurement):
         elif self.mode == Scan.continuous_line:
             if line_no is None:
                 line_no = []
-            sort_lines(scan=self, trim_ratio=trim_ratio, plot=plot)
+            sort_lines(scan=self, trim_ratio=trim_ratio, plot=plot)  # ToDo: check if this has been done before
             self.demod_data = bin_line(scan=self, res=r_res, direction=direction, line_no=line_no)
             self.demod_data.attrs.update(self.metadata)
             self.demod_data.attrs['demod_params'] = {'r_res': r_res, 'trim_ratio': trim_ratio,
@@ -653,13 +654,8 @@ class Line(Measurement):
             raise NotImplementedError
 
     def demod(self, max_order: int = 5, **kwargs):
-        """ Creates xr.Dataset in self.demod_data. The dimension along line scan is called 'r'.
-        Dataset contains one DataArray for every tracked channel, and one complex-valued DataArray for demodulated
-        harmonics, with extra dimension 'order'.
-        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
-        a filename is generated and saved in the working directory.
-        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
-        is already present in demod file, it will be read from the file.
+        """ Demodulates optical data for every pixel along dimension r. A complex-valued DataArray for demodulated
+        harmonics with extra dimension 'order' is created in self.demod_data.
 
         Parameters
         ----------
@@ -671,7 +667,7 @@ class Line(Measurement):
         if self.demod_data is None:
             self.reshape()
         demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
-        for k, v in self.stored_demod_data:
+        for k, v in self.stored_demod_data.items():
             if v.attrs['demod_params'] == demod_params:
                 self.demod_data = v
                 break
@@ -693,6 +689,21 @@ class Line(Measurement):
             self.stored_demod_data[len(self.stored_demod_data.keys())] = self.demod_data
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
+        """ Plots line scan.
+
+        Parameters
+        ----------
+        max_order: int
+            max order that will be plotted. This value is ignored when orders are passed specifically.
+        orders: iterable
+            list of orders to be plotted. When this is passed, max_order is ignored
+        grid: bool
+            When True, a grid is plotted as well.
+        show: bool
+            When True, the figure is shown via plt.show()
+        save: bool
+            When True, the figure is saved with a generated file name.
+        """
         import matplotlib.pyplot as plt
         if self.demod_data is None:
             self.demod()
@@ -721,7 +732,7 @@ class Line(Measurement):
         ax_phase = ax[0].twinx()
         p = self.demod_data['phase'].values
         ax_phase.plot(r, p, color='C02', marker='.', lw=1)
-        ax_phase.set_ylabel('AFM phase (degrees)', color='C02')
+        ax_phase.set_ylabel('AFM phase (rad)', color='C02')
 
         for o in orders:
             sig = np.abs(self.demod_data['optical'].values[:, o])
