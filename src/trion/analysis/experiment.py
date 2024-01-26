@@ -24,8 +24,8 @@ class Measurement(ABC):
         self.afm_data = None
         self.nea_data = None
         self.demod_data = None
-        self.stored_demod_data = {}
-        self.demod_filename = None
+        self.demod_cache = {}
+        self.demod_file = None
         self.mode = Scan[file.attrs['acquisition_mode']]
         self.signals = [Signals[s] for s in file.attrs['signals']]
         self.modulation = Demodulation[file.attrs['modulation']]
@@ -54,6 +54,13 @@ class Measurement(ABC):
     def __repr__(self) -> str:
         return f'<TRION measurement: {self.name}>'
 
+    def close_demod_file(self):
+        if self.demod_file is not None:
+            self.demod_file.close()
+
+    def __del__(self):
+        self.close_demod_file()
+
     def demod_params(self, old_params: dict, kwargs: dict):
         """ collects demod parameters from arguments and function default values
         """
@@ -62,27 +69,43 @@ class Measurement(ABC):
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
         signature = inspect.signature(demod_func)
         parameters = old_params.copy()  # parameters stored in demod_data dataset before demodulation
-        parameters.update({  # default parameters of demod functions
-            k: v.default
-            for k, v in signature.parameters.items()
-            if k in param_list
-        })
+        parameters.update({k: v.default for k, v in signature.parameters.items() if k in param_list})  # func defaults
         parameters.update({k: v for k, v in kwargs.items() if k in param_list})  # arguments passed to demod functions
+        hash_key = ''.join([str(parameters[p]) for p in param_list if p in parameters.keys()])
+        parameters['hash_key'] = hash(hash_key)
         return parameters
 
-    def demod_file(self, filename: str):
+    def demod_filename(self, filename: str = 'auto'):
         """ creates or opens a file to read and write demodulated data
-        """
-        # ToDo: this
-        pass
 
-    def to_h5(self):
-        """ Write hdf5 demod file in standard directory
+        Parameters
+        ----------
+        filename: str
+            When file exists, it will be loaded into self.demod_cache. If it does not exist it will be created. Auto
+            generates file name from scan name.
         """
+        if filename == 'auto':
+            filename = self.name + '_demod.h5'
+        try:
+            self.demod_file = h5py.File(filename, 'r+')
+            if self.demod_file.attrs['name'] != self.name:
+                raise RuntimeError(f'The demod file was created for the scan {self.demod_file.attrs["name"]}'
+                                   f'You have loaded the scan file {self.name}')
+            for key, group in self.demod_file.items():
+                if key not in self.demod_cache.keys():
+                    self.demod_cache[key] = h5_to_xr_dataset(group=group)
+        except FileNotFoundError:
+            self.demod_file = h5py.File(filename, 'w-')
+            self.demod_file.attrs['name'] = self.name
 
-    def load_h5(self):
-        """ Load hdf5 demod file
+    def cache_to_file(self):
+        """ Write demod_cache to file
         """
+        if self.demod_file is not None:
+            for key, dset in self.demod_cache.items():
+                if key not in self.demod_file.keys():
+                    self.demod_file.create_group(key)
+                    xr_to_h5_datasets(ds=dset, group=self.demod_file[key])
 
     @abstractmethod
     def demod(self):
@@ -101,7 +124,7 @@ def sort_lines(scan: Measurement, trim_ratio: float = .05, plot=False):
     Parameters:
     __________
     scan: Measurement
-        Measurement object. Should work for Linescan and Image objects
+        Should work for Linescan and Image objects
     trim_ratio: float
         defines radius around line turning points that are cut off (pixels that are rejected) by the ratio to
         the overall length of the line.
@@ -174,7 +197,7 @@ def bin_line(scan: Measurement, res: int = 100, direction: str = 'scan', line_no
     Parameters:
     __________
     scan: Measurement
-        Measurement object. Should work for Linescan and Image objects
+        Should work for Linescan and Image objects
     res: int
         resolution of constructed line
     direction: 'scan' or 'rescan'
@@ -654,12 +677,11 @@ class Line(Measurement):
         if self.demod_data is None:
             self.reshape()
         demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
-        for k, v in self.stored_demod_data.items():
-            if v.attrs['demod_params'] == demod_params:
-                self.demod_data = v
-                break
+        hash_key = str(demod_params['hash_key'])
+        if hash_key in self.demod_cache.keys() and self.demod_cache[hash_key].attrs['demod_params'] == demod_params:
+            self.demod_data = self.demod_cache[hash_key]
         else:
-            harmonics = np.zeros((self.demod_data.attrs['demod_params']['r_res'], max_order + 1), dtype=complex)
+            harmonics = np.zeros((demod_params['r_res'], max_order + 1), dtype=complex)
             for n, px in tqdm(enumerate(self.demod_data.r.values)):
                 data = np.vstack([np.array(self.file['daq_data'][str(i)])
                                   for i in self.demod_data.sel(r=px).idx.item()])
@@ -673,7 +695,8 @@ class Line(Measurement):
             self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
                                                       coords={'order': np.arange(max_order + 1)})
             self.demod_data.attrs['demod_params'] = demod_params
-            self.stored_demod_data[len(self.stored_demod_data.keys())] = self.demod_data
+            self.demod_cache[hash_key] = self.demod_data  # .drop_vars(['idx'])
+            self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
         """ Plots line scan.
