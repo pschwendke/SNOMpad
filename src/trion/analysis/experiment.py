@@ -695,7 +695,7 @@ class Line(Measurement):
             self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
                                                       coords={'order': np.arange(max_order + 1)})
             self.demod_data.attrs['demod_params'] = demod_params
-            self.demod_cache[hash_key] = self.demod_data  # .drop_vars(['idx'])
+            self.demod_cache[hash_key] = self.demod_data
             self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):

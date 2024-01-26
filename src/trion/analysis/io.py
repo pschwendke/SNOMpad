@@ -417,6 +417,7 @@ def h5_to_xr_dataset(group: h5py.Group):
     Datasets labeled with _real and _imag are combined into one complex valued DataArray.
     """
     ds = xr.Dataset()
+    ds.attrs = group.attrs
     for ch, dset in group.items():
         if dset.dims[0].keys():
             values = np.array(dset)
@@ -424,7 +425,8 @@ def h5_to_xr_dataset(group: h5py.Group):
             da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
             da.attrs = dset.attrs
             ds[ch] = da
-    ds.attrs = group.attrs
+        if ch[:11] == 'attr_group':
+            ds.attrs[ch[11:]] = ch.attrs
     return ds
 
 
@@ -437,11 +439,10 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
         group[dim].make_scale(dim)
     for ch in ds:
         da = ds[ch]
-        if da.dtype == 'O':
-            dset = group.create_dataset(name=ch, shape=da.shape)
-            it = np.nditer(da, flags=['multi_index'])
-            for x in it:
-                dset[it.multi_index] = x
+        if da.dtype == 'O':  # variable 'idx' is array of arrays, i.e. a np.ndarray of type 'object'
+            dset = group.create_dataset(name=ch, shape=da.shape, dtype=h5py.vlen_dtype(int))
+            for i in np.ndindex(da.shape):
+                dset[i] = da.values[i]
         else:
             dset = group.create_dataset(name=ch, data=da.values)  # data
         for k, v in da.attrs.items():  # copy all metadata / attributes
@@ -449,3 +450,10 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
         for dim in da.coords.keys():  # attach dimension scales
             n = da.get_axis_num(dim)
             dset.dims[n].attach_scale(group[dim])
+    for k, v in ds.attrs.items():
+        if type(v) == dict:  # for nested attributes, i.e. dicts in dicts
+            attr_group = group.create_group(name=f'attr_group_{k}')
+            for key, val in v.items():
+                attr_group.attrs[key] = val
+        else:
+            group.attrs[k] = v
