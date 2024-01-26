@@ -12,20 +12,7 @@ from abc import ABC, abstractmethod
 
 from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from trion.analysis.demod import shd, pshet, sort_chopped
-from trion.analysis.io import export_gwy
-
-
-def h5_to_xr_dataset(group: h5py.Group):
-    ds = xr.Dataset()
-    for ch, dset in group.items():
-        if dset.dims[0].keys():
-            values = np.array(dset)
-            dims = [d.keys()[0] for d in dset.dims]
-            da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
-            da.attrs = dset.attrs
-            ds[ch] = da
-    ds.attrs = group.attrs
-    return ds
+from trion.analysis.io import export_gwy, h5_to_xr_dataset, xr_to_h5_datasets
 
 
 class Measurement(ABC):

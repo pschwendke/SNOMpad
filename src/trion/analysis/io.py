@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import logging
+import h5py
 
 from datetime import datetime
 from itertools import takewhile
@@ -100,7 +101,7 @@ def export_data(filename, data, header):
     writer(filename, data.astype('float32'), header)
 
 
-# READING AND WRITING GWYDDION FORMA ###################################################################################
+# READING AND WRITING GWYDDION FORMAT ##################################################################################
 def export_gwy(filename: str, data: xr.Dataset):
     """ Exports xr.Dataset as gwyddion file. xr.DataArrays become separate channels. DataArray attributes are saved
     as metadata. Attributes must include x,y_size and x,y_center. x,y_offset is defined as the top left corner
@@ -408,3 +409,47 @@ def load_nea_image(folder: str) -> xr.Dataset:
     ds.attrs = {**ds.attrs, **metadata}
 
     return ds
+
+
+# READING AND WRITING HDF5 FILES #######################################################################################
+def h5_to_xr_dataset(group: h5py.Group):
+    """ takes an hdf5 group that has previously been converted from an xr.Dataset, and reproduces this xr.Dataset.
+    Datasets labeled with _real and _imag are combined into one complex valued DataArray.
+    """
+    ds = xr.Dataset()
+    for ch, dset in group.items():
+        if dset.dims[0].keys() and ch[-5:] != '_imag':
+            if ch[-5:] == '_real':
+                values = np.array(dset) + 1J * np.array(group[f'{ch[:-5]}_imag'])
+            else:
+                values = np.array(dset)
+            dims = [d.keys()[0] for d in dset.dims]
+            da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
+            da.attrs = dset.attrs
+            ds[ch] = da
+    ds.attrs = group.attrs
+    return ds
+
+
+def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
+    """ Takes an xr.Dataset and formats and writes its contents to an hdf5 group. Complex valued DataArrays are split
+    into two datasets (_real, and _imag).
+    """
+    for dim, coord in ds.coords.items():  # create dimension scales
+        group[dim] = coord.values
+        group[dim].make_scale(dim)
+    for ch in ds:
+        da = ds[ch]
+        if da.dtpye == 'complex':  # split into two DataArrays if complex
+            da = [da.real, da.imag]
+            ch = [f'{ch}_real', f'{ch}_imag']
+        else:
+            da = [da]
+            ch = [str(ch)]
+        for name, data in zip(ch, da):
+            dset = group.create_dataset(name=name, data=data.values)  # data
+            for k, v in data.attrs.items():  # copy all metadata / attributes
+                dset.attrs[k] = v
+            for dim in data.coords.keys():  # attach dimension scales
+                n = data.get_axis_num(dim)
+                dset.dims[n].attach_scale(group[dim])

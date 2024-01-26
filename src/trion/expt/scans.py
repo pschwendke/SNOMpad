@@ -7,6 +7,7 @@ from datetime import datetime
 from time import sleep
 
 from trion.analysis.signals import Scan, Demodulation, Signals
+from trion.analysis.io import xr_to_h5_datasets
 from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.nea_ctrl import NeaSNOM, to_numpy
@@ -14,20 +15,6 @@ from trion.expt.dl_ctrl import DLStage
 from trion.__init__ import __version__
 
 logger = logging.getLogger(__name__)
-
-
-def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
-    for dim, coord in ds.coords.items():  # create dimension scales
-        group[dim] = coord.values
-        group[dim].make_scale(dim)
-    for ch in ds:
-        da = ds[ch]
-        dset = group.create_dataset(name=ch, data=da.values)  # data
-        for k, v in da.attrs.items():  # copy all metadata / attributes
-            dset.attrs[k] = v
-        for dim in da.coords.keys():  # attach dimension scales
-            n = da.get_axis_num(dim)
-            dset.dims[n].attach_scale(group[dim])
 
 
 class BaseScan(ABC):
