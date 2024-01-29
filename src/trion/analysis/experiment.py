@@ -71,7 +71,7 @@ class Measurement(ABC):
         parameters = old_params.copy()  # parameters stored in demod_data dataset before demodulation
         parameters.update({k: v.default for k, v in signature.parameters.items() if k in param_list})  # func defaults
         parameters.update({k: v for k, v in kwargs.items() if k in param_list})  # arguments passed to demod functions
-        hash_key = ''.join([str(parameters[p]) for p in param_list if p in parameters.keys()])
+        hash_key = ''.join(sorted([str(parameters[p]) for p in param_list if p in parameters.keys()]))
         parameters['hash_key'] = hash(hash_key)
         return parameters
 

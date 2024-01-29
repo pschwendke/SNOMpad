@@ -419,14 +419,14 @@ def h5_to_xr_dataset(group: h5py.Group):
     ds = xr.Dataset()
     ds.attrs = group.attrs
     for ch, dset in group.items():
-        if dset.dims[0].keys():
+        if ch[:11] == 'attr_group_':
+            ds.attrs[ch[11:]] = {k: v for k, v in dset.attrs.items()}
+        elif dset.dims[0].keys():
             values = np.array(dset)
             dims = [d.keys()[0] for d in dset.dims]
             da = xr.DataArray(data=values, dims=dims, coords={d: np.array(group[d]) for d in dims})
             da.attrs = dset.attrs
             ds[ch] = da
-        if ch[:11] == 'attr_group':
-            ds.attrs[ch[11:]] = ch.attrs
     return ds
 
 
