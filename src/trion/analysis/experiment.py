@@ -343,37 +343,25 @@ class Point(Measurement):
 
 
 class Retraction(Measurement):
-    def reshape(self):
-        pass  # Todo: this
-
-    def demod(self, max_order: int = 5, demod_npts=None, **kwargs):
-        """ Creates xr.Dataset in self.demod_data. Dataset contains one DataArray for every tracked channel,
-        and one complex-valued DataArray for demodulated harmonics, with extra dimension 'order'.
-        When demod_filename is a str, a demod file is created in the given filename. When filename is 'auto',
-        a filename is generated and saved in the working directory
-        When the demod file already exists, demod data will be added to it. In case demodulation with given parameters
-        is already present in demod file, it will be read from the file.
+    def reshape(self, demod_npts: int = None):
+        """ Defines and brings AFM data to a specific shape (spatial resolution), on which pixels the optical data
+        is then demodulated.
 
         Parameters
         ----------
-        max_order: int
-            max harmonic order that should be returned.
         demod_npts: int
-            min number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
-        **kwargs
-            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+            number of samples to demodulate for every pixel. Only whole chunks saved in daq_data are combined
         """
-        if not demod_npts and self.mode == Scan.stepped_retraction:
+        self.demod_data = xr.Dataset()
+        self.demod_data.attrs = self.metadata
+
+        if not demod_npts:
             chunk_size = 1  # one chunk of DAQ data per demodulated pixel
-        elif not demod_npts and self.mode == Scan.continuous_retraction:
-            chunk_size = 5
         else:
             chunk_size = demod_npts // self.file.attrs['npts'] + 1
         n = len(self.file['daq_data'].keys())
         z_res = n // chunk_size
-        self.demod_data = xr.Dataset()
 
-        # reshape data to new z resolution (create new pixels)
         z = self.afm_data['z'].values
         z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         if self.mode == Scan.stepped_retraction:
@@ -387,29 +375,47 @@ class Retraction(Measurement):
         phase = self.afm_data['phase'].values
         phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         phase = phase / 2 / np.pi * 360
-        self.demod_data['phase'] = xr.DataArray(data=phase, dims='z', coords={'z': z})
+        self.demod_data['phase'] = xr.DataArray(data=phase, dims='z')
+        idx = self.afm_data['idx'].values[:z_res * chunk_size].reshape((z_res, chunk_size))
+        idx = [i for i in idx] + ['']  # this is a truly ugly workaround to make an array of arrays
+        idx = np.array(idx, dtype=object)
+        self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='z')
+        self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
-        idx = self.afm_data['idx'].values
-        idx = idx[:z_res*chunk_size].reshape((z_res, chunk_size))
+    def demod(self, max_order: int = 5, **kwargs):
+        """ Demodulates optical data for every pixel along dimension z. A complex-valued DataArray for demodulated
+        harmonics with extra dimension 'order' is created in self.demod_data, and to self.demod_cache.
 
-        # ToDo: check for demod file
-
-        # demodulate DAQ data for every pixel
-        harmonics = np.zeros((z_res, max_order + 1), dtype=complex)
-        for px, _ in tqdm(enumerate(harmonics)):
-            data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx[px]])
-            if self.modulation == Demodulation.shd:
-                coefficients = shd(data=data, signals=self.signals, **kwargs)
-            elif self.modulation == Demodulation.pshet:
-                coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
-            else:
-                raise NotImplementedError
-            harmonics[px] = coefficients[:max_order + 1]
-        self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
-                                                  coords={'z': z, 'order': np.arange(max_order + 1)})
-        self.demod_data.attrs = self.metadata
-
-        # ToDo: create or write to demod file
+        Parameters
+        ----------
+        max_order: int
+            max harmonic order that should be returned.
+        **kwargs
+            keyword arguments that are passed to demod function, i.e. shd() or pshet()
+        """
+        if self.demod_data is None:
+            self.reshape()
+        demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
+        hash_key = str(demod_params['hash_key'])
+        if hash_key in self.demod_cache.keys() and self.demod_cache[hash_key].attrs['demod_params'] == demod_params:
+            self.demod_data = self.demod_cache[hash_key]
+        else:
+            harmonics = np.zeros((demod_params['z_res'], max_order + 1), dtype=complex)
+            for n, px in tqdm(enumerate(self.demod_data.z.values)):
+                data = np.vstack([np.array(self.file['daq_data'][str(i)])
+                                  for i in self.demod_data.sel(z=px).idx.item()])
+                if self.modulation == Demodulation.shd:
+                    coefficients = shd(data=data, signals=self.signals, **kwargs)
+                elif self.modulation == Demodulation.pshet:
+                    coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
+                else:
+                    raise NotImplementedError
+                harmonics[n] = coefficients[:max_order + 1]
+            self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
+                                                      coords={'order': np.arange(max_order + 1)})
+            self.demod_data.attrs['demod_params'] = demod_params
+            self.demod_cache[hash_key] = self.demod_data
+            self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
         import matplotlib.pyplot as plt
@@ -536,36 +542,36 @@ class Image(Measurement):
         sig = self.demod_data.z.values * 1e3  # nm
         sig -= sig.min()
         plt.imshow(sig, extent=lim, cmap=cmap_topo)
-        plt.xlabel('x (um)')
-        plt.ylabel('y (um)')
+        plt.xlabel(r'x ($\mu$m)')
+        plt.ylabel(r'y ($\mu$m)')
         plt.colorbar(label='topography (nm)')
         plt.show()
 
         sig = self.demod_data.phase / 2 / np.pi * 360  # deg
         plt.imshow(sig, extent=lim, cmap=cmap_phase)
-        plt.xlabel('x (um)')
-        plt.ylabel('y (um)')
+        plt.xlabel(r'x ($\mu$m)')
+        plt.ylabel(r'y ($\mu$m)')
         plt.colorbar(label=' AFM phase (degrees)')
         plt.show()
 
         sig = self.demod_data.amp  # nm
         plt.imshow(sig, extent=lim, cmap=cmap_amp)
-        plt.xlabel('x (um)')
-        plt.ylabel('y (um)')
+        plt.xlabel(r'x ($\mu$m)')
+        plt.ylabel(r'y ($\mu$m)')
         plt.colorbar(label='AFM amplitude (nm)')
         plt.show()
 
         for o in orders:
             sig = self.demod_data.optical.sel(order=o)
             plt.imshow(np.abs(sig), extent=lim, cmap=cmap_opt)
-            plt.xlabel('x (um)')
-            plt.ylabel('y (um)')
+            plt.xlabel(r'x ($\mu$m)')
+            plt.ylabel(r'y ($\mu$m)')
             plt.colorbar(label=f'optical amplitude ({o}. harm) (arb. units)')
             plt.show()
 
             plt.imshow(np.angle(sig), extent=lim, cmap=cmap_phase)
-            plt.xlabel('x (um)')
-            plt.ylabel('y (um)')
+            plt.xlabel(r'x ($\mu$m)')
+            plt.ylabel(r'y ($\mu$m)')
             plt.colorbar(label=f'optical phase ({o}. harm) (arb. units)')
             plt.show()
 
@@ -596,6 +602,7 @@ class Line(Measurement):
                 plot: bool = False, trim_ratio: float = .05):
         """ Defines and brings AFM data to a specific shape (spatial resolution), on which pixels the optical data
         is then demodulated.
+
         Parameters
         ----------
         demod_npts: int
@@ -620,7 +627,7 @@ class Line(Measurement):
             else:
                 chunk_size = demod_npts // self.file.attrs['npts'] + 1
             n = len(self.file['daq_data'].keys())
-            r_res = (n // chunk_size)
+            r_res = n // chunk_size
 
             x = self.afm_data['x'].values
             x = x[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
@@ -665,7 +672,7 @@ class Line(Measurement):
 
     def demod(self, max_order: int = 5, **kwargs):
         """ Demodulates optical data for every pixel along dimension r. A complex-valued DataArray for demodulated
-        harmonics with extra dimension 'order' is created in self.demod_data.
+        harmonics with extra dimension 'order' is created in self.demod_data, and saved to self.demod_cache.
 
         Parameters
         ----------
