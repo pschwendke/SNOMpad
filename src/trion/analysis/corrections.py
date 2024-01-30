@@ -104,6 +104,15 @@ def subtract_planar(data: xr.DataArray, x_min=None, x_max=None, y_min=None, y_ma
                     show_mask=False) -> xr.DataArray:
     """ returns DataArray with planar offset removed. Offset is evaluated in between x_min, x_max and y_min, y_max.
     """
+    if x_min is None:
+        x_min = data.x.values.min()
+    if x_max is None:
+        x_max = data.x.values.max()
+    if y_min is None:
+        y_min = data.y.values.min()
+    if y_max is None:
+        y_max = data.y.values.max()
+
     offset = planar_offset(data=data, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
     output = data - offset
 
