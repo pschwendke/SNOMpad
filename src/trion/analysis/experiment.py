@@ -357,10 +357,13 @@ class Retraction(Measurement):
 
         if not demod_npts:
             chunk_size = 1  # one chunk of DAQ data per demodulated pixel
+            demod_npts = self.file.attrs['npts']
         else:
             chunk_size = demod_npts // self.file.attrs['npts'] + 1
+            demod_npts = self.file.attrs['npts'] * chunk_size
         n = len(self.file['daq_data'].keys())
         z_res = n // chunk_size
+        self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
         z = self.afm_data['z'].values
         z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
@@ -380,7 +383,6 @@ class Retraction(Measurement):
         idx = [i for i in idx] + ['']  # this is a truly ugly workaround to make an array of arrays
         idx = np.array(idx, dtype=object)
         self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='z')
-        self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
     def demod(self, max_order: int = 5, **kwargs):
         """ Demodulates optical data for every pixel along dimension z. A complex-valued DataArray for demodulated
@@ -624,10 +626,13 @@ class Line(Measurement):
 
             if not demod_npts:
                 chunk_size = 1  # one chunk of DAQ data per demodulated pixel
+                demod_npts = self.file.attrs['npts']
             else:
                 chunk_size = demod_npts // self.file.attrs['npts'] + 1
+                demod_npts = self.file.attrs['npts'] * chunk_size
             n = len(self.file['daq_data'].keys())
             r_res = n // chunk_size
+            self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
 
             x = self.afm_data['x'].values
             x = x[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
@@ -654,10 +659,10 @@ class Line(Measurement):
             phase = phase[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
             phase = phase / 2 / np.pi * 360
             self.demod_data['phase'] = xr.DataArray(data=phase, dims='r')
-            idx = self.afm_data['idx'].values
-            idx = idx[:r_res * chunk_size].reshape((r_res, chunk_size))
-            self.demod_data['idx'] = xr.DataArray(data=idx, dims='r')
-            self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
+            idx = self.afm_data['idx'].values[:r_res * chunk_size].reshape((r_res, chunk_size))
+            idx = [i for i in idx] + ['']  # this is a truly ugly workaround to make an array of arrays
+            idx = np.array(idx, dtype=object)
+            self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='r')
 
         elif self.mode == Scan.continuous_line:
             if line_no is None:
