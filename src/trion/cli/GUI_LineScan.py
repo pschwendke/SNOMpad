@@ -104,7 +104,8 @@ def start():
         'res': res_input.value,
         'npts': npts_input.value,
         'setpoint': setpoint_input.value,
-        'metadata': metadata
+        'metadata': metadata,
+        'ratiometry': ratiometry_button.active
     }
 
     if scan_type_button.active == 1:
@@ -170,6 +171,7 @@ parameter_title.styles = {'width': '300px', 'text-align': 'center', 'background-
 scan_type_button = RadioButtonGroup(labels=['stepped', 'continuous'], active=1)
 mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
 pump_probe_button = Toggle(label='pump-probe', active=False, width=100)
+ratiometry_button =Toggle(label='ratiometry', active=False, width=100)
 
 res_input = NumericInput(title='resolution', value=200, mode='int', low=1, high=10000, width=60)
 n_lines_input = NumericInput(title='# of passes', value=10, mode='int', low=1, high=10000, width=70)
@@ -275,7 +277,8 @@ controls_box = column([
     row([start_button, stop_server_button, delete_last_button, elab_button]),
 
     row([parameter_title]),
-    row([scan_type_button, mod_button, pump_probe_button]),
+    row([scan_type_button, mod_button]),
+    row([pump_probe_button, ratiometry_button]),
     row([x_start_input, y_start_input, x_stop_input, y_stop_input]),
     row([res_input, n_lines_input, npts_input, setpoint_input, sampling_ms_input]),
 

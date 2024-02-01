@@ -27,7 +27,7 @@ buffer_size = 200_000
 harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
 raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
-max_harm = 5  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
+max_harm = 4  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
@@ -104,11 +104,11 @@ def update_harmonics(data, tap, ref):
         # if pshet:
         if mod_button.labels[mod_button.active] == 'pshet':
             coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
-                                        chopped=chop_button.active, normalize=False))
+                                        chopped=chop_button.active, normalize=ratiometry_button.active))
         # if shd:
         elif mod_button.labels[mod_button.active] == 'shd':
             coefficients = shd(data=data, signals=signals, tap_res=tap,
-                               chopped=chop_button.active, normalize=False)
+                               chopped=chop_button.active, normalize=ratiometry_button.active)
         
         # if no mod:
         elif mod_button.labels[mod_button.active] == 'no mod':
@@ -160,7 +160,7 @@ def update_raw_and_phase(data, tap_res, ref_res):
     theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     # phase data
-    if mod_button.labels[mod_button.active] == 'pshet':
+    if raw_theta_button.active == 1:  # 'raw vs theta_ref'
         returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
                                       bins=[tap_res, ref_res], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
         binned = returns.statistic
@@ -215,12 +215,13 @@ go_button = Toggle(label='GO', active=False, width=60)
 mod_button = RadioButtonGroup(labels=['no mod', 'shd', 'pshet'], active=1)
 chop_button = Toggle(label='chop', active=False, width=60)
 abs_button = Toggle(label='abs', active=True, width=60)
+ratiometry_button = Toggle(label='ratiometry', active=False, width=100)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
 
 tap_input = NumericInput(title='# tap bins', value=64, mode='int', low=16, high=256, width=90)
 ref_input = NumericInput(title='# ref bins', value=64, mode='int', low=16, high=256, width=90)
-npts_input = NumericInput(title='# of samples', value=50_000, mode='int', low=10_000, high=buffer_size, width=90)
+npts_input = NumericInput(title='# of samples', value=100_000, mode='int', low=10_000, high=buffer_size, width=90)
 
 message_box = Div(text='message box')
 message_box.styles = {
@@ -291,7 +292,7 @@ controls_box = column([
     row([go_button, chop_button, mod_button]),
     row([tap_input, ref_input, npts_input]),
     row([raw_theta_button, abs_button]),
-    stop_server_button,
+    row([stop_server_button, ratiometry_button]),
     noise_table,
     message_box
 ])

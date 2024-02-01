@@ -87,7 +87,8 @@ def start():
         'x_target': x_target_input.value,
         'y_target': y_target_input.value,
         'setpoint': setpoint_input.value,
-        'metadata': metadata
+        'metadata': metadata,
+        'ratiometry': ratiometry_button.active
     }
 
     if scan_type_button.active == 1:
@@ -152,6 +153,7 @@ parameter_title.styles = {'width': '300px', 'text-align': 'center', 'background-
 scan_type_button = RadioButtonGroup(labels=['stepped', 'continuous'], active=1)
 mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
 pump_probe_button = Toggle(label='pump-probe', active=False, width=100)
+ratiometry_button = Toggle(label='ratiometry', active=False, width=100)
 
 z_size_input = NumericInput(title='z size (µm)', value=0.2, mode='float', low=0, high=1, width=80)
 z_res_input = NumericInput(title='z resolution', value=200, mode='int', low=1, high=10000, width=80)
@@ -162,7 +164,7 @@ setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low
 t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
 t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
 t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=250, width=100)
-sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=60, width=100)
+sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=1000, width=100)
 
 # metadata
 metadata_title = Div(text='METADATA')
@@ -242,7 +244,8 @@ controls_box = column([
     row([start_button, stop_server_button, delete_last_button, elab_button]),
 
     row([parameter_title]),
-    row([scan_type_button, mod_button, pump_probe_button]),
+    row([scan_type_button, mod_button]),
+    row([pump_probe_button, ratiometry_button]),
     row([z_size_input, z_res_input, npts_input, setpoint_input]),
     row([x_target_input, y_target_input, sampling_ms_input]),
 
