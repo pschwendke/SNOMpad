@@ -69,10 +69,14 @@ class Acquisitor:
             daq.start()
             while go_button.active:
                 sleep(.01)
-                daq.reader.read()            
+                daq.reader.read()
+        except Exception as e:
+            # ToDo check if there are 'usual suspects' and catch them specifically
+            update_message_box(msg=str(e))
         finally:
             daq.close()
-            # go_button.active = False
+            # update_message_box(msg='Acquisition stopped')
+            go_button.active = False
             self.waiting_loop()
 
 
@@ -93,8 +97,8 @@ def update():
             update_message_box(msg=rtn, t=t)
             update_signal_to_noise()
         except Exception as e:
-            update_message_box(str(e))
-            raise
+            update_message_box(msg=str(e))
+            # raise
         
     
 def update_harmonics(data, tap, ref):

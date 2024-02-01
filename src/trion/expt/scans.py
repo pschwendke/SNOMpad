@@ -7,6 +7,7 @@ from datetime import datetime
 from time import sleep
 
 from trion.analysis.signals import Scan, Demodulation, Signals
+from trion.analysis.io import xr_to_h5_datasets
 from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.nea_ctrl import NeaSNOM, to_numpy
@@ -14,20 +15,6 @@ from trion.expt.dl_ctrl import DLStage
 from trion.__init__ import __version__
 
 logger = logging.getLogger(__name__)
-
-
-def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
-    for dim, coord in ds.coords.items():  # create dimension scales
-        group[dim] = coord.values
-        group[dim].make_scale(dim)
-    for ch in ds:
-        da = ds[ch]
-        dset = group.create_dataset(name=ch, data=da.values)  # data
-        for k, v in da.attrs.items():  # copy all metadata / attributes
-            dset.attrs[k] = v
-        for dim in da.coords.keys():  # attach dimension scales
-            n = da.get_axis_num(dim)
-            dset.dims[n].attach_scale(group[dim])
 
 
 class BaseScan(ABC):
@@ -116,7 +103,7 @@ class BaseScan(ABC):
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
-                              'x_start', 'x_stop', 'y_start', 'y_stop', 'linescan_res', 'xy_unit',
+                              'x_start', 'x_stop', 'y_start', 'y_stop', 'xy_unit',
                               't', 't_start', 't_stop', 't_unit', 't0_mm', 'delay_idx', 'scan_type',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
