@@ -32,7 +32,7 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
 
 class BaseScan(ABC):
     def __init__(self, modulation: str, signals=None, pump_probe=False, setpoint: float = 0.8, npts: int = 5_000,
-                 device='Dev1', clock_channel='pfi0',
+                 device='Dev1', clock_channel='pfi0', ratiometry=False,
                  metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None,
                  parent_scan=None, delay_idx=None):
         """
@@ -72,12 +72,15 @@ class BaseScan(ABC):
         except KeyError:
             logger.error(f'BaseScan only takes "shd", "pshet", and "none" as modulation values. "{modulation}" was passed.')
         if signals is None:
-            sig_list = {'shd': ['sig_a', 'tap_x', 'tap_y'],
-                        'pshet': ['sig_a', 'tap_x', 'tap_y', 'ref_x', 'ref_y'],
-                        'none': ['sig_a']}
-            signals = [Signals[s] for s in sig_list[modulation]]
+            signals = [Signals.sig_a]
+            if ratiometry:
+                signals.append(Signals.sig_b)
             if pump_probe:
-                signals.append(Signals['chop'])
+                signals.append(Signals.chop)
+            sig_list = {'shd': ['tap_x', 'tap_y'],
+                        'pshet': ['tap_x', 'tap_y', 'ref_x', 'ref_y'],
+                        'none': []}
+            signals += [Signals[s] for s in sig_list[modulation]]
         if npts > 200_000:
             logger.error(f'npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
             npts = 200_000
@@ -91,6 +94,7 @@ class BaseScan(ABC):
         self.t0_mm = t0_mm
         self.setpoint = setpoint
         self.pump_probe = pump_probe
+        self.ratiometry = ratiometry
         self.parent_scan = parent_scan
         self.delay_idx = delay_idx
         self.connected = False
@@ -108,7 +112,7 @@ class BaseScan(ABC):
         self.log_handler = None
         self.metadata = metadata
         self.metadata_keys = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
-                              'modulation', 'signals', 'pump_probe',
+                              'modulation', 'signals', 'pump_probe', 'ratiometry',
                               'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
                               'probe_power_mW', 'pump_power_mW',
                               'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
