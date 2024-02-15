@@ -101,6 +101,7 @@ class Scan(NamedEnum):
 class Demodulation(NamedEnum):
     shd = auto()
     pshet = auto()
+    none = auto()
     # nanospectroscopy
 
 

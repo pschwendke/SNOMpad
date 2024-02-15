@@ -2,7 +2,6 @@ from warnings import warn
 import numpy as np
 from scipy.special import jv
 from scipy.stats import binned_statistic, binned_statistic_2d
-from lmfit.models import GaussianModel
 from lmfit import Parameters, minimize
 
 import pandas as pd
@@ -88,23 +87,9 @@ def sort_chopped(chop: np.ndarray) -> tuple:
     """
     hi_sig = chop[chop > np.median(chop)]
     lo_sig = chop[chop < np.median(chop)]
-    model = GaussianModel()
 
-    # fit gaussian to chop signal for pumped shots
-    values, edges = np.histogram(hi_sig, bins=100)
-    A = values.max()
-    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
-                       method='leastsqr')
-    hilim = result.best_values['center'] - 3 * result.best_values['sigma']
-    pumped = chop > hilim
-
-    # fit gaussian to chop signal for chopped shots
-    values, edges = np.histogram(lo_sig, bins=100)
-    A = values.max()
-    result = model.fit(data=values, x=edges[:-1], center=edges[:-1][values == A][0], amplitude=A, sigma=.001,
-                       method='leastsqr')
-    lolim = result.best_values['center'] + 3 * result.best_values['sigma']
-    chopped = chop < lolim
+    pumped = np.abs(chop - hi_sig.mean()) < (3 * hi_sig.std())
+    chopped = np.abs(chop - lo_sig.mean()) < (3 * lo_sig.std())
 
     return chopped, pumped
 

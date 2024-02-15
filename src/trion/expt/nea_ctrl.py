@@ -46,7 +46,7 @@ class NeaSNOM:
         self.nea_mic = self.nea_client.Connect()              # Define the Microscope
         sleep(0.1)                              # Short delay makes things work fine (?)
         self.connected = True
-        logger.debug('Microscope connected')
+        logger.info('Microscope connected')
         self.stop()
 
         logger.debug("Client Version: " + self.nea_mic.ClientVersion)    # get Client Version
@@ -57,7 +57,7 @@ class NeaSNOM:
         if self.connected:
             self.disconnect()
 
-    def engage(self, setpoint: float = 0.8, settle_s: float = 5):
+    def engage(self, setpoint: float = 0.8, settle_s: float = 3):
         logger.info('Engaging sample')
         if not self.nea_mic.IsInContact:
             self.nea_mic.AutoApproach(setpoint)
@@ -73,14 +73,14 @@ class NeaSNOM:
             raise RuntimeError('Did not reach target position')
 
     def stop(self):
-        logger.debug('Stopping any Scan')
+        logger.info('Stopping any Scan')
         self.nea_mic.CancelCurrentProcedure()
         self.nea_mic.RegulatorOff()
 
     def disconnect(self):
         if self.nea_mic is not None:
             self.stop()
-        logger.debug('Disconnecting microscope')
+        logger.info('Disconnecting microscope')
         self.nea_mic = self.nea_client.Disconnect()
         self.connected = False
 

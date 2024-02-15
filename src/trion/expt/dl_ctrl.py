@@ -120,12 +120,15 @@ class DLStage:
             if not returns[:2] == 'TE':
                 raise RuntimeError(f'Expected reply to TE, got {returns[:2]} instead.')
         except serial.SerialException:
-            logging.error('Serial Exception: delay stage can not be found or can not be configured')
+            logger.error('Serial Exception: delay stage can not be found or can not be configured')
+        logger.info(f'Connected to delay stage on port {port}')
 
     def __del__(self):
+        logger.debug('DLStage.__del__()')
         self.disconnect()
 
     def disconnect(self):
+        logger.info('Disconnected from delay stage')
         self.ser.close()
 
     # COMMUNICATION WITH DELAY STAGE ##################################################################################
@@ -136,13 +139,13 @@ class DLStage:
         """
         eol = '\r\n'
         msg = cmd + val + eol
-        logger.debug('Message to delay stage: ' + msg)
+        logger.debug(f'Command to delay stage: {msg}')
         self.ser.write(msg.encode())
 
         if cmd in ['TS', 'TP'] or (cmd in ['RF', 'MM', 'VA'] and val == '?'):  # return value expected
-            returns = self.ser.readlines()
-            logger.debug('Message from delay stage: ' + str(returns))
-            returns = returns[0].decode().strip()
+            returns = self.ser.readline()
+            logger.debug(f'Return from delay stage after command ({msg.encode()}): {returns}')
+            returns = returns.decode().strip()
             ret_cmd, ret_msg = returns[:len(cmd)], returns[len(cmd):]
             if not ret_cmd == cmd:
                 raise RuntimeError(f'Expected reply to {cmd}, got {ret_cmd} instead.')
@@ -159,7 +162,7 @@ class DLStage:
             raise RuntimeError(f'Expected reply to TE, got {error_code[:2]} instead.')
         if error_code[2] != '@':
             error_msg = last_error_code[error_code[2]]
-            logging.error('Error communicating with delay stage: ' + error_msg)
+            logger.error(f'Error communicating with delay stage: {error_msg}')
 
         return ret
 
@@ -178,13 +181,13 @@ class DLStage:
     def log_status(self):
         carr, err, state = self.get_status()
         if carr != 0:
-            logging.info('Delay stage carriage status: ' + status_code[carr])
+            logger.info('Delay stage carriage status: ' + status_code[carr])
         if state != 0:
-            logging.info('Delay stage controller status: ' + ctrl_state_code[state])
+            logger.info('Delay stage controller status: ' + ctrl_state_code[state])
         if err != 0:
             for mask, msg in ctrl_error_code.items():
                 if err & mask:
-                    logging.info('Delay stage error message: ' + msg)
+                    logger.info('Delay stage error message: ' + msg)
 
     # PREPARE DELAY STAGE #############################################################################################
     def reset(self):
@@ -198,8 +201,7 @@ class DLStage:
         if status == 0:
             self.command('IE')
         else:
-            logging.error('Could not initialize delay stage.'
-                          'Check if carriage is at end of stage (it should not be).')
+            logger.error('Could not initialize delay stage. Check if carriage is at end of stage (it should not be).')
 
     def search_home(self):
         self.command('OR')
@@ -212,11 +214,17 @@ class DLStage:
         return state // 10 == 7  # see ctrl_state_code: state in 70's means 'ready'
 
     def prepare(self) -> bool:
-        # self.reset()  # this restores factory settings
-        self.initialize()
-        self.wait_for_stage()
-        self.search_home()
-        self.wait_for_stage()
+        _, _, state = self.get_status()
+        if state < 20:
+            self.initialize()
+            self.wait_for_stage()
+        if state < 60:
+            self.search_home()
+            self.wait_for_stage()
+        if state >= 80:
+            self.motor_enabled = True
+            self.search_home()
+            self.wait_for_stage()
         return self.is_ready
 
     # MOVING DELAY STAGE ##############################################################################################
@@ -301,7 +309,7 @@ class DLStage:
             self.velocity = velocity
             return
         else:
-            logging.error('Delay stage error: could not prepare to move')
+            logger.error('Delay stage error: could not prepare to move')
 
     def move_abs(self, val: float, unit: str, velocity: float = 100):
         """ Moves the carriage to a certain position. The position can be given as position on axis or delay time.
@@ -329,6 +337,7 @@ class DLStage:
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         val = str(val)
+        logger.info(f'Moving to delay position {val:.2} mm with {velocity} mm/s')
         self.prepare_move(velocity=velocity)
         self.command(cmd='PA', val=val)
 
@@ -357,13 +366,14 @@ class DLStage:
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         step = str(step)
+        logger.info(f'Moving delay position by {step:.2} mm with {velocity} mm/s')
         self.prepare_move(velocity=velocity)
         self.command(cmd='PR', val=step)
 
     def wait_for_stage(self, timeout: float = 10.0):
         """ Waits for stage during moving or homing, until controller status is 'ready' or timeout (s) is reached.
         """
-        logger.debug('Waiting for stage ...')
+        logger.info('Waiting for delay stage ...')
         start_time = monotonic()
         done = False
         while not done:

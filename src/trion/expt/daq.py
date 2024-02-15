@@ -280,7 +280,7 @@ class DaqController:
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
         # start the actual acquisition
         for t in self.tasks.values():
-            logger.debug(f"Starting task: {t.name}")
+            logger.info(f"Starting task: {t.name}")
             t.start()
         # TODO: fire a START TRIGGER event when multiple tasks are involved.
         return self
@@ -293,12 +293,9 @@ class DaqController:
         data = self.reader.read(emulated=self.emulate)
         return data
 
-
-
-
     def stop(self) -> 'DaqController':
         for t in self.tasks.values():
-            logger.debug(f"Stopping task: {t.name}")
+            logger.info(f"Stopping task: {t.name}")
             t.stop()
             # self.tasks.remove(t)
         logger.debug(f"Task list is now: {self.tasks}")
