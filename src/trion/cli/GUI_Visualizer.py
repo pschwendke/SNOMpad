@@ -28,7 +28,7 @@ harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
 raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
 max_harm = 4  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
-buffer = None  # global variable, so that it can be shared across threads
+acquisition_buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
     Signals.sig_b,
@@ -60,11 +60,11 @@ class Acquisitor:
     def acquisition_loop(self):
         """ when 'GO' button is active
         """
-        global buffer, harm_scaling
+        global acquisition_buffer, harm_scaling
         harm_scaling = np.zeros(max_harm + 1)
-        buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
+        acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
         daq = DaqController(dev='Dev1', clock_channel='pfi0')
-        daq.setup(buffer=buffer)
+        daq.setup(buffer=acquisition_buffer)
         try:
             daq.start()
             while go_button.active:
@@ -85,13 +85,18 @@ def stop(button):
     sys.exit()  # Stop the bokeh server
 
 
+def reset_normalization(button):
+    global harm_scaling
+    harm_scaling = np.zeros(max_harm + 1)
+
+
 def update():
     if go_button.active:
         try:
             tap = tap_input.value
             ref = ref_input.value
             t = perf_counter()
-            data = buffer.tail(n=npts_input.value)
+            data = acquisition_buffer.tail(n=npts_input.value)
             rtn = update_harmonics(data=data, tap=tap, ref=ref)
             update_raw_and_phase(data=data, tap_res=tap, ref_res=ref)
             update_message_box(msg=rtn, t=t)
@@ -121,7 +126,7 @@ def update_harmonics(data, tap, ref):
                 chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
                 chopped = data[chopped_idx, signals.index(Signals.sig_a)].mean()
                 pumped = data[pumped_idx, signals.index(Signals.sig_a)].mean()
-                pump_probe = (pumped - chopped) / chopped
+                pump_probe = (pumped - chopped)  # / chopped
                 coefficients[0] = chopped
                 coefficients[1] = pumped
                 coefficients[2] = pump_probe
@@ -142,13 +147,11 @@ def update_harmonics(data, tap, ref):
                 harm_scaling = np.ones(max_harm+1) / coefficients
             for i, over_limit in enumerate(coefficients * harm_scaling > 1):
                 if over_limit:
-                    harmonics_plot_data.data[str(i)] /= coefficients[i] * harm_scaling[i]
+                    harmonics_plot_data.buffer.data[str(i)] /= coefficients[i] * harm_scaling[i]
                     harm_scaling[i] = 1 / coefficients[i]
             coefficients *= harm_scaling
 
-        new_data = {str(i): np.array([coefficients[i]]) for i in range(max_harm+1)}
-        new_data.update({'t': np.array([perf_counter()])})
-        harmonics_plot_data.stream(new_data, rollover=harm_plot_size)
+        harmonics_plot_data.put(data=coefficients[:max_harm + 1])
 
     except Exception as e:
         if 'empty bins' in str(e):
@@ -202,13 +205,12 @@ def update_message_box(msg: any, t: float = 0.):
 
 
 def update_signal_to_noise():
-    for k in harmonics_plot_data.data.keys():
-        if k != 't':
-            avg = harmonics_plot_data.data[k].mean()
-            std = harmonics_plot_data.data[k].std()
-            if std > 0:
-                sn = avg / std
-                signal_noise[int(k)].text = f'{sn:.2}'
+    for h in harmonics_plot_data.names:
+        avg = harmonics_plot_data.avg(key=h)
+        std = harmonics_plot_data.std(key=h)
+        if std > 0:
+            sn = avg / std
+            signal_noise[int(h)].text = f'{sn:.2}'
 
 
 # WIDGETS ##############################################################################################################
@@ -220,6 +222,8 @@ mod_button = RadioButtonGroup(labels=['no mod', 'shd', 'pshet'], active=1)
 chop_button = Toggle(label='chop', active=False, width=60)
 abs_button = Toggle(label='abs', active=True, width=60)
 ratiometry_button = Toggle(label='ratiometry', active=False, width=100)
+normalize_button = Button(label='reset norm')
+normalize_button.on_click(reset_normalization)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
 
@@ -229,7 +233,7 @@ npts_input = NumericInput(title='# of samples', value=100_000, mode='int', low=1
 
 message_box = Div(text='message box')
 message_box.styles = {
-    'width': '200px',
+    'width': '300px',
     'border': '1px solid#000',
     'text-align': 'center',
     'background-color': '#FFFFFF'
@@ -243,18 +247,38 @@ noise_table = column(
 
 
 # SET UP PLOTS #########################################################################################################
-def setup_harm_plot():
-    init_data = {str(h): np.ones(harm_plot_size) for h in range(max_harm+1)}
-    init_data.update({'t': np.zeros(harm_plot_size)})
-    plot_data = ColumnDataSource(init_data)
+class PlottingBuffer:
+    def __init__(self, n: int, names: list):
+        """ simple wrapper around a bokeh ColumnDataSource for easier access
+        """
+        init_data = {h: np.ones(n) for h in names}
+        init_data.update({'t': np.arange(-n + 1, 1)})
+        self.buffer = ColumnDataSource(init_data)
+        self.names = names
 
-    fig = figure(aspect_ratio=4)  # toolbar_location=None
+    def put(self, data: np.ndarray):
+        for n, key in enumerate(self.names):
+            channel = self.buffer.data[key]
+            channel[:-1] = channel[1:]
+            channel[-1] = data[n]
+            self.buffer.data[key] = channel
+
+    def avg(self, key):
+        return self.buffer.data[key].mean()
+
+    def std(self, key):
+        return self.buffer.data[key].std()
+
+
+def setup_harm_plot(buffer: ColumnDataSource):
+    fig = figure(aspect_ratio=4, tools='pan,ywheel_zoom,box_zoom,reset,save',
+                 active_scroll='ywheel_zoom', active_drag='pan')
     for h in range(max_harm+1):
-        fig.line(x='t', y=str(h), source=plot_data, line_color=harm_colors[h], line_width=2,
-                 syncable=False, legend_label=f'{h:02}')
+        fig.line(x='t', y=str(h), source=buffer, line_color=harm_colors[h], line_width=2,
+                 syncable=False, legend_label=f'{h}')
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
-    return fig, plot_data
+    return fig
 
 
 def setup_raw_plot():
@@ -262,9 +286,11 @@ def setup_raw_plot():
     init_data = {c: np.zeros(raw_plot_tail) for c in channels}
     init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_plot_tail)})
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=400, width=400)  # toolbar_location=None
+    fig = figure(height=400, width=400, tools='pan,ywheel_zoom,box_zoom,reset,save',
+                 active_scroll='ywheel_zoom', active_drag='pan')
     for i, c in enumerate(channels):
-        fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=harm_colors[i], size=10, syncable=False, legend_label=c)
+        fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=harm_colors[i],
+                    size=10, syncable=False, legend_label=c)
     fig.legend.location = 'top_right'
     fig.legend.click_policy = 'hide'
     return fig, plot_data
@@ -282,8 +308,9 @@ def setup_phase_plot():
     return fig, plot_data
 
 
-########################################################################################################################
-harmonics_plot, harmonics_plot_data = setup_harm_plot()
+# SET UP ROUTINE #######################################################################################################
+harmonics_plot_data = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])
+harmonics_plot = setup_harm_plot(buffer=harmonics_plot_data.buffer)
 raw_plot, raw_plot_data = setup_raw_plot()
 phase_plot, phase_plot_data = setup_phase_plot()
 
@@ -296,7 +323,7 @@ controls_box = column([
     row([go_button, chop_button, mod_button]),
     row([tap_input, ref_input, npts_input]),
     row([raw_theta_button, abs_button]),
-    row([stop_server_button, ratiometry_button]),
+    row([stop_server_button, ratiometry_button, normalize_button]),
     noise_table,
     message_box
 ])
