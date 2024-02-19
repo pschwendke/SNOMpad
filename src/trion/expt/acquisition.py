@@ -1,6 +1,7 @@
 # ToDo: standardize units
 #  standardize names of parameters
 #  note standards in README
+#  rename: npts -> chunk_size, in cont.point: n -> npts, and elsewhere?
 
 # acquisition scripts
 import numpy as np
@@ -86,7 +87,7 @@ class ContinuousPoint(ContinuousScan):
         modulation: str
             either 'shd' or 'pshet'
         n: int
-            number of samples to acquire. When n == 0, acquisition is continuous until stop is True
+            number of samples to acquire.
         npts: int
             number of samples from the DAQ that are saved in one chunk
         t: float
@@ -129,8 +130,6 @@ class ContinuousPoint(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-        if self.target == 0:
-            self.target = np.inf
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -711,6 +710,7 @@ class DelayScan(BaseScan):
         scan_kwargs:
             keyword arguments that are passed to scan class
         """
+        # ToDo: add to metadata: n_step, lin/log scale, n points (cont point), t_start/stop
         super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
                          setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
@@ -745,6 +745,7 @@ class DelayScan(BaseScan):
             self.afm.goto_xy(self.x_target, self.y_target)
         if self.scan_type == 'point' and self.scan_kwargs['in_contact']:
             self.afm.engage(self.setpoint)
+        # ToDo: have some kind of progress bar
         for i, t in enumerate(self.t_targets):
             logger.info(f'Delay position {i+1} of {len(self.t_targets)}: t = {t:.2f} {self.t_unit}')
             scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,

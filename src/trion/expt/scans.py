@@ -1,3 +1,5 @@
+# ToDo: log scan parmeters, e.g. x_start/stop, npts, ratiometry etc.
+
 import logging
 import h5py
 import numpy as np
