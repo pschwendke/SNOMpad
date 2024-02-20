@@ -209,8 +209,8 @@ def update_signal_to_noise():
         avg = harmonics_plot_data.avg(key=h)
         std = harmonics_plot_data.std(key=h)
         if std > 0:
-            sn = avg / std
-            signal_noise[int(h)].text = f'{sn:.2}'
+            sn = np.abs(avg) / std
+            signal_noise[int(h)].text = f'{sn:.1f}'
 
 
 # WIDGETS ##############################################################################################################

@@ -336,10 +336,9 @@ class DLStage:
             val = 0.5 * val * 1e-12 * c_air * 1e3 + self.reference  # mm
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
-        val = str(val)
-        logger.info(f'Moving to delay position {val:.2} mm with {velocity} mm/s')
+        logger.info(f'Moving to delay position {val:.3f} mm with {velocity} mm/s')
         self.prepare_move(velocity=velocity)
-        self.command(cmd='PA', val=val)
+        self.command(cmd='PA', val=str(val))
 
     def move_rel(self, step: float, unit: str, velocity: float = 100):
         """ Moves the carriage a certain distance. Differences in delay time and position on axis can be given.

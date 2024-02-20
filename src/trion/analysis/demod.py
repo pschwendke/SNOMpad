@@ -1,3 +1,5 @@
+# ToDo: rename normalize -> ratiometry, check that defaults are read from metadata (Measurement classes)
+
 from warnings import warn
 import numpy as np
 from scipy.special import jv

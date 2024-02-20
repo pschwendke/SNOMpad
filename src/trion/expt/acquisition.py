@@ -2,6 +2,7 @@
 #  standardize names of parameters
 #  note standards in README
 #  rename: npts -> chunk_size, in cont.point: n -> npts, and elsewhere?
+#  format logging messages: ClassName:
 
 # acquisition scripts
 import numpy as np
@@ -126,10 +127,11 @@ class ContinuousPoint(ContinuousScan):
         self.x_target = x_target
         self.y_target = y_target
         self.in_contact = in_contact
-        self.target = n
+        self.n = n
 
     def prepare(self):
         super().prepare()
+        logger.info(f'ContinuousPoint: acquiring {self.n} samples')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -139,7 +141,7 @@ class ContinuousPoint(ContinuousScan):
         excess = 0
         chunk_idx = 0
         afm_tracking = []
-        while chunk_idx * self.npts < self.target:
+        while chunk_idx * self.npts < self.n:
             current = [chunk_idx] + list(self.afm.get_current())
             afm_tracking.append(current)
 
@@ -223,7 +225,7 @@ class SteppedRetraction(BaseScan):
         self.z_res = z_res
         self.x_center = None
         self.y_center = None
-        self.x_target = x_target
+        self.x_target = x_target  # should this not be x_center? then it would become metadata. CHECK THIS!! elsewhere?
         self.y_target = y_target
 
     def routine(self):
@@ -676,8 +678,8 @@ class ContinuousLineScan(ContinuousScan):
 
 
 class DelayScan(BaseScan):
-    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, n_step: int,
-                 t0_mm=None, continuous: bool = True, scale: str = 'lin', setpoint: float = 0.8, metadata=None,
+    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, t_res: int,
+                 t0_mm=None, continuous: bool = True, t_scale: str = 'lin', setpoint: float = 0.8, metadata=None,
                  **scan_kwargs):
         """
         Parameters
@@ -695,12 +697,12 @@ class DelayScan(BaseScan):
             Unit of t values. Needs to ge vien when t is given, and has to be one of 'm', 'mm', 's', 'ps', 'fs'
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        n_step: int
+        t_res: int
             Number of steps between t_start and t_stop
         continuous: bool
             When True, continuous scan classes are used, e.g. ContinuousLineScan. When False, stepped scan classes
             are used, e.g. SteppedLineScan
-        scale: str
+        t_scale: str
             spacing of n_step acquisitions along t axis. Liner when 'lin' is passed. 'log' produces logarithmic spacing.
         setpoint: float
             AFM setpoint when engaged
@@ -710,11 +712,14 @@ class DelayScan(BaseScan):
         scan_kwargs:
             keyword arguments that are passed to scan class
         """
-        # ToDo: add to metadata: n_step, lin/log scale, n points (cont point), t_start/stop
         super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
-                         setpoint=setpoint)
+                         setpoint=setpoint)  # ToDo some metadata should be passed to delay class, is written wrong otherwise
         self.acquisition_mode = Scan.delay_collection
         self.scan_type = scan
+        self.t_start = t_start
+        self.t_stop = t_stop
+        self.t_res = t_res
+        self.t_scale = t_scale
         self.x_target = None
         self.y_target = None
         if 'x_target' in scan_kwargs and 'y_target' in scan_kwargs:
@@ -722,12 +727,12 @@ class DelayScan(BaseScan):
             self.y_target = scan_kwargs.pop('y_target')
         self.scan_kwargs = scan_kwargs
 
-        if scale == 'lin':
-            self.t_targets = np.linspace(t_start, t_stop, n_step)
-        elif scale == 'log':
-            self.t_targets = np.logspace(np.log10(t_start), np.log10(t_stop), n_step)
+        if self.t_scale == 'lin':
+            self.t_targets = np.linspace(self.t_start, self.t_stop, self.t_res)
+        elif self.t_scale == 'log':
+            self.t_targets = np.logspace(np.log10(self.t_start), np.log10(self.t_stop), self.t_res)
         else:
-            raise NotImplementedError(f'scale has to be lin or log. "{scale}" was passed.')
+            raise NotImplementedError(f'scale has to be lin or log. "{self.t_scale}" was passed.')
 
         try:
             i = ['point', 'retraction', 'line', 'image'].index(scan)
@@ -740,13 +745,16 @@ class DelayScan(BaseScan):
 
     def routine(self):
         self.prepare()
+        logger.info(f'Preparing DelayScan with parameters:\nt_start: {self.t_start}\nt_stop: {self.t_stop}'
+                    f'\nt_res: {self.t_res}\nt_unit: {self.t_unit}\nt_scale: {self.t_scale}\nt_0(mm): {self.t0_mm}')
+        logger.info(f'Acquisition class arguments:{[f"{a}: {v}" for a, v in self.scan_kwargs.items()]}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
-        if self.scan_type == 'point' and self.scan_kwargs['in_contact']:
-            self.afm.engage(self.setpoint)
-        # ToDo: have some kind of progress bar
-        for i, t in enumerate(self.t_targets):
+        if self.scan_type == 'point':
+            if 'in_contact' not in self.scan_kwargs.keys() or self.scan_kwargs['in_contact'] is True:
+                self.afm.engage(self.setpoint)
+        for i, t in tqdm(enumerate(self.t_targets)):
             logger.info(f'Delay position {i+1} of {len(self.t_targets)}: t = {t:.2f} {self.t_unit}')
             scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
                                    pump_probe=True, parent_scan=self, delay_idx=i, **self.scan_kwargs)
