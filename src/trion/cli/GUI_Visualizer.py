@@ -1,3 +1,5 @@
+# ToDo: normalizing/scaling the harmonics plot only works for positive numbers. insert abs somewhere.
+
 import numpy as np
 import sys
 import os
