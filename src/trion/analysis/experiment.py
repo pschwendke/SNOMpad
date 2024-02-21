@@ -320,7 +320,13 @@ class Point(Measurement):
         # for px, _ in tqdm(enumerate(harmonics)):
         data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx])
         if self.modulation == Demodulation.shd:
-            coefficients = shd(data=data, signals=self.signals, **kwargs)
+            # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
+            try:
+                coefficients = shd(data=data, signals=self.signals, **kwargs)
+            except ValueError as e:
+                if "empty bins" in str(e):
+                    coefficients = np.full((max_order + 1,), np.nan)
+                else: raise
         elif self.modulation == Demodulation.pshet:
             coefficients = pshet(data=data, signals=self.signals, **kwargs)
         elif self.modulation == Demodulation.none:

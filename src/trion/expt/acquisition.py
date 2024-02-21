@@ -137,24 +137,35 @@ class ContinuousPoint(ContinuousScan):
             self.afm.goto_xy(self.x_target, self.y_target)
 
     def acquire(self):
-        logger.info('Starting acquisition')
+        logger.info('Continuous Point: Starting acquisition')
         excess = 0
         chunk_idx = 0
         afm_tracking = []
         while chunk_idx * self.npts < self.n:
+            logger.info(f"Continuous point chunk: {chunk_idx}")
             current = [chunk_idx] + list(self.afm.get_current())
             afm_tracking.append(current)
-
+            logger.debug("Got AFM data")
             n_read = excess
-            while n_read < self.npts:
-                sleep(0.001)
-                n = self.ctrl.reader.read()
-                n_read += n
+            nloop = 0  # for debugging, we are getting stuck somewhere around here.
+            # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
+            try:
+                while n_read < self.npts:
+                    sleep(0.001)
+                    n = self.ctrl.reader.read()
+                    n_read += n
+                    nloop += 1
+            except KeyboardInterrupt:
+                logger.error("Aborting current chunk")
+                logger.debug(f"{n_read} + {n} <? {self.npts}")
             excess = n_read - self.npts
+            logger.debug(f"After read data, nloop {nloop}")
             data = self.buffer.get(n=self.npts, offset=excess)
+            logger.debug("after DAQ get.")
             self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
             chunk_idx += 1
 
+        logger.info('Continuous Point: Saving acquired DAQ data')
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
@@ -163,7 +174,6 @@ class ContinuousPoint(ContinuousScan):
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array([self.t])})
             self.afm_data[c] = da
-        logger.info('Acquisition complete')
         self.stop_time = datetime.now()
 
     def routine(self):
