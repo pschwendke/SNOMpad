@@ -126,6 +126,7 @@ class TrionsAnalogReader(): # for not pump-probe
         """Explict read, when acquisition is handled by the main script."""
         n = min(n, self.avail_samp)
         if n == 0:
+            logger.debug('TrionsAnalogReader: 0 samples read from DAQ')
             return 0
         tmp = np.full((n, len(self.vars)),
                        np.nan)

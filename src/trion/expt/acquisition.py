@@ -141,31 +141,38 @@ class ContinuousPoint(ContinuousScan):
         excess = 0
         chunk_idx = 0
         afm_tracking = []
+        daq_tracking = {}  # ToDo if this (buffering the daq data instead of writing directly) solves the daq problem. if yes, implement everywhere.
         while chunk_idx * self.npts < self.n:
-            logger.info(f"Continuous point chunk: {chunk_idx}")
+            logger.debug(f'Continuous point chunk: {chunk_idx}')
             current = [chunk_idx] + list(self.afm.get_current())
             afm_tracking.append(current)
-            logger.debug("Got AFM data")
+            logger.debug('Got AFM data')
             n_read = excess
             nloop = 0  # for debugging, we are getting stuck somewhere around here.
             # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
             try:
                 while n_read < self.npts:
-                    sleep(0.001)
                     n = self.ctrl.reader.read()
                     n_read += n
                     nloop += 1
+                    sleep(0.001)
+                    if nloop > self.npts / 50:
+                        logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}.'
+                                      f' {n_read} samples were read from DAQ, instead of {self.npts}')
+                        break
             except KeyboardInterrupt:
-                logger.error("Aborting current chunk")
+                logger.error('Aborting current chunk')
                 logger.debug(f"{n_read} + {n} <? {self.npts}")
-            excess = n_read - self.npts
-            logger.debug(f"After read data, nloop {nloop}")
+            excess = (n_read - self.npts) * int(n_read > self.npts)
+            logger.debug(f'After read data, nloop {nloop}')
             data = self.buffer.get(n=self.npts, offset=excess)
-            logger.debug("after DAQ get.")
-            self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
+            daq_tracking[chunk_idx] = data
+            logger.debug('after DAQ get.')
             chunk_idx += 1
 
         logger.info('Continuous Point: Saving acquired DAQ data')
+        for k, v in daq_tracking:
+            self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']

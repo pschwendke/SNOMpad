@@ -133,7 +133,7 @@ class BaseScan(ABC):
         self.file.create_group('nea_data')  # data returned by NeaScan API
 
         if self.pump_probe:
-            if self.t0_mm is not None:
+            if self.t0_mm is not None and self.parent_scan is None:
                 self.delay_stage.reference = self.t0_mm
             if self.t is not None:
                 self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
