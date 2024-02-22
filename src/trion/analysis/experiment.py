@@ -374,21 +374,22 @@ class Retraction(Measurement):
         z_res = n // chunk_size
         self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
-        z = self.afm_data['z'].values
-        z = z[:z_res * chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
+        z = self.afm_data['z'].values.squeeze()
+        z = z[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         if self.mode == Scan.stepped_retraction:
-            z_target = self.afm_data['z_target'].values
+            z_target = self.afm_data['z_target'].values.squeeze()
             z_target = z_target[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
             self.demod_data['z_target'] = xr.DataArray(data=z_target, dims='z', coords={'z': z})
 
-        amp = self.afm_data['amp'].values
+        amp = self.afm_data['amp'].values.squeeze()
         amp = amp[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         self.demod_data['amp'] = xr.DataArray(data=amp, dims='z', coords={'z': z})
-        phase = self.afm_data['phase'].values
+        phase = self.afm_data['phase'].values.squeeze()
         phase = phase[:z_res*chunk_size].reshape((z_res, chunk_size)).mean(axis=1)
         phase = phase / 2 / np.pi * 360
         self.demod_data['phase'] = xr.DataArray(data=phase, dims='z')
-        idx = self.afm_data['idx'].values[:z_res * chunk_size].reshape((z_res, chunk_size))
+        idx = self.afm_data['idx'].values.squeeze()
+        idx = idx[:z_res * chunk_size].reshape((z_res, chunk_size))
         idx = [i for i in idx] + ['']  # this is a truly ugly workaround to make an array of arrays
         idx = np.array(idx, dtype=object)
         self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='z')
@@ -498,11 +499,11 @@ class Image(Measurement):
         if self.mode == Scan.continuous_image:
             raise NotImplementedError
         self.demod_data = xr.Dataset()
-        x = self.afm_data.x_target.values
-        y = self.afm_data.y_target.values
-        z = self.afm_data.z.values
-        amp = self.afm_data.amp.values
-        phase = self.afm_data.phase.values
+        x = self.afm_data.x_target.values.squeeze()
+        y = self.afm_data.y_target.values.squeeze()
+        z = self.afm_data.z.values.squeeze()
+        amp = self.afm_data.amp.values.squeeze()
+        phase = self.afm_data.phase.values.squeeze()
 
         self.demod_data['z'] = xr.DataArray(data=z, dims=('y', 'x'), coords={'x': x, 'y': y})
         self.demod_data['z'].attrs['z_unit'] = 'um'
@@ -643,11 +644,11 @@ class Line(Measurement):
             r_res = n // chunk_size
             self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
 
-            x = self.afm_data['x'].values
+            x = self.afm_data['x'].values.squeeze()
             x = x[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
-            y = self.afm_data['y'].values
+            y = self.afm_data['y'].values.squeeze()
             y = y[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
-            z = self.afm_data['z'].values
+            z = self.afm_data['z'].values.squeeze()
             z = z[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
             r = np.sqrt(x ** 2 + y ** 2)
             r -= r.min()
@@ -655,20 +656,21 @@ class Line(Measurement):
             self.demod_data['y'] = xr.DataArray(data=y, dims='r')
             self.demod_data['z'] = xr.DataArray(data=z, dims='r')
             if self.mode == Scan.stepped_line:
-                x_target = self.afm_data['x_target'].values
+                x_target = self.afm_data['x_target'].values.squeeze()
                 x_target = x_target[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
                 self.demod_data['x_target'] = xr.DataArray(data=x_target, dims='r')
-                y_target = self.afm_data['y_target'].values
+                y_target = self.afm_data['y_target'].values.squeeze()
                 y_target = y_target[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
                 self.demod_data['y_target'] = xr.DataArray(data=y_target, dims='r')
-            amp = self.afm_data['amp'].values
+            amp = self.afm_data['amp'].values.squeeze()
             amp = amp[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
             self.demod_data['amp'] = xr.DataArray(data=amp, dims='r')
-            phase = self.afm_data['phase'].values
+            phase = self.afm_data['phase'].values.squeeze()
             phase = phase[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
             phase = phase / 2 / np.pi * 360
             self.demod_data['phase'] = xr.DataArray(data=phase, dims='r')
-            idx = self.afm_data['idx'].values[:r_res * chunk_size].reshape((r_res, chunk_size))
+            idx = self.afm_data['idx'].values.squeeze()
+            idx = idx[:r_res * chunk_size].reshape((r_res, chunk_size))
             idx = [i for i in idx] + ['']  # this is a truly ugly workaround to make an array of arrays
             idx = np.array(idx, dtype=object)
             self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='r')
