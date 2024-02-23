@@ -473,8 +473,8 @@ class Retraction(Measurement):
         ax[-1].set_xlabel('dz (nm)')
 
         if save:
-            plt.savefig(f'{self.name}.png', dpi=300, bbox_inches='tight')
-            plt.savefig(f'{self.name}.svg', bbox_inches='tight')
+            plt.savefig(f'{self.name}.png', dpi=100, bbox_inches='tight')
+            # plt.savefig(f'{self.name}.svg', bbox_inches='tight')
         if show:
             plt.show()
         plt.close()

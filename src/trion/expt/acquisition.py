@@ -171,7 +171,7 @@ class ContinuousPoint(ContinuousScan):
             chunk_idx += 1
 
         logger.info('Continuous Point: Saving acquired DAQ data')
-        for k, v in daq_tracking:
+        for k, v in daq_tracking.items():
             self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
@@ -745,8 +745,8 @@ class DelayScan(BaseScan):
         self.scan_kwargs = scan_kwargs
 
         if self.t_scale == 'lin':
-            self.t_targets = np.linspace(self.t_start, self.t_stop, self.t_res)
-        elif self.t_scale == 'log':
+            self.t_targets = np.linspace(self.t_start, self.t_stop, self.t_res)  # ToDo: the sign seems to be flipped. Think about this.
+        elif self.t_scale == 'log':  # ToDo: kick this
             self.t_targets = np.logspace(np.log10(self.t_start), np.log10(self.t_stop), self.t_res)
         else:
             raise NotImplementedError(f'scale has to be lin or log. "{self.t_scale}" was passed.')

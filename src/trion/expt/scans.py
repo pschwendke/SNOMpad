@@ -15,7 +15,7 @@ from trion.expt.daq import DaqController
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.nea_ctrl import NeaSNOM, to_numpy
 from trion.expt.dl_ctrl import DLStage
-from trion.__init__ import __version__
+from trion.__init__ import __version__, load
 
 logger = logging.getLogger(__name__)
 
