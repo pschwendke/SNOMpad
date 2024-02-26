@@ -156,7 +156,7 @@ class ContinuousPoint(ContinuousScan):
                     n_read += n
                     nloop += 1
                     sleep(0.001)
-                    if nloop > self.npts / 50:
+                    if nloop > self.npts / 20:
                         logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}.'
                                       f' {n_read} samples were read from DAQ, instead of {self.npts}')
                         break

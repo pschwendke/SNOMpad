@@ -146,11 +146,11 @@ def update_harmonics(data, tap, ref):
         # normalize modulated data
         if mod_button.labels[mod_button.active] != 'no mod':
             if harm_scaling[0] == 0:
-                harm_scaling = np.ones(max_harm+1) / coefficients
-            for i, over_limit in enumerate(coefficients * harm_scaling > 1):
+                harm_scaling = np.ones(max_harm+1) / np.abs(coefficients)
+            for i, over_limit in enumerate(np.abs(coefficients * harm_scaling) > 1):
                 if over_limit:
-                    harmonics_plot_data.buffer.data[str(i)] /= coefficients[i] * harm_scaling[i]
-                    harm_scaling[i] = 1 / coefficients[i]
+                    harmonics_plot_data.buffer.data[str(i)] /= np.abs(coefficients[i]) * harm_scaling[i]
+                    harm_scaling[i] = 1 / np.abs(coefficients[i])
             coefficients *= harm_scaling
 
         harmonics_plot_data.put(data=coefficients[:max_harm + 1])

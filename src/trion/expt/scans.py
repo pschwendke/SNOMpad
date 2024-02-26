@@ -249,7 +249,7 @@ class ContinuousScan(BaseScan):
     def connect(self):
         super().connect()
         self.ctrl = DaqController(self.device, clock_channel=self.clock_channel)
-        self.buffer = CircularArrayBuffer(vars=self.signals, size=100_000 + self.npts)
+        self.buffer = CircularArrayBuffer(vars=self.signals, size=500_000 + self.npts)
         self.ctrl.setup(buffer=self.buffer)
         return True
 
