@@ -174,6 +174,7 @@ class BaseScan(ABC):
             # if self.file is not None:
             self.file.close()
             if self.delay_stage is not None:
+                self.delay_stage.motor_enabled = False
                 self.delay_stage.disconnect()
                 self.delay_stage = None
             logging.getLogger().removeHandler(self.log_handler)
@@ -261,7 +262,7 @@ class ContinuousScan(BaseScan):
 
     def acquire(self):
         logger.info('Starting acquisition')
-        excess = 0
+        # excess = 0
         chunk_idx = 0
         afm_tracking = []
         while not self.afm.scan.IsCompleted:
@@ -269,13 +270,16 @@ class ContinuousScan(BaseScan):
             current = self.afm.get_current()
             afm_tracking.append([chunk_idx] + list(current))
 
-            n_read = excess
+            # n_read = excess
+            n_read = 0
             while n_read < self.npts:
                 sleep(0.001)
                 n = self.ctrl.reader.read()
                 n_read += n
-            excess = n_read - self.npts
-            data = self.buffer.get(n=self.npts, offset=excess)
+            # excess = n_read - self.npts
+            # now all read samples are dumped into the buffer. Chunk size is not defined anymore
+            # ToDo: clean this up
+            data = self.buffer.tail(n=n_read)
             self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
             chunk_idx += 1
         logger.info('Acquisition complete')

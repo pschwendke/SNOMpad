@@ -138,7 +138,7 @@ class ContinuousPoint(ContinuousScan):
 
     def acquire(self):
         logger.info('Continuous Point: Starting acquisition')
-        excess = 0
+        # excess = 0
         chunk_idx = 0
         afm_tracking = []
         daq_tracking = {}  # ToDo if this (buffering the daq data instead of writing directly) solves the daq problem. if yes, implement everywhere.
@@ -147,7 +147,8 @@ class ContinuousPoint(ContinuousScan):
             current = [chunk_idx] + list(self.afm.get_current())
             afm_tracking.append(current)
             logger.debug('Got AFM data')
-            n_read = excess
+            # n_read = excess
+            n_read = 0
             nloop = 0  # for debugging, we are getting stuck somewhere around here.
             # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
             try:
@@ -163,9 +164,11 @@ class ContinuousPoint(ContinuousScan):
             except KeyboardInterrupt:
                 logger.error('Aborting current chunk')
                 logger.debug(f"{n_read} + {n} <? {self.npts}")
-            excess = (n_read - self.npts) * int(n_read > self.npts)
+            # excess = (n_read - self.npts) * int(n_read > self.npts)
+            # now all read samples are dumped into the buffer. Chunk size is not defined anymore
+            # ToDo: clean this up
             logger.debug(f'After read data, nloop {nloop}')
-            data = self.buffer.get(n=self.npts, offset=excess)
+            data = self.buffer.tail(n=n_read)
             daq_tracking[chunk_idx] = data
             logger.debug('after DAQ get.')
             chunk_idx += 1
@@ -180,6 +183,7 @@ class ContinuousPoint(ContinuousScan):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             if self.t is not None:
                 da = da.expand_dims(dim={'t': np.array([self.t])})
+                da = da.expand_dims(dim={'delay_pos_mm': np.array([self.delay_stage.position])})  # ToDo: clean this up. Where does what information go?
             self.afm_data[c] = da
         self.stop_time = datetime.now()
 
@@ -778,6 +782,7 @@ class DelayScan(BaseScan):
             scan.start()
         logger.info('DelayScan complete')
         self.stop_time = datetime.now()
+        self.delay_stage.move_abs(val=self.t_targets[0], unit=self.t_unit)
         
 
 class NoiseScan(ContinuousScan):
@@ -819,16 +824,18 @@ class NoiseScan(ContinuousScan):
     def acquire(self):
         # ToDo this could be merged at some time with parent class
         logger.info('Starting scan')
-        excess = 0
+        # excess = 0
         daq_data = []
         while not self.afm.scan.IsCompleted:
-            n_read = excess
+            n_read = 0
             while n_read < self.npts:  # this slicing seems redundant. Someone should rewrite this.
                 sleep(.001)
                 n = self.ctrl.reader.read()
                 n_read += n
-            excess = n_read - self.npts
-            daq_data.append(self.buffer.get(n=self.npts, offset=excess))
+            # excess = n_read - self.npts
+            daq_data.append(self.buffer.tail(n=n_read))
+            # now all read samples are dumped into the buffer. Chunk size is not defined anymore
+            # ToDo: clean this up
 
         daq_data = np.vstack(daq_data)
         self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
