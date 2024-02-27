@@ -329,11 +329,11 @@ class DLStage:
         elif unit == 'mm':
             pass
         elif unit == 's':
-            val = 0.5 * val * c_air * 1e3 + self.reference  # mm
+            val = self.reference - 0.5 * val * c_air * 1e3  # mm
         elif unit == 'fs':
-            val = 0.5 * val * 1e-15 * c_air * 1e3 + self.reference  # mm
+            val = self.reference - 0.5 * val * 1e-15 * c_air * 1e3  # mm
         elif unit == 'ps':
-            val = 0.5 * val * 1e-12 * c_air * 1e3 + self.reference  # mm
+            val = self.reference - 0.5 * val * 1e-12 * c_air * 1e3  # mm
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         logger.info(f'Moving to delay position {val:.3f} mm with {velocity} mm/s')
@@ -357,11 +357,11 @@ class DLStage:
         elif unit == 'mm':
             pass
         elif unit == 's':
-            step = 0.5 * step * c_air * 1e3  # mm
+            step = -0.5 * step * c_air * 1e3  # mm
         elif unit == 'fs':
-            step = 0.5 * step * 1e-15 * c_air * 1e3  # mm
+            step = -0.5 * step * 1e-15 * c_air * 1e3  # mm
         elif unit == 'ps':
-            step = 0.5 * step * 1e-12 * c_air * 1e3  # mm
+            step = -0.5 * step * 1e-12 * c_air * 1e3  # mm
         else:
             raise TypeError(f"unit must be in ['m', 'mm', 'fs', 'ps', 's'], got {unit} instead.")
         step = str(step)
