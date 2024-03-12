@@ -24,7 +24,7 @@ if __name__ == '__main__':
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
-callback_interval = 150  # ms
+callback_interval = 150  # ms  # ToDo: make this longer when using pshet. or dynamic??
 buffer_size = 200_000
 harm_plot_size = 40  # number of values on x-axis when plotting harmonics
 raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)

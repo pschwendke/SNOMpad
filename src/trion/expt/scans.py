@@ -261,30 +261,36 @@ class ContinuousScan(BaseScan):
         return False
 
     def acquire(self):
-        logger.info('Starting acquisition')
+        logger.info('ContinuousScan: Starting acquisition')
         # excess = 0
         chunk_idx = 0
         afm_tracking = []
+        daq_tracking = {}
         while not self.afm.scan.IsCompleted:
+            logger.debug(f'Continuous acquisition chunk: {chunk_idx}')
             print(f'Chunk no {chunk_idx}. Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
             current = self.afm.get_current()
             afm_tracking.append([chunk_idx] + list(current))
+            logger.debug('Got AFM data')
 
             # n_read = excess
             n_read = 0
             while n_read < self.npts:
-                sleep(0.001)
                 n = self.ctrl.reader.read()
                 n_read += n
+                sleep(0.001)
             # excess = n_read - self.npts
             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
             # ToDo: clean this up
             data = self.buffer.tail(n=n_read)
-            self.file['daq_data'].create_dataset(str(chunk_idx), data=data, dtype='float32')
+            daq_tracking[chunk_idx] = data
+            logger.debug('after DAQ get.')
             chunk_idx += 1
-        logger.info('Acquisition complete')
         self.stop_time = datetime.now()
 
+        logger.info('ContinuousScan: Saving acquired DAQ data')
+        for k, v in daq_tracking.items():
+            self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']

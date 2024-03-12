@@ -137,7 +137,7 @@ class ContinuousPoint(ContinuousScan):
             self.afm.goto_xy(self.x_target, self.y_target)
 
     def acquire(self):
-        logger.info('Continuous Point: Starting acquisition')
+        logger.info('ContinuousPoint: Starting acquisition')
         # excess = 0
         chunk_idx = 0
         afm_tracking = []
@@ -173,7 +173,7 @@ class ContinuousPoint(ContinuousScan):
             logger.debug('after DAQ get.')
             chunk_idx += 1
 
-        logger.info('Continuous Point: Saving acquired DAQ data')
+        logger.info('ContinuousPoint: Saving acquired DAQ data')
         for k, v in daq_tracking.items():
             self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
         afm_tracking = np.array(afm_tracking)
