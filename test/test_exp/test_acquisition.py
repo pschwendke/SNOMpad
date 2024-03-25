@@ -1,11 +1,7 @@
-from itertools import product
-import os.path as pth
-import numpy as np
 import pytest
 from trion.expt.acquisition import single_point
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 from common import exp_configs, n_samples
-from gen_ref_single_point import make_fname
 
 
 @pytest.mark.parametrize("n", n_samples)

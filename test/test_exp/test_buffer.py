@@ -1,13 +1,12 @@
 # using pytest
 import pytest
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 from trion.expt.buffer import (
     CircularArrayBuffer, ExtendingArrayBuffer, H5Buffer, Overfill,
 )
 import numpy as np
 import pandas as pd
-from itertools import product, chain
 from common import exp_configs, n_samples
 
 

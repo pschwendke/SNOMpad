@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 
 
 @pytest.fixture(scope='session')

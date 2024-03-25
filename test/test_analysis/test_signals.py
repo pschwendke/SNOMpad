@@ -1,4 +1,4 @@
-from trion.analysis.signals import (
+from trion.utility.signals import (
     Signals, Scan, Demodulation, Detector, signal_colormap
 )
 from trion.analysis.experiment import Experiment

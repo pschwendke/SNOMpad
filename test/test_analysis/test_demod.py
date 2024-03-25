@@ -4,8 +4,8 @@ from scipy.special import jv
 
 from trion.analysis.demod import phase_offset, phased_ft, shd_binning, shd
 from trion.analysis.demod import pshet_binning, pshet_coefficients, pshet
-from trion.analysis.modelling import shd_data, pshet_data
-from trion.analysis.signals import Signals, all_detector_signals
+from trion.analysis.modelling import shd_data
+from trion.utility.signals import Signals
 
 # some parameters to create test data
 # all parameters are real to only test for retrieval of amplitudes, not phases

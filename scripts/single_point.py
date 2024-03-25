@@ -3,16 +3,14 @@
 #
 import argparse
 import logging
-from time import sleep
 
 import numpy as np
 import tqdm
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 from trion.analysis.io import export_data
 from trion.expt.acquisition import single_point
-from trion.expt.buffer import ExtendingArrayBuffer
-from trion.expt.daq import DaqController
+
 
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
