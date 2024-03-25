@@ -1,6 +1,6 @@
-from .analysis.experiment import load
+from snompad.demodulation.measurements import load
 
-__author__ = 'Samuel Palato'
-__email__ = 'samuel.palato@hu-berlin.de'
+__author__ = 'Philipp Schwendke'
+__email__ = 'philipp.schwendke@gmx.de'
 __license__ = 'MIT'
 __version__ = '0.1'

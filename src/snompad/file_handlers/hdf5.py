@@ -1,11 +1,8 @@
 # code to read and write SNOMpad data from and to hdf5 files
-
 import numpy as np
 import xarray as xr
 import logging
 import h5py
-
-# from snompad.utility.signals import Signals
 
 logger = logging.getLogger(__name__)
 

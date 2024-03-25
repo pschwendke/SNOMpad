@@ -8,28 +8,19 @@ lmfit
 matplotlib
 bokeh
 colorcet
-
 h5py
-netcdf4
 gwyfile
-
 nidaqmx
 pyserial
 pythonnet
-
 tqdm
-PySide2
-pyqtgraph
 attrs
 bidict
 toml
 h5py
-pytest  # should pytest go in the requirements? probably not...
-pytest-benchmark  # same here
 xarray
 pyserial
 gwyfile
 lmfit
-setuptools
 bokeh
 colorcet

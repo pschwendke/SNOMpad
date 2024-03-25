@@ -1,7 +1,0 @@
-name: trion_dev
-channels:
-  - conda-forge
-  - defaults
-dependencies:
-  - -r requirements.txt
-prefix: C:\Users\samue\Anaconda3\envs\trion_dev
