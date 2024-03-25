@@ -10,9 +10,9 @@ from itertools import chain
 from typing import Iterable
 from abc import ABC, abstractmethod
 
-from trion.analysis.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
-from trion.analysis.demod import shd, pshet, sort_chopped
-from trion.analysis.io import export_gwy, h5_to_xr_dataset, xr_to_h5_datasets
+from snompad.utility.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
+from snompad.analysis.demod import shd, pshet, sort_chopped
+from snompad.analysis.io import export_gwy, h5_to_xr_dataset, xr_to_h5_datasets
 
 
 class Measurement(ABC):
@@ -52,7 +52,7 @@ class Measurement(ABC):
         return ret
 
     def __repr__(self) -> str:
-        return f'<TRION measurement: {self.name}>'
+        return f'<SNOMpad measurement: {self.name}>'
     
     def __del__(self):
         self.file.close()
@@ -916,7 +916,7 @@ class Delay(Measurement):
 @attr.s(order=False)
 class Experiment:
     """
-    Describes a TRION experimental configuration.
+    Describes a snompad experimental configuration.
 
     Parameters
     ----------

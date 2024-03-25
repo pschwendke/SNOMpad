@@ -26,7 +26,6 @@ import typing
 import numpy as np
 import attr
 import nidaqmx as ni
-from nidaqmx.system import System
 from nidaqmx import DaqError
 from nidaqmx.error_codes import DAQmxErrors
 from nidaqmx.stream_readers import AnalogMultiChannelReader
@@ -34,9 +33,8 @@ from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 
 from .cfuncs import self_cal
-from ..analysis.signals import Signals, is_optical_signal, all_modulation_signals
-import warnings
-import re
+from trion.utility.signals import Signals, is_optical_signal
+
 logger = logging.getLogger(__name__)
 
 # please don't change this...
@@ -221,7 +219,7 @@ class DaqController:
 
         Parameters
         ----------
-        buffer : trion.expt.AbstractBuffer
+        buffer : snompad.expt.AbstractBuffer
             Buffer for acquisition.
 
         Notes

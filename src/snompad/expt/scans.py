@@ -9,20 +9,21 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
 
-from trion.analysis.signals import Scan, Demodulation, Signals
-from trion.analysis.io import xr_to_h5_datasets
-from trion.expt.daq import DaqController
-from trion.expt.buffer import CircularArrayBuffer
-from trion.expt.nea_ctrl import NeaSNOM, to_numpy
-from trion.expt.dl_ctrl import DLStage
-from trion.__init__ import __version__, load
+from snompad.utility.signals import Scan, Demodulation, Signals
+from snompad.analysis.io import xr_to_h5_datasets
+from snompad.expt.daq import DaqController
+from snompad.expt.buffer import CircularArrayBuffer
+from snompad.expt.nea_ctrl import NeaSNOM, to_numpy
+from snompad.expt.dl_ctrl import DLStage
+from snompad.file_handlers.hdf5 import H5Acquisition
+from snompad.__init__ import __version__
 
 logger = logging.getLogger(__name__)
 
 
 class BaseScan(ABC):
     def __init__(self, modulation: str, signals=None, pump_probe=False, setpoint: float = 0.8, npts: int = 5_000,
-                 device='Dev1', clock_channel='pfi0', ratiometry=False,
+                 device='Dev1', clock_channel='pfi0', ratiometry=False, filetype: str = 'hdf5',
                  metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None,
                  parent_scan=None, delay_idx=None):
         """
@@ -43,6 +44,8 @@ class BaseScan(ABC):
             AFM setpoint when engaged
         npts: int
             number of samples from the DAQ that are saved in one chunk
+        filetype: str
+            filetype write to. Default is hdf5
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
@@ -60,7 +63,8 @@ class BaseScan(ABC):
         try:
             self.modulation = Demodulation[modulation]
         except KeyError:
-            logger.error(f'BaseScan only takes "shd", "pshet", and "none" as modulation values. "{modulation}" was passed.')
+            logger.error(f'BaseScan only takes "shd", "pshet", and "none" as modulation values.'
+                         f'"{modulation}" was passed.')
         if signals is None:
             signals = [Signals.sig_a]
             if ratiometry:
@@ -74,11 +78,15 @@ class BaseScan(ABC):
         if npts > 200_000:
             logger.error(f'npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
             npts = 200_000
+        if filetype == 'hdf':
+            self.file = H5Acquisition()
+        else:
+            raise NotImplementedError(f'filetype {filetype} was passed. There is no appropriate file handler.')
         self.npts = npts
         self.signals = signals
         self.device = device
         self.clock_channel = clock_channel
-        self.trion_version = __version__
+        self.snompad_version = __version__
         self.t = t
         self.t_unit = t_unit
         self.t0_mm = t0_mm
@@ -93,7 +101,6 @@ class BaseScan(ABC):
         self.nea_data = None
         self.date = None
         self.name = None
-        self.file = None
         self.stop_time = None
         self.neaclient_version = None
         self.neaserver_version = None
@@ -110,7 +117,7 @@ class BaseScan(ABC):
                               't', 't_start', 't_stop', 't_unit', 't_res', 't_scale', 't0_mm', 'delay_idx', 'scan_type', 'n',
                               'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
                               'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
-                              'trion_version', 'neaclient_version', 'neaserver_version']
+                              'snompad_version', 'neaclient_version', 'neaserver_version']
 
     def prepare(self):
         self.date = datetime.now()
@@ -122,15 +129,14 @@ class BaseScan(ABC):
 
             logger.info('Preparing Scan')
             filename = self.name + '.h5'
-            logger.info(f'Creating scan file: {filename}')
-            self.file = h5py.File(filename, 'w')
+            self.file.create_file(filename)
         else:  # acts as a separate file, for all that we care about:
             logger.info(f'Creating sub file for delay position: {self.delay_idx}')
             self.file = self.parent_scan.file.create_group(f'delay_idx_{self.delay_idx}')
         self.connected = self.connect()
-        self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
-        self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
-        self.file.create_group('nea_data')  # data returned by NeaScan API
+        # self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
+        # self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
+        # self.file.create_group('nea_data')  # data returned by NeaScan API
 
         if self.pump_probe:
             if self.t0_mm is not None and self.parent_scan is None:
@@ -172,7 +178,7 @@ class BaseScan(ABC):
             self.afm.disconnect()
             self.afm = None
             # if self.file is not None:
-            self.file.close()
+            self.file.close_file()
             if self.delay_stage is not None:
                 self.delay_stage.motor_enabled = False
                 self.delay_stage.disconnect()
@@ -209,11 +215,9 @@ class BaseScan(ABC):
         Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file. Collect and export metadata.
         """
         if self.afm_data is not None:
-            logger.info('Saving tracked AFM data')
-            xr_to_h5_datasets(ds=self.afm_data, group=self.file['afm_data'])
+            self.file.write_afm_data(data=self.afm_data)
         if self.nea_data is not None:
-            logger.info('Saving NeaScan data')
-            xr_to_h5_datasets(ds=self.nea_data, group=self.file['nea_data'])
+            self.file.write_nea_data(data=self.nea_data)
 
         logger.info('Collecting metadata')
         metadata_collector = {}
@@ -232,7 +236,7 @@ class BaseScan(ABC):
         for k, v in metadata_collector.items():
             if v is not None:
                 logger.debug(f'writing metadata ({k}: {v})')
-                self.file.attrs[k] = v
+                self.file.write_metadata(key=k, val=v)
 
 
 class ContinuousScan(BaseScan):
@@ -288,9 +292,7 @@ class ContinuousScan(BaseScan):
             chunk_idx += 1
         self.stop_time = datetime.now()
 
-        logger.info('ContinuousScan: Saving acquired DAQ data')
-        for k, v in daq_tracking.items():
-            self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
+        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']

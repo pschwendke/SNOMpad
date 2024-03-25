@@ -13,7 +13,7 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 from trion.analysis.demod import shd, pshet, sort_chopped
 from trion.expt.buffer import CircularArrayBuffer
 from trion.expt.daq import DaqController

@@ -1,4 +1,4 @@
-# launch_trion.py: launch the trion experiment GUI
+# launch_trion.py: launch the snompad experiment GUI
 
 import sys
 import os.path

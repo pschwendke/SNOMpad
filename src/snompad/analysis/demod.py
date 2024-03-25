@@ -8,7 +8,7 @@ from lmfit import Parameters, minimize
 
 import pandas as pd
 
-from .signals import Signals
+from trion.utility.signals import Signals
 from .modelling import pshet_obj_func
 from .utils import kernel_interpolation_1d, kernel_interpolation_2d
 

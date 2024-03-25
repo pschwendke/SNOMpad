@@ -14,12 +14,12 @@ from tqdm import tqdm
 from itertools import product
 from datetime import datetime
 
-from trion.analysis.signals import Signals, Scan
-from trion.expt.buffer import ExtendingArrayBuffer
-from trion.expt.buffer.base import Overfill
-from trion.expt.daq import DaqController
-from trion.expt.nea_ctrl import to_numpy
-from trion.expt.scans import ContinuousScan, BaseScan, logger
+from snompad.utility.signals import Signals, Scan
+from snompad.expt.buffer import ExtendingArrayBuffer
+from snompad.expt.buffer.base import Overfill
+from snompad.expt.daq import DaqController
+from snompad.expt.nea_ctrl import to_numpy
+from snompad.expt.scans import ContinuousScan, BaseScan
 
 import nidaqmx
 from nidaqmx.constants import (Edge, TaskMode)
@@ -173,9 +173,7 @@ class ContinuousPoint(ContinuousScan):
             logger.debug('after DAQ get.')
             chunk_idx += 1
 
-        logger.info('ContinuousPoint: Saving acquired DAQ data')
-        for k, v in daq_tracking.items():
-            self.file['daq_data'].create_dataset(str(k), data=v, dtype='float32')
+        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
@@ -264,6 +262,7 @@ class SteppedRetraction(BaseScan):
         self.afm.start()
         self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
         afm_tracking = []
+        daq_tracking = {}
         pbar = tqdm(targets)
         for i, t in enumerate(pbar):
             # wait for target z-position during retraction scan
@@ -284,7 +283,7 @@ class SteppedRetraction(BaseScan):
             # acquire npts # of samples
             data = single_point(self.device, self.signals, self.npts, self.clock_channel)
             current = list(self.afm.get_current())
-            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            daq_tracking[i] = data
             afm_tracking.append([i, t] + current)
             self.afm.scan.Resume()
 
@@ -293,6 +292,7 @@ class SteppedRetraction(BaseScan):
         logger.info('Acquisition complete')
         self.stop_time = datetime.now()
 
+        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
@@ -373,16 +373,17 @@ class SteppedImage(BaseScan):
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
         afm_tracking = []
+        daq_tracking = {}
         for idx, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
             data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-            self.file['daq_data'].create_dataset(str(idx), data=data, dtype='float32')
+            daq_tracking[idx] = data
             current = list(self.afm.get_current())
             afm_tracking.append([idx] + current)
 
         logger.info('Acquisition complete')
         self.stop_time = datetime.now()
-
+        self.file.write_daq_data(data=daq_tracking)
         self.afm_data = xr.Dataset()
         for c, ch_name in enumerate(tracked_channels):
             ch = np.array([[afm_tracking[targets.index((y, x))][c] for x in x_pos] for y in y_pos])
@@ -465,16 +466,17 @@ class SteppedLineScan(BaseScan):
         self.afm.engage(self.setpoint)
         logger.info('Starting acquisition')
         afm_tracking = []
+        daq_tracking = {}
         for i, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
             data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-            self.file['daq_data'].create_dataset(str(i), data=data, dtype='float32')
+            daq_tracking[i] = data
             current = list(self.afm.get_current())
             afm_tracking.append([i, x, y] + current)
 
         logger.info('Acquisition complete')
         self.stop_time = datetime.now()
-
+        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
@@ -837,8 +839,8 @@ class NoiseScan(ContinuousScan):
             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
             # ToDo: clean this up
 
-        daq_data = np.vstack(daq_data)
-        self.file['daq_data'].create_dataset('1', data=daq_data, dtype='float32')  # just one chunk / pixel
+        daq_data = {0: np.vstack(daq_data)}  # just one chunk / pixel
+        self.file.write_daq_data(data=daq_data)
 
         logger.info('Acquisition complete')
         self.nea_data = to_numpy(self.nea_data)

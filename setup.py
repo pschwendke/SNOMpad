@@ -7,11 +7,11 @@ from setuptools import setup, find_packages
 from unittest import TestLoader
 from pprint import pprint
 
-PACKAGE_NAME    = 'trion'
+PACKAGE_NAME    = 'snompad'
 DESCRIPTION     = 'Code for TRIONs experiment.'
 URL             = 'http://w0.rz-berlin.mpg.de/pc/electrondynamix/'
 DOWNLOAD_URL    = ''
-BASE_PACKAGE    = 'src/trion'
+BASE_PACKAGE    = 'src/snompad'
 
 calib_data_files = glob("calib/*.xml")
 config_files = glob("*.xml")

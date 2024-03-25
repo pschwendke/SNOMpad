@@ -1,4 +1,4 @@
-""" Delay stage simulator and tests to develop and maintain delay stage implementation in trion.expt.dl_ctrl
+""" Delay stage simulator and tests to develop and maintain delay stage implementation in snompad.expt.dl_ctrl
 """
 
 import numpy as np

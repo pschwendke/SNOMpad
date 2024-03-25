@@ -33,7 +33,7 @@ class TqdmLoggingHandler(logging.Handler):
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)-5s %(name)s: %(message)s", level=logging.DEBUG,
 handlers=[TqdmLoggingHandler()])
-logging.getLogger("trion.expt").setLevel(logging.WARNING)
+logging.getLogger("snompad.expt").setLevel(logging.WARNING)
 
 # # # # # # # #   PARAMETERS
 setpoint = 0.8

@@ -1,9 +1,8 @@
 # Some functions to fit tapping and reference modulation, in order to do phase correction and determine gamma and psi_R
 
 import numpy as np
-from lmfit import Parameters, minimize
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 
 # ToDo: documentation
 

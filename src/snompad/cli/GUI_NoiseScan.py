@@ -9,7 +9,7 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div
 from bokeh.layouts import column, row, gridplot
 
-from trion.analysis.signals import Signals
+from trion.utility.signals import Signals
 from trion.expt.acquisition import NoiseScan
 from trion.analysis.experiment import Noise
 

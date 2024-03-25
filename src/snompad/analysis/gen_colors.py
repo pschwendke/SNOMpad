@@ -1,10 +1,8 @@
 # generate colors
 
 import numpy as np
-from matplotlib.colors import to_rgba_array
 from matplotlib.pyplot import get_cmap
-from trion.analysis.signals import Signals
-from pprint import pprint
+from trion.utility.signals import Signals
 import toml
 
 tab20 = np.array(np.array(get_cmap("tab20").colors)*255, dtype=int).tolist()

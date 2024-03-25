@@ -76,7 +76,7 @@ def signal_colormap(scale=255, filename=None) -> dict:
     cmap : dict
         signal -> color mapping.
     """
-    filename = filename or pth.join(pth.dirname(pth.abspath(__file__)), "signal_colors.toml")
+    filename = filename or pth.join(pth.dirname(pth.abspath(__file__)), "../analysis/signal_colors.toml")
     scale = 255/scale  # 256 <-> 1
     with open(filename, "r") as f:
         cmap = toml.load(f)

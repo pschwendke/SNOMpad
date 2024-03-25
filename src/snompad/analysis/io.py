@@ -12,7 +12,7 @@ from copy import copy
 from glob import glob
 from gwyfile.objects import GwyContainer, GwyDataField, GwySIUnit
 
-from .signals import Signals
+from snompad.utility.signals import Signals
 
 logger = logging.getLogger(__name__)
 

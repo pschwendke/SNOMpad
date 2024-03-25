@@ -6,8 +6,8 @@ import logging
 from time import sleep
 import numpy as np
 
-# from trion.analysis.signals import Demodulation, NamedEnum
-from trion.analysis.signals import Demodulation
+# from snompad.analysis.signals import Demodulation, NamedEnum
+from trion.utility.signals import Demodulation
 
 # import the neaSpec SDK
 neaspec_folder = '//nea-server/updates/SDK'  # Import all DLLs in the folder or 'N:/updates/SDK' to mapped drive

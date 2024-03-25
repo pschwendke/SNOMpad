@@ -1,14 +1,10 @@
-import abc
-import warnings
-from abc import ABC
 from collections import deque
-from itertools import repeat, cycle, product
+from itertools import product
 
 import logging
 from time import time
 
 import numpy as np
-import pandas as pd
 import pyqtgraph as pg
 from enum import IntEnum, auto
 from PySide2.QtCore import QSize, QObject, Signal, QTimer
@@ -22,8 +18,8 @@ import attr
 from .utils import add_grid, enum_to_combo
 from qtlets.widgets import IntEdit, ValuedComboBox, FloatEdit
 from trion.expt.buffer import CircularArrayBuffer
-from trion.analysis import signals
-from trion.analysis.signals import signal_colormap, Signals, NamedEnum, Demodulation
+from ..utility import signals
+from trion.utility.signals import signal_colormap, Signals, NamedEnum
 from ..analysis.demod import dft_naive, shd, pshet, pshet_binning, pshet_ft
 
 logger = logging.getLogger(__name__)

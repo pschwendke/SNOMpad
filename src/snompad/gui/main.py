@@ -1,4 +1,4 @@
-# trion.expt.gui.core
+# snompad.expt.gui.core
 # core elements for TRION GUI
 
 import logging
