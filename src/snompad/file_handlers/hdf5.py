@@ -5,7 +5,7 @@ import xarray as xr
 import logging
 import h5py
 
-from snompad.utility.signals import Signals
+# from snompad.utility.signals import Signals
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
             group.attrs[k] = v
 
 
-class H5Acquisition:
+class WriteH5Acquisition:
     """ class to create and write acquired data into an hdf5 file
     """
     def __init__(self):
@@ -65,7 +65,7 @@ class H5Acquisition:
         self.filename = None
 
     def __repr__(self):
-        return f'<SNOMpad acquisition file: {self.filename}>'
+        return f'<SNOMpad acquisition file writer: {self.filename}>'
 
     def __del__(self):
         self.close_file()
@@ -111,3 +111,73 @@ class H5Acquisition:
         """
         logger.info(f'Saving metadata: {key}: {val}')
         self.file.attrs[key] = val
+
+
+class ReadH5Acquisition:
+    """ class to read DAQ, AFM and NeaSpec data and metadata from hdf5 file
+    """
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.daq_data = None
+        self.afm_data = None
+        self.nea_data = None
+
+        logger.info(f'Opening file: {filename}')
+        self.file = h5py.File(filename, 'r')
+        self.metadata = {}
+        for k, v in self.file.attrs.items():
+            self.metadata[k] = v
+
+    def __repr__(self):
+        return f'<SNOMpad acquisition file reader: {self.filename}>'
+
+    def __del__(self):
+        self.close_file()
+
+    def close_file(self):
+        logger.info(f'Closing file: {self.filename}')
+        self.file.close()
+
+    def read_data(self):
+        """ reads afm and nea data from file and stores xr.Datasets. A wrapper is built around DAQ data to save memory.
+        Use .load_daq_data() to return dict of all daq data chunks.
+        """
+        if self.file['afm_data'].keys():
+            logger.info('Reading AFM data from file')
+            self.afm_data = h5_to_xr_dataset(group=self.file['afm_data'])
+        if self.file['nea_data'].keys():
+            logger.info('Reading NeaScan data from file')
+            self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
+
+        class DaqDataDict(dict):
+            def __getitem__(self, item):
+                dataset = super().__getitem__(item)
+                return np.array(dataset)
+        logger.info('Constructing wrapper around DAQ data')
+        daq_data = DaqDataDict()
+        for k, v in self.file['daq_data'].items():
+            daq_data[int(k)] = self.file['daq_data']
+
+    def load_daq_data(self):
+        """ load all acquired DAQ data chunks into memory
+
+        RETURNS
+        -------
+        daq_data: dict
+            keys are integer chunk index and values are np.ndarray
+        """
+        logger.info('Reading DAQ data from file')
+        daq_data = {}
+        for k, v in self.file['daq_data'].items():
+            daq_data[int(k)] = v
+        return daq_data
+
+
+class WriteH5Demodulation:
+    def __init__(self):
+        pass
+
+
+class ReadH5Demodulation:
+    def __init__(self):
+        pass

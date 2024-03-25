@@ -13,31 +13,27 @@ from abc import ABC, abstractmethod
 from snompad.utility.signals import Scan, Demodulation, Detector, Signals, detection_signals, modulation_signals
 from snompad.analysis.demod import shd, pshet, sort_chopped
 from snompad.analysis.io import export_gwy, h5_to_xr_dataset, xr_to_h5_datasets
+from snompad.file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation
 
 
 class Measurement(ABC):
     """ Base class to load, demodulate, plot, and export acquired data.
     """
-    def __init__(self, file: h5py.File):
-        self.file = file
-        self.name = file.attrs['name']
-        self.afm_data = None
-        self.nea_data = None
+    def __init__(self, filename: str):
+        if filename[-3:] == '.h5':
+            self.scan = ReadH5Acquisition(filename)
+        else:
+            raise NotImplementedError(f'filetype not supported: {filename}')
+        self.name = self.scan.metadata['name']
+        self.afm_data = self.scan.afm_data
+        self.nea_data = self.scan.nea_data
         self.demod_data = None
         self.demod_cache = {}
         self.demod_file = None
-        self.mode = Scan[file.attrs['acquisition_mode']]
-        self.signals = [Signals[s] for s in file.attrs['signals']]
-        self.modulation = Demodulation[file.attrs['modulation']]
-
-        self.metadata = {}
-        for k, v in file.attrs.items():
-            self.metadata[k] = v
-
-        if self.file['afm_data'].keys():
-            self.afm_data = h5_to_xr_dataset(group=self.file['afm_data'])
-        if self.file['nea_data'].keys():
-            self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
+        self.metadata = self.scan.metadata
+        self.mode = Scan[self.metadata['acquisition_mode']]
+        self.signals = [Signals[s] for s in self.metadata['signals']]
+        self.modulation = Demodulation[self.metadata['modulation']]
 
     def __str__(self) -> str:
         ret = 'Metadata:\n'
@@ -55,14 +51,12 @@ class Measurement(ABC):
         return f'<SNOMpad measurement: {self.name}>'
     
     def __del__(self):
-        self.file.close()
+        self.scan.close_file()
+        self.close_demod_file()
 
     def close_demod_file(self):
         if self.demod_file is not None:
             self.demod_file.close()
-
-    def __del__(self):
-        self.close_demod_file()
 
     def demod_params(self, old_params: dict, kwargs: dict):
         """ collects demod parameters from arguments and function default values
@@ -268,21 +262,18 @@ def bin_line(scan: Measurement, res: int = 100, direction: str = 'scan', line_no
 def load(filename: str) -> Measurement:
     """ Loads scan from .h5 file and returns Measurement object. The function is agnostic to scan type.
     """
-    file = h5py.File(filename, 'r')
-    scan_type = file.attrs['acquisition_mode']
-
-    if scan_type in ['stepped_retraction', 'continuous_retraction']:
-        return Retraction(file)
-    elif scan_type in ['stepped_image', 'continuous_image']:
-        return Image(file)
-    elif scan_type in ['stepped_line', 'continuous_line']:
-        return Line(file)
-    elif scan_type == 'noise_sampling':
-        return Noise(file)
-    elif scan_type == 'delay_collection':
-        return Delay(file)
-    elif scan_type == 'point':
-        return Point(file)
+    if 'retraction' in filename:
+        return Retraction(filename)
+    elif 'image' in filename:
+        return Image(filename)
+    elif 'line' in filename:
+        return Line(filename)
+    elif 'noise' in filename:
+        return Noise(filename)
+    elif 'delay' in filename:
+        return Delay(filename)
+    elif 'point' in filename:
+        return Point(filename)
     else:
         raise NotImplementedError
     
@@ -318,7 +309,7 @@ class Point(Measurement):
         idx = self.afm_data['idx'].values
         # harmonics = np.zeros(max_order + 1, dtype=complex)
         # for px, _ in tqdm(enumerate(harmonics)):
-        data = np.vstack([np.array(self.file['daq_data'][str(i)]) for i in idx])
+        data = np.vstack([self.scan.daq_data[i] for i in idx])
         if self.modulation == Demodulation.shd:
             # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
             try:
@@ -366,11 +357,11 @@ class Retraction(Measurement):
 
         if not demod_npts:
             chunk_size = 1  # one chunk of DAQ data per demodulated pixel
-            demod_npts = self.file.attrs['npts']
+            demod_npts = self.scan.metadata['npts']
         else:
-            chunk_size = demod_npts // self.file.attrs['npts'] + 1
-            demod_npts = self.file.attrs['npts'] * chunk_size
-        n = len(self.file['daq_data'].keys())
+            chunk_size = demod_npts // self.scan.metadata['npts'] + 1
+            demod_npts = self.scan.metadata['npts'] * chunk_size
+        n = len(self.scan.daq_data.keys())
         z_res = n // chunk_size
         self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
@@ -414,8 +405,7 @@ class Retraction(Measurement):
         else:
             harmonics = np.zeros((demod_params['z_res'], max_order + 1), dtype=complex)
             for n, px in tqdm(enumerate(self.demod_data.z.values)):
-                data = np.vstack([np.array(self.file['daq_data'][str(i)])
-                                  for i in self.demod_data.sel(z=px).idx.item()])
+                data = np.vstack([self.scan.daq_data[i] for i in self.demod_data.sel(z=px).idx.item()])
                 if self.modulation == Demodulation.shd:
                     coefficients = shd(data=data, signals=self.signals, **kwargs)
                 elif self.modulation == Demodulation.pshet:
@@ -517,13 +507,11 @@ class Image(Measurement):
         harmonics = np.zeros((len(y), len(x), max_order + 1), dtype=complex)
         #  this indexing needs to be redone when demodulating continuous images
         for i in tqdm(self.afm_data.idx.values.flatten()):
-            data = np.array(self.file['daq_data'][str(i)])
+            data = self.scan.daq_data[i]
             if self.modulation == Demodulation.shd:
-                coefficients = shd(data=data, signals=self.signals, max_order=max_order, **kwargs)
+                coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
                 coefficients = pshet(data=data, signals=self.signals, max_order=max_order, **kwargs)
-            else:
-                raise NotImplementedError
 
             y_idx, x_idx = np.where(self.afm_data.idx.values == i)
             harmonics[y_idx, x_idx] = coefficients[:max_order + 1]
@@ -636,11 +624,11 @@ class Line(Measurement):
 
             if not demod_npts:
                 chunk_size = 1  # one chunk of DAQ data per demodulated pixel
-                demod_npts = self.file.attrs['npts']
+                demod_npts = self.scan.metadata['npts']
             else:
-                chunk_size = demod_npts // self.file.attrs['npts'] + 1
-                demod_npts = self.file.attrs['npts'] * chunk_size
-            n = len(self.file['daq_data'].keys())
+                chunk_size = demod_npts // self.scan.metadata['npts'] + 1
+                demod_npts = self.scan.metadata['npts'] * chunk_size
+            n = len(self.scan.metadata['daq_data'].keys())
             r_res = n // chunk_size
             self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
 
@@ -706,8 +694,7 @@ class Line(Measurement):
         else:
             harmonics = np.zeros((demod_params['r_res'], max_order + 1), dtype=complex)
             for n, px in tqdm(enumerate(self.demod_data.r.values)):
-                data = np.vstack([np.array(self.file['daq_data'][str(i)])
-                                  for i in self.demod_data.sel(r=px).idx.item()])
+                data = np.vstack([self.scan.daq_data[i] for i in self.demod_data.sel(r=px).idx.item()])
                 if self.modulation == Demodulation.shd:
                     coefficients = shd(data=data, signals=self.signals, **kwargs)
                 elif self.modulation == Demodulation.pshet:
@@ -794,8 +781,8 @@ class Line(Measurement):
 
 
 class Noise(Measurement):
-    def __init__(self, file: h5py.File):
-        super().__init__(file=file)
+    def __init__(self, filename: str):
+        super().__init__(filename)
         self.z_spectrum = None
         self.z_frequencies = None
         self.amp_spectrum = None
@@ -813,7 +800,7 @@ class Noise(Measurement):
 
         signals = [Signals[s] for s in self.metadata['signals']]
 
-        daq_data = np.array(self.file['daq_data']['1'])
+        daq_data = np.array(self.scan.daq_data[0])
         tap_x = daq_data[:, signals.index(Signals.tap_x)]
         tap_y = daq_data[:, signals.index(Signals.tap_y)]
         tap_p = np.arctan2(tap_y, tap_x)
@@ -869,6 +856,7 @@ class Noise(Measurement):
         plt.close()
 
 
+# ToDo this needs more cleaning up after redoing DelayScan clas
 class Delay(Measurement):
     def demod(self, max_order: int = 5, demod_filename=None, **kwargs):
         if self.metadata['scan_type'] == 'point':

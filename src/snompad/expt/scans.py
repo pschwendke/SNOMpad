@@ -2,7 +2,6 @@
 #  format logging messages: ClassName:
 
 import logging
-import h5py
 import numpy as np
 import xarray as xr
 from abc import ABC, abstractmethod
@@ -10,12 +9,11 @@ from datetime import datetime
 from time import sleep
 
 from snompad.utility.signals import Scan, Demodulation, Signals
-from snompad.analysis.io import xr_to_h5_datasets
 from snompad.expt.daq import DaqController
 from snompad.expt.buffer import CircularArrayBuffer
 from snompad.expt.nea_ctrl import NeaSNOM, to_numpy
 from snompad.expt.dl_ctrl import DLStage
-from snompad.file_handlers.hdf5 import H5Acquisition
+from snompad.file_handlers.hdf5 import WriteH5Acquisition
 from snompad.__init__ import __version__
 
 logger = logging.getLogger(__name__)
@@ -79,7 +77,7 @@ class BaseScan(ABC):
             logger.error(f'npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
             npts = 200_000
         if filetype == 'hdf':
-            self.file = H5Acquisition()
+            self.file = WriteH5Acquisition()
         else:
             raise NotImplementedError(f'filetype {filetype} was passed. There is no appropriate file handler.')
         self.npts = npts
