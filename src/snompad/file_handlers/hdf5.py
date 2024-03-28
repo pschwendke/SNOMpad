@@ -151,9 +151,9 @@ class ReadH5Acquisition:
                 dataset = super().__getitem__(item)
                 return np.array(dataset)
         logger.info('Constructing wrapper around DAQ data')
-        daq_data = DaqDataDict()
+        self.daq_data = DaqDataDict()
         for k, v in self.file['daq_data'].items():
-            daq_data[int(k)] = self.file['daq_data']
+            self.daq_data[int(k)] = self.file['daq_data'][k]
 
     def load_daq_data(self):
         """ load all acquired DAQ data chunks into memory

@@ -22,13 +22,15 @@ class Measurement(ABC):
             self.scan = ReadH5Acquisition(filename)
         else:
             raise NotImplementedError(f'filetype not supported: {filename}')
-        self.name = self.scan.metadata['name']
+        self.scan.read_data()
         self.afm_data = self.scan.afm_data
         self.nea_data = self.scan.nea_data
+        self.daq_data = self.scan.daq_data
         self.demod_data = None
         self.demod_cache = {}
         self.demod_file = None
         self.metadata = self.scan.metadata
+        self.name = self.metadata['name']
         self.mode = Scan[self.metadata['acquisition_mode']]
         self.signals = [Signals[s] for s in self.metadata['signals']]
         self.modulation = Demodulation[self.metadata['modulation']]
