@@ -1,17 +1,16 @@
 import numpy as np
 import sys
 import os
-from datetime import datetime
 import colorcet as cc
+from datetime import datetime
 from h5py import File
-
 from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div
 from bokeh.layouts import column, row, gridplot
 
-from snompad.utility.signals import Signals
-from snompad.acquisition.scans import NoiseScan
-from snompad.demodulation.measurements import Noise
+from ..utility.signals import Signals
+from ..acquisition.scans import NoiseScan
+from ..demodulation.measurements import Noise
 
 import logging
 

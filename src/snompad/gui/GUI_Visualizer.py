@@ -13,10 +13,10 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from snompad.utility.signals import Signals
-from snompad.demodulation.demod_shd import shd, pshet, sort_chopped
-from snompad.acquisition.buffer import CircularArrayBuffer
-from snompad.drivers.daq_ctrl import DaqController
+from ..utility.signals import Signals
+from ..demodulation.demod_shd import shd, pshet, sort_chopped
+from ..acquisition.buffer import CircularArrayBuffer
+from ..drivers.daq_ctrl import DaqController
 
 if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')

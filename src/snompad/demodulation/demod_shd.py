@@ -1,7 +1,8 @@
 # ToDo: rename normalize -> ratiometry, check that defaults are read from metadata (Measurement classes)
 import numpy as np
 from scipy.stats import binned_statistic
-from snompad.utility.signals import Signals
+
+from ..utility.signals import Signals
 from .demod_utils import kernel_interpolation_1d, corrected_fft, sort_chopped
 
 

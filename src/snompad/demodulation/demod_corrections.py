@@ -5,14 +5,14 @@ import numpy as np
 def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """Determine phase shift required to make FT real.
 
-    Parameters
+    PARAMETERS
     ----------
     binned : np.ndarray, real
         Binned date. Real.
     axis : int
         Axis to perform FT. Use `tap_p` for `theta_C`, `ref_p` for `theta_0`.
 
-    Returns
+    RETURNS
     -------
     phi : float
         Phase offset of 1st harmonic along given axis. Offset is averaged for 2D phase domains.

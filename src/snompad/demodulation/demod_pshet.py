@@ -3,7 +3,7 @@ from scipy.special import jv
 from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
-from snompad.utility.signals import Signals
+from ..utility.signals import Signals
 from .demod_utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func, corrected_fft, sort_chopped
 
 

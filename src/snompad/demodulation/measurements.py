@@ -3,15 +3,14 @@ import xarray as xr
 import colorcet as cc
 import h5py
 import inspect
-
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 
 from . import shd, pshet
-from snompad.utility.signals import Scan, Demodulation, Signals
-from snompad.demodulation.demod_utils import sort_chopped
-from snompad.file_handlers.gwyddion import export_gwy
-from snompad.file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation, h5_to_xr_dataset, xr_to_h5_datasets
+from ..utility.signals import Scan, Demodulation, Signals
+from ..demodulation.demod_utils import sort_chopped
+from ..file_handlers.gwyddion import export_gwy
+from ..file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation, h5_to_xr_dataset, xr_to_h5_datasets
 
 
 class Measurement(ABC):

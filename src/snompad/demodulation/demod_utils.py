@@ -1,5 +1,6 @@
 # tools and helper functions
 import numpy as np
+
 from .demod_corrections import phase_offset
 
 
@@ -83,7 +84,7 @@ def pshet_obj_func(params, theta_ref, sig):
 def corrected_fft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
     """ Computes real fft of array along given axis. correction determines the type of phase correction.
 
-    Parameters
+    PARAMETERS
     ----------
     array: np.ndarray
     axis: int
@@ -93,7 +94,7 @@ def corrected_fft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndar
             A binned phase domain is assumed, binning offset of pi and half a bin are corrected
         If correction is float, the value is used for phase correction.
 
-    Returns
+    RETURNS
     -------
     np.real(ft)
 
