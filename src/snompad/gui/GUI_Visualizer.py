@@ -14,7 +14,7 @@ from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, Li
 from bokeh.layouts import layout, column, row
 
 from ..utility.signals import Signals
-from ..demodulation.demod_shd import shd, pshet, sort_chopped
+from ..demodulation.demod_shd import shd, pshet, chop_pump_idx
 from ..acquisition.buffer import CircularArrayBuffer
 from ..drivers.daq_ctrl import DaqController
 
@@ -119,13 +119,13 @@ def update_harmonics(data, tap, ref):
         # if shd:
         elif mod_button.labels[mod_button.active] == 'shd':
             coefficients = shd(data=data, signals=signals, tap_res=tap,
-                               chopped=chop_button.active, normalize=ratiometry_button.active)
+                               chopped=chop_button.active, ratiometry=ratiometry_button.active)
         
         # if no mod:
         elif mod_button.labels[mod_button.active] == 'no mod':
             coefficients = np.zeros(max_harm+1)
             if chop_button.active:
-                chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
+                chopped_idx, pumped_idx = chop_pump_idx(data[:, signals.index(Signals.chop)])
                 chopped = data[chopped_idx, signals.index(Signals.sig_a)].mean()
                 pumped = data[pumped_idx, signals.index(Signals.sig_a)].mean()
                 pump_probe = (pumped - chopped)  # / chopped

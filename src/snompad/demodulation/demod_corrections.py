@@ -1,6 +1,8 @@
 # corrections and filtering for demodulation
 import numpy as np
 
+from ..utility.signals import Signals
+
 
 def phase_offset(binned: np.ndarray, axis=-1) -> float:
     """Determine phase shift required to make FT real.
@@ -27,3 +29,12 @@ def phase_offset(binned: np.ndarray, axis=-1) -> float:
     phi = phi - (phi > 0) * np.pi  # shift all results to negative quadrant. ToDo: check pi phase shift
     phi = phi.mean()  # Output should be a float. However, is this stable?
     return phi
+
+
+def normalize_sig_a(data: np.ndarray, signals: list) -> np.ndarray:
+    """ Takes any data containing sig_a and sig_b and returns a copy with sig_a replaced by sig_a / sig_b
+    """
+    out = data.copy()
+    sig = out[:, signals.index(Signals.sig_a)] / out[:, signals.index(Signals.sig_b)]
+    out[:, signals.index(Signals.sig_a)] = sig
+    return out

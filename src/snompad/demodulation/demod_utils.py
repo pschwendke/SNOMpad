@@ -2,6 +2,7 @@
 import numpy as np
 
 from .demod_corrections import phase_offset
+from ..utility.signals import Signals
 
 
 # KERNEL INTERPOLATION #################################################################################################
@@ -81,14 +82,14 @@ def pshet_obj_func(params, theta_ref, sig):
 
 
 # FOURIER TRANSFORMS ###################################################################################################
-def corrected_fft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndarray:
+def corrected_fft(array: np.ndarray, axis: int = -1, phase_correction=None) -> np.ndarray:
     """ Computes real fft of array along given axis. correction determines the type of phase correction.
 
     PARAMETERS
     ----------
     array: np.ndarray
     axis: int
-    correction: str or None or float
+    phase_correction: str or None or float
         If correction is None, the coefficients are rotated by 0°.
         If correction == 'fft', phase_offset() is used to determine the phase correction.
             A binned phase domain is assumed, binning offset of pi and half a bin are corrected
@@ -104,11 +105,11 @@ def corrected_fft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndar
 
     ft = np.fft.rfft(array, axis=axis, norm='forward')
 
-    if correction == 'fft':
+    if phase_correction == 'fft':
         phase = - phase_offset(array, axis=axis)
-    elif type(correction) in [float, int]:
-        phase = - correction  # You might want to flip the sign. Check this when using.
-    elif correction is None:
+    elif type(phase_correction) in [float, int]:
+        phase = - phase_correction  # You might want to flip the sign. Check this when using.
+    elif phase_correction is None:
         return np.real(ft)
     else:
         raise NotImplementedError
@@ -125,13 +126,33 @@ def corrected_fft(array: np.ndarray, axis: int = -1, correction=None) -> np.ndar
 
 
 # CHOPPING AND PUMP-PROBE ##############################################################################################
-def sort_chopped(chop: np.ndarray) -> tuple:
+def chop_pump_idx(chop: np.ndarray) -> tuple:
     """ Takes optical chop signal, returns boolean indices of chopped and pumped shots
     """
     hi_sig = chop[chop > np.median(chop)]
     lo_sig = chop[chop < np.median(chop)]
 
-    pumped = np.abs(chop - hi_sig.mean()) < (3 * hi_sig.std())
-    chopped = np.abs(chop - lo_sig.mean()) < (3 * lo_sig.std())
+    pump_idx = np.abs(chop - hi_sig.mean()) < (3 * hi_sig.std())
+    chop_idx = np.abs(chop - lo_sig.mean()) < (3 * lo_sig.std())
 
-    return chopped, pumped
+    return chop_idx, pump_idx
+
+
+def chopped_data(data: np.ndarray, signals=None, idx=None) -> np.ndarray:
+    """ Returns chopped shots of data array. If no idx is passed, it is determined with chop_pump_idx and signals.
+    Either idx or signals must be passed.
+    """
+    if idx is None:
+        idx, _ = chop_pump_idx(data[:, signals.index(Signals.chop)])
+    data_chop = data[idx]
+    return data_chop
+
+
+def pumped_data(data: np.ndarray, signals=None, idx=None) -> np.ndarray:
+    """ Returns pumped shots of data array. If no idx is passed, it is determined with chop_pump_idx and signals.
+    Either idx or signals must be passed.
+    """
+    if idx is None:
+        _, idx = chop_pump_idx(data[:, signals.index(Signals.chop)])
+    data_pump = data[idx]
+    return data_pump

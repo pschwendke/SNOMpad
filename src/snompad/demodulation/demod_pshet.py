@@ -1,32 +1,24 @@
+# functions to demodulate SNOM data acquired in pseudo-heterodyne (pshet) mode
 import numpy as np
 from scipy.special import jv
 from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
 from ..utility.signals import Signals
-from .demod_utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func, corrected_fft, sort_chopped
+from .demod_utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func,\
+    corrected_fft, chop_pump_idx, chopped_data, pumped_data
+from .demod_corrections import normalize_sig_a
 
 
-def pshet_phases(data: np.ndarray, signals: list, normalize=False) -> np.ndarray:
-    """ Mainly calculates tap_p and ref_p. If normalize == True, sig_b is used for normalization.
-    """
-    if normalize:
-        signal = data[:, signals.index(Signals.sig_a)] / data[:, signals.index(Signals.sig_b)]
-    else:
-        signal = data[:, signals.index(Signals.sig_a)]
-    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
-    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
-    sig_and_phase = np.vstack([signal, tap_p, ref_p]).T
-    return sig_and_phase
-
-
-def pshet_binning(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
-    """ Performs 2D binning on sig_a onto tap_p, ref_p domain.
+def pshet_binning(data: np.ndarray, signals=list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+    """ Performs binning of sig_a onto 2D tapping and pshet phase domain.
 
     PARAMETERS
     ----------
-    sig_and_phase: np.ndarray
-        data array with sig_a, tap_p, and ref_p on axis=1 and samples on axis=0
+    data: np.ndarray
+        data array with signals on axis=0 and samples on axis=1
+    signals: list(Signals)
+        signals acquired by DAQ. Must have same order as signals on axis=0 in data.
     tap_res: float
         number of tapping bins
     ref_res: float
@@ -38,30 +30,71 @@ def pshet_binning(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 6
         average signals for each bin between -pi, pi.
         tapping bins on axis=1, reference bins on axis=0.
     """
-    returns = binned_statistic_2d(x=sig_and_phase[:, 1], y=sig_and_phase[:, 2], values=sig_and_phase[:, 0],
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=data[:, signals.index(Signals.sig_y)],
                                   statistic='mean', bins=[tap_res, ref_res],
                                   range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
     return binned.T
 
 
-def pshet_kernel_average(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+def pshet_kernel_average(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
     """ Averages and interpolates signal onto even grid using kernel smoothening
+
+    PARAMETERS
+    ----------
+    data: np.ndarray
+        data array with signals on axis=0 and samples on axis=1
+    signals: list(Signals)
+        signals acquired by DAQ. Must have same order as signals on axis=0 in data.
+    tap_res: float
+        number of tapping bins
+    ref_res: float
+        number of reference bins
+
+    RETURNS
+    -------
+    binned: np.ndarray
+        average signals for each bin between -pi, pi.
+        tapping bins on axis=1, reference bins on axis=0.
     """
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
     ref_grid = np.linspace(-np.pi, np.pi, ref_res, endpoint=False) + np.pi / ref_res
-    binned = kernel_interpolation_2d(sig_and_phase[:, 0], sig_and_phase[:, 1], sig_and_phase[:, 2], tap_grid, ref_grid)
+    binned = kernel_interpolation_2d(signal=data[:, signals.index(Signals.sig_a)],
+                                     x_sig=tap_p, y_sig=ref_p, x_grid=tap_grid, y_grid=ref_grid)
     return binned
 
 
-def pshet_binned_kernel(sig_and_phase: np.ndarray, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
+def pshet_binned_kernel(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
     """ Reference phase is divided into intervals, each on which 1D kernel interpolation is applied on the tap axis.
+
+    PARAMETERS
+    ----------
+    data: np.ndarray
+        data array with signals on axis=0 and samples on axis=1
+    signals: list(Signals)
+        signals acquired by DAQ. Must have same order as signals on axis=0 in data.
+    tap_res: float
+        number of tapping bins
+    ref_res: float
+        number of reference bins
+
+    RETURNS
+    -------
+    binned: np.ndarray
+        average signals for each bin between -pi, pi.
+        tapping bins on axis=1, reference bins on axis=0.
     """
+    tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
+    ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     ref_bounds = np.linspace(-np.pi, np.pi, ref_res + 1, endpoint=True)
     ref_bins = []
     for i in range(ref_res):
-        idx = np.logical_and(ref_bounds[i] < sig_and_phase[:, 2], sig_and_phase[:, 2] < ref_bounds[i + 1])
-        b = np.vstack([sig_and_phase[idx, 0], sig_and_phase[idx, 1]])
+        idx = np.logical_and(ref_bounds[i] < ref_p, ref_p < ref_bounds[i + 1])
+        b = np.vstack([data[:, signals.index(Signals.sig_a)], tap_p])
         ref_bins.append(b)
 
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
@@ -150,7 +183,7 @@ def pshet_coefficients(ft: np.ndarray, gamma: float = 2.63, psi_R: float = 1.6, 
 def pshet_sidebands(tap_ft: np.ndarray, max_order=None):
     """ Demodulates pshet modulation by calculating harmonic content via fft, and summing adjacent sidebands
     """
-    ft = corrected_fft(array=tap_ft, axis=0, correction=None)
+    ft = corrected_fft(array=tap_ft, axis=0, phase_correction=None)
     harmonics = pshet_coefficients(ft=ft)
     if max_order is not None:
         harmonics = harmonics[:max_order+1]
@@ -158,10 +191,11 @@ def pshet_sidebands(tap_ft: np.ndarray, max_order=None):
 
 
 def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64, chopped='auto', tap_correction='fft',
-          binning='binned_kernel', pshet_demod='fitting', normalize='auto', max_order=5) -> np.ndarray:
-    """ Simple combination pshet demodulation functions. The sorting of chopped and pumped pulses is handled here.
+          binning='binned_kernel', pshet_demod='fitting', ratiometry='auto', max_order=5) -> np.ndarray:
+    """ Simple combination pshet demodulation functions. Pump-probe demodulation,
+    tapping phase correction, and ratiometric correction is also handled here.
 
-    Parameters
+    PARAMETERS
     ----------
     data: np.ndarray
         array of data with signals on axis=1 and data points on axis=0. Signals must be in the same order as in signals.
@@ -179,38 +213,40 @@ def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64,
         determines routine to compute binned phase domain
     pshet_demod: 'sidebands', 'fitting'
         determines routine to demodulate pshet to return harmonics
-    normalize: 'auto', True, False
+    ratiometry: 'auto', True, False
         if True, sig_a is normalized to sig_a / sig_b. When 'auto', normalize is True when sig_b in signals
     max_order: int
         max harmonic order that should be returned.
 
-    Returns
+    RETURNS
     -------
     coefficients: np.ndarray
         complex coefficients for tapping demodulation
     """
-    if chopped == 'auto':
-        chopped = Signals.chop in signals
-    if normalize == 'auto':
-        normalize = Signals.sig_b in signals
+    if ratiometry is True or (ratiometry == 'auto' and Signals.sig_b in signals):
+        data = normalize_sig_a(data=data, signals=signals)
 
-    if chopped:
-        chopped_idx, pumped_idx = sort_chopped(data[:, signals.index(Signals.chop)])
-        sig_and_phase = [pshet_phases(data=data[pumped_idx], signals=signals, normalize=normalize),
-                         pshet_phases(data=data[chopped_idx], signals=signals, normalize=normalize)]
+    if chopped is True or (chopped == 'auto' and Signals.chop in signals):
+        chop_idx, pump_idx = chop_pump_idx(data[:, signals.index(Signals.chop)])
+        data_chop = chopped_data(data=data, idx=chop_idx)
+        data_pump = pumped_data(data=data, idx=pump_idx)
+        data = [data_chop, data_pump]
     else:
-        sig_and_phase = [pshet_phases(data=data, signals=signals, normalize=normalize)]
+        data = [data]
 
     binning_func = [pshet_binning, pshet_binned_kernel,
                     pshet_kernel_average][['binning', 'binned_kernel', 'kernel'].index(binning)]
-    binned = [binning_func(sig_and_phase=sig, tap_res=tap_res, ref_res=ref_res) for sig in sig_and_phase]
-    if chopped:
-        binned = (binned[0] - binned[1])  # / binned[1]
-    else:
-        binned = binned[0]
+    binned = [binning_func(data=d, signals=signals, tap_res=tap_res, ref_res=ref_res) for d in data]
 
-    tap_ft = corrected_fft(array=binned, axis=1, correction=tap_correction)
-
+    # first perform ft along tapping axis (axis=1)
+    tap_ft = [corrected_fft(array=b, axis=1, phase_correction=tap_correction) for b in binned]
+    # for pshet demodulation on reference axis (axis=0), sidebands can be determined via fft or modulation can be fitted
     pshet_func = [pshet_sidebands, pshet_fitting][['sidebands', 'fitting'].index(pshet_demod)]
-    harmonics = pshet_func(tap_ft=tap_ft, max_order=max_order)
+    harmonics = [pshet_func(tap_ft=t, max_order=max_order) for t in tap_ft]
+
+    if len(harmonics) == 2:
+        harmonics = harmonics[1] / harmonics[0] - 1
+    else:
+        harmonics = harmonics[0]
+
     return harmonics
