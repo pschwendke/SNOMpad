@@ -1,12 +1,11 @@
 # script to collect gsf files saved by NeaSCAN and metadata and write to single gwy file
-
 import sys
 import os
 import argparse
 import logging
 
-from snompad.file_handlers.gwyddion import export_gwy
-from snompad.file_handlers.neascan import load_nea_image
+from ..file_handlers.gwyddion import export_gwy
+from ..file_handlers.neascan import load_nea_image
 
 
 logging.basicConfig(format="%(levelname)-7s - %(name)s - %(message)s")

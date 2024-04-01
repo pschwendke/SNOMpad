@@ -5,8 +5,7 @@ import clr
 import logging
 from time import sleep
 
-# from snompad.demodulation.signals import Demodulation, NamedEnum
-from snompad.utility.signals import Demodulation
+from ..utility.signals import Demodulation
 
 # import the neaSpec SDK
 neaspec_folder = '//nea-server/updates/SDK'  # Import all DLLs in the folder or 'N:/updates/SDK' to mapped drive

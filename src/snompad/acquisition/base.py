@@ -8,12 +8,12 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
 
-from snompad.utility.signals import Scan, Demodulation, Signals
-from snompad.acquisition.buffer import CircularArrayBuffer
-from snompad.file_handlers.neascan import to_numpy
-from snompad.drivers import DLStage, NeaSNOM, DaqController
-from snompad.file_handlers.hdf5 import WriteH5Acquisition
-from snompad.__init__ import __version__
+from ..utility.signals import Scan, Demodulation, Signals
+from ..acquisition.buffer import CircularArrayBuffer
+from ..file_handlers.neascan import to_numpy
+from ..drivers import DLStage, NeaSNOM, DaqController
+from ..file_handlers.hdf5 import WriteH5Acquisition
+from ..__init__ import __version__
 
 logger = logging.getLogger(__name__)
 

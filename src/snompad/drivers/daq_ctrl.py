@@ -33,7 +33,7 @@ from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 
 from .calibration import self_cal
-from snompad.utility.signals import Signals, is_optical_signal
+from ..utility.signals import Signals, is_optical_signal
 
 logger = logging.getLogger(__name__)
 

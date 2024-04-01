@@ -3,15 +3,14 @@ import xarray as xr
 import colorcet as cc
 import h5py
 import inspect
-
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 
 from . import shd, pshet
-from snompad.utility.signals import Scan, Demodulation, Signals
-from snompad.demodulation.demod_utils import sort_chopped
-from snompad.file_handlers.gwyddion import export_gwy
-from snompad.file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation, h5_to_xr_dataset, xr_to_h5_datasets
+from ..utility.signals import Scan, Demodulation, Signals
+from ..demodulation.demod_utils import chop_pump_idx
+from ..file_handlers.gwyddion import export_gwy
+from ..file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation, h5_to_xr_dataset, xr_to_h5_datasets
 
 
 class Measurement(ABC):
@@ -323,7 +322,7 @@ class Point(Measurement):
         elif self.modulation == Demodulation.none:
             coefficients = np.zeros(max_order+1)
             if self.metadata['pump_probe']:
-                chopped_idx, pumped_idx = sort_chopped(data[:, self.signals.index(Signals.chop)])
+                chopped_idx, pumped_idx = chop_pump_idx(data[:, self.signals.index(Signals.chop)])
                 chopped = data[chopped_idx, self.signals.index(Signals.sig_a)].mean()
                 pumped = data[pumped_idx, self.signals.index(Signals.sig_a)].mean()
                 pump_probe = (pumped - chopped) / chopped

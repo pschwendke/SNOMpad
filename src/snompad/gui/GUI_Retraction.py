@@ -1,15 +1,14 @@
 import numpy as np
 import sys
 import os
-from datetime import datetime
 import colorcet as cc
-
+from datetime import datetime
 from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Select
 from bokeh.layouts import column, row, gridplot
 
-from snompad.acquisition.scans import SteppedRetraction, ContinuousRetraction
-from snompad.demodulation.measurements import load
+from ..acquisition.scans import SteppedRetraction, ContinuousRetraction
+from ..demodulation.measurements import load
 
 import logging
 
