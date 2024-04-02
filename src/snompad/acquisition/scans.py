@@ -2,7 +2,6 @@
 #  standardize names of parameters
 #  note standards in README
 #  rename: npts -> chunk_size, in cont.point: n -> npts, and elsewhere?
-#  format logging messages: ClassName:
 
 # acquisition scripts
 import numpy as np
@@ -133,7 +132,8 @@ class ContinuousPoint(ContinuousScan):
         super().prepare()
         logger.info(f'ContinuousPoint: acquiring {self.n} samples')
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            logger.info(f'ContinuousPoint: Moving sample to target position x={self.x_target:.2f} um, '
+                        f'y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
 
     def acquire(self):
@@ -143,10 +143,10 @@ class ContinuousPoint(ContinuousScan):
         afm_tracking = []
         daq_tracking = {}  # ToDo if this (buffering the daq data instead of writing directly) solves the daq problem. if yes, implement everywhere.
         while chunk_idx * self.npts < self.n:
-            logger.debug(f'Continuous point chunk: {chunk_idx}')
+            logger.debug(f'ContinuousPoint: chunk # {chunk_idx}')
             current = [chunk_idx] + list(self.afm.get_current())
             afm_tracking.append(current)
-            logger.debug('Got AFM data')
+            logger.debug('ContinuousPoint: Got AFM data')
             # n_read = excess
             n_read = 0
             nloop = 0  # for debugging, we are getting stuck somewhere around here.
@@ -158,19 +158,19 @@ class ContinuousPoint(ContinuousScan):
                     nloop += 1
                     sleep(0.001)
                     if nloop > self.npts / 20:
-                        logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}.'
+                        logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}. '
                                       f' {n_read} samples were read from DAQ, instead of {self.npts}')
                         break
             except KeyboardInterrupt:
-                logger.error('Aborting current chunk')
-                logger.debug(f"{n_read} + {n} <? {self.npts}")
+                logger.error('ContinuousPoint: Aborting current chunk')
+                logger.debug(f"ContinuousPoint: {n_read} + {n} <? {self.npts}")
             # excess = (n_read - self.npts) * int(n_read > self.npts)
             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
             # ToDo: clean this up
-            logger.debug(f'After read data, nloop {nloop}')
+            logger.debug(f'ContinuousPoint: After read data, nloop {nloop}')
             data = self.buffer.tail(n=n_read)
             daq_tracking[chunk_idx] = data
-            logger.debug('after DAQ get.')
+            logger.debug('ContinuousPoint: after DAQ get.')
             chunk_idx += 1
 
         self.file.write_daq_data(data=daq_tracking)
@@ -249,16 +249,17 @@ class SteppedRetraction(BaseScan):
 
     def routine(self):
         self.prepare()
-        logger.info(f'preparing stepped retraction: size={self.z_size:.2f}, resolution={self.z_res}')
+        logger.info(f'SteppedRetraction: preparing stepped retraction: size={self.z_size:.2f}, resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            logger.info(f'SteppedRetraction: Moving sample to target position x={self.x_target:.2f} um,'
+                        f'y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
         targets = np.linspace(0, self.z_size, self.z_res, endpoint=True)
         tracked_channels = ['z_target', 'x', 'y', 'z', 'amp', 'phase']
         self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_ms)
         self.afm.engage(self.setpoint)
 
-        logger.info('Starting acquisition')
+        logger.info('SteppedRetraction: Starting acquisition')
         self.afm.start()
         self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
         afm_tracking = []
@@ -274,7 +275,8 @@ class SteppedRetraction(BaseScan):
                 pbar.set_postfix(target=t, dist=dist, z=z)
                 sleep(0.01)
                 if self.afm.scan.IsCompleted:
-                    logger.warning(f'Scan is completed while there are targets. ({i} of {len(targets)})')
+                    logger.warning(f'SteppedRetraction: Scan is completed while there are targets. '
+                                   f'({i} of {len(targets)})')
                     self.z_res = i
                     break
             if self.afm.scan.IsCompleted:
@@ -289,7 +291,7 @@ class SteppedRetraction(BaseScan):
 
         while not self.afm.scan.IsCompleted:
             sleep(1)
-        logger.info('Acquisition complete')
+        logger.info('SteppedRetraction: Acquisition complete')
         self.stop_time = datetime.now()
 
         self.file.write_daq_data(data=daq_tracking)
@@ -368,10 +370,10 @@ class SteppedImage(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        logger.info(f"""preparing stepped image scan: center {self.x_center:.2f},{self.y_center:.2f} ,
-                        size={self.x_size:.2f},{self.y_size:.2f}""")
+        logger.info(f"SteppedImage: preparing stepped image scan: center {self.x_center:.2f},{self.y_center:.2f}, "
+                    f"size={self.x_size:.2f},{self.y_size:.2f}")
         self.afm.engage(self.setpoint)
-        logger.info('Starting acquisition')
+        logger.info('SteppedImage: Starting acquisition')
         afm_tracking = []
         daq_tracking = {}
         for idx, (y, x) in enumerate(tqdm(targets)):
@@ -381,7 +383,7 @@ class SteppedImage(BaseScan):
             current = list(self.afm.get_current())
             afm_tracking.append([idx] + current)
 
-        logger.info('Acquisition complete')
+        logger.info('SteppedImage: Acquisition complete')
         self.stop_time = datetime.now()
         self.file.write_daq_data(data=daq_tracking)
         self.afm_data = xr.Dataset()
@@ -462,9 +464,10 @@ class SteppedLineScan(BaseScan):
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        logger.info(f'preparing stepped line scan: {x_pos[0]:.2f},{y_pos[0]:.2f} to {x_pos[-1]:.2f},{y_pos[-1]:.2f}')
+        logger.info(f'SteppedLineScan: preparing stepped line scan: {x_pos[0]:.2f},{y_pos[0]:.2f} to '
+                    f'{x_pos[-1]:.2f},{y_pos[-1]:.2f}')
         self.afm.engage(self.setpoint)
-        logger.info('Starting acquisition')
+        logger.info('SteppedLineScan: Starting acquisition')
         afm_tracking = []
         daq_tracking = {}
         for i, (y, x) in enumerate(tqdm(targets)):
@@ -474,7 +477,7 @@ class SteppedLineScan(BaseScan):
             current = list(self.afm.get_current())
             afm_tracking.append([i, x, y] + current)
 
-        logger.info('Acquisition complete')
+        logger.info('SteppedLineScan: Acquisition complete')
         self.stop_time = datetime.now()
         self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
@@ -542,9 +545,11 @@ class ContinuousRetraction(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-        logger.info(f'preparing continuous retraction: size={self.z_size:.2f}, resolution={self.z_res}')
+        logger.info(f'ContinuousRetraction: preparing continuous retraction: size={self.z_size:.2f}, '
+                    f'resolution={self.z_res}')
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            logger.info(f'ContinuousRetraction: Moving sample to target position x={self.x_target:.2f} um, '
+                        f'y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
         self.afm.prepare_retraction(self.modulation, self.z_size, self.z_res, self.afm_sampling_ms)
 
@@ -615,8 +620,8 @@ class ContinuousImage(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-        logger.info(f"""preparing continuous image scan: center {self.x_center:.2f},{self.y_center:.2f},
-                    size={self.x_size:.2f},{self.y_size:.2f}""")
+        logger.info(f'ContinuousImage: preparing continuous image scan: center {self.x_center:.2f},{self.y_center:.2f},'
+                    f' size={self.x_size:.2f},{self.y_size:.2f}')
         self.afm.prepare_image(self.modulation, self.x_center, self.y_center, self.x_size, self.y_size,
                                self.x_res, self.y_res, self.afm_angle_deg, self.afm_sampling_ms)
 
@@ -694,15 +699,17 @@ class ContinuousLineScan(ContinuousScan):
     def prepare(self):
         super().prepare()
 
-        logger.info(f'preparing continuous line scan: length={self.x_size:.3f} um, angle={self.afm_angle_deg:.2f} deg')
+        logger.info(f'ContinuousLineScan: preparing continuous line scan: length={self.x_size:.3f} um, '
+                    f'angle={self.afm_angle_deg:.2f} deg')
         self.afm.prepare_image(mod=self.modulation, x_center=self.x_center, y_center=self.y_center,
                                x_size=self.x_size, y_size=0, x_res=self.x_res, y_res=self.y_res,
                                angle=self.afm_angle_deg, sampling_time_ms=self.afm_sampling_ms)
 
 
 class DelayScan(BaseScan):
-    def __init__(self, modulation: str, scan: str, t_start: float, t_stop: float, t_unit: str, t_res: int,
-                 t0_mm=None, continuous: bool = True, t_scale: str = 'lin', setpoint: float = 0.8, metadata=None,
+    def __init__(self, modulation: str, scan: str, t_unit: str, t0_mm=None,
+                 t_start: float = None, t_stop: float = None, t_res: int = None,
+                 t_targets: np.ndarray = None,  continuous: bool = True, setpoint: float = 0.8, metadata=None,
                  **scan_kwargs):
         """
         Parameters
@@ -716,6 +723,8 @@ class DelayScan(BaseScan):
             first position of delay stage
         t_stop: float
             last position of delay stage
+        t_targets: np.ndarray
+            time delay targets.
         t_unit: str
             Unit of t values. Needs to ge vien when t is given, and has to be one of 'm', 'mm', 's', 'ps', 'fs'
         t0_mm: float
@@ -725,8 +734,6 @@ class DelayScan(BaseScan):
         continuous: bool
             When True, continuous scan classes are used, e.g. ContinuousLineScan. When False, stepped scan classes
             are used, e.g. SteppedLineScan
-        t_scale: str
-            spacing of n_step acquisitions along t axis. Liner when 'lin' is passed. 'log' produces logarithmic spacing.
         setpoint: float
             AFM setpoint when engaged
         metadata: dict
@@ -736,26 +743,23 @@ class DelayScan(BaseScan):
             keyword arguments that are passed to scan class
         """
         super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
-                         setpoint=setpoint)  # ToDo some metadata should be passed to delay class, is written wrong otherwise
+                         setpoint=setpoint)
         self.acquisition_mode = Scan.delay_collection
         self.scan_type = scan
         self.t_start = t_start
         self.t_stop = t_stop
         self.t_res = t_res
-        self.t_scale = t_scale
+        if t_targets is None:
+            self.t_targets = np.linspace(self.t_start, self.t_stop,
+                                         self.t_res)  # ToDo: the sign seems to be flipped. Think about this.
+        else:
+            self.t_targets = t_targets
         self.x_target = None
         self.y_target = None
         if 'x_target' in scan_kwargs and 'y_target' in scan_kwargs:
             self.x_target = scan_kwargs.pop('x_target')
             self.y_target = scan_kwargs.pop('y_target')
         self.scan_kwargs = scan_kwargs
-
-        if self.t_scale == 'lin':
-            self.t_targets = np.linspace(self.t_start, self.t_stop, self.t_res)  # ToDo: the sign seems to be flipped. Think about this.
-        elif self.t_scale == 'log':  # ToDo: kick this
-            self.t_targets = np.logspace(np.log10(self.t_start), np.log10(self.t_stop), self.t_res)
-        else:
-            raise NotImplementedError(f'scale has to be lin or log. "{self.t_scale}" was passed.')
 
         try:
             i = ['point', 'retraction', 'line', 'image'].index(scan)
@@ -825,7 +829,7 @@ class NoiseScan(ContinuousScan):
 
     def acquire(self):
         # ToDo this could be merged at some time with parent class
-        logger.info('Starting scan')
+        logger.info('NoiseScan: Starting scan')
         # excess = 0
         daq_data = []
         while not self.afm.scan.IsCompleted:
@@ -842,98 +846,10 @@ class NoiseScan(ContinuousScan):
         daq_data = {0: np.vstack(daq_data)}  # just one chunk / pixel
         self.file.write_daq_data(data=daq_data)
 
-        logger.info('Acquisition complete')
+        logger.info('NoiseScan: Acquisition complete')
         self.nea_data = to_numpy(self.nea_data)
         self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x'), coords={'x': np.linspace(0, 1, self.x_res), 'y': [0]}
                                          ) for k, v in self.nea_data.items()}
         self.nea_data = xr.Dataset(self.nea_data)
-        logger.info('Scan complete')
+        logger.info('NoiseScan: Scan complete')
         self.stop_time = datetime.now()
-
-
-def transfer_func_acq(
-        device: str,
-        read_channels: Iterable[str], write_channels: Iterable[str],
-        freqs, amp: float, offset: float = 0,
-        n_samples: int = int(1E3), sample_rate: float = 1E6,
-        pbar=None, logger=None,
-):
-    """
-    Perform transfer function measurement using a slow passage method.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-    t = np.arange(0, n_samples)/sample_rate
-    tail_len = int(5E-4*sample_rate)  # 500 us of tail
-    measured = []
-
-    with nidaqmx.Task("write") as write_task, nidaqmx.Task("read") as read_task, \
-            nidaqmx.Task("clock") as sample_clk_task:
-        # prepare sample clock
-        logger.debug("Setting up clock task.")
-        sample_clk_task.co_channels.add_co_pulse_chan_freq(
-            f'{device}/ctr0', freq=sample_rate)
-        sample_clk_task.timing.cfg_implicit_timing(
-            samps_per_chan=n_samples + tail_len)
-        sample_clk_task.control(TaskMode.TASK_COMMIT)
-        sample_clk_terminal = f"/{device}/Ctr0InternalOutput"
-
-        # prepare write task
-        logger.debug("Setting up output task.")
-        ao_channel_names = [device+"/"+c for c in write_channels]
-        logger.debug("Write channel names: "+repr(ao_channel_names))
-        for c in ao_channel_names:
-            write_task.ao_channels.add_ao_voltage_chan(
-                c, max_val=5, min_val=-5,
-            )
-        write_task.timing.cfg_samp_clk_timing(
-            sample_rate, source=sample_clk_terminal,
-            active_edge=Edge.RISING,
-            samps_per_chan=n_samples + tail_len)
-
-        # prepare read task
-        logger.debug("Setting up input task.")
-        ai_channel_names = [device+"/"+c for c in read_channels]
-        logger.debug("Read channel names: "+repr(ao_channel_names))
-        for c in ai_channel_names:
-            read_task.ai_channels.add_ai_voltage_chan(
-                c, max_val=5, min_val=-5,
-            )
-        read_task.timing.cfg_samp_clk_timing(
-            sample_rate, source=sample_clk_terminal,
-            active_edge=Edge.RISING, samps_per_chan=n_samples)
-
-        tail = np.ones((write_task.number_of_channels, tail_len)) * offset
-        if pbar is None:
-            pbar = tqdm(freqs, disable=True)
-        for target_freq in pbar:
-            if target_freq == 0:
-                y = np.ones_like(t)*amp  # +offset
-            else:
-                y = amp * np.sin(t * 2 * np.pi * target_freq) + offset
-            payload = np.repeat(y.reshape((1, -1)),
-                                write_task.number_of_channels,
-                                axis=0)
-            payload = np.hstack((payload, tail))
-            assert payload.shape == (write_task.number_of_channels, n_samples + tail_len)
-
-            write_task.write(payload)
-            logger.debug(f"Measuring f={target_freq:5.02e}")
-
-            read_task.start()
-            write_task.start()
-            sample_clk_task.start()
-
-            values_read = np.array(read_task.read(
-                number_of_samples_per_channel=n_samples, timeout=2))
-
-            read_task.stop()
-            write_task.stop()
-            sample_clk_task.stop()
-
-            measured.append(values_read)
-
-    logger.info("Done...")
-    measured = np.array(measured)
-    assert measured.shape == (freqs.size, len(read_channels), n_samples)
-    return measured

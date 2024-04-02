@@ -73,7 +73,7 @@ class BaseScan(ABC):
                         'none': []}
             signals += [Signals[s] for s in sig_list[modulation]]
         if npts > 200_000:
-            logger.error(f'npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
+            logger.error(f'BaseScan: npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
             npts = 200_000
         if filetype == 'hdf':
             self.file = WriteH5Acquisition()
@@ -124,11 +124,11 @@ class BaseScan(ABC):
             self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
             logging.getLogger().addHandler(self.log_handler)
 
-            logger.info('Preparing Scan')
+            logger.info('BaseScan: Preparing Scan')
             filename = self.name + '.h5'
             self.file.create_file(filename)
         else:  # acts as a separate file, for all that we care about:
-            logger.info(f'Creating sub file for delay position: {self.delay_idx}')
+            logger.info(f'BaseScan: Creating sub file for delay position: {self.delay_idx}')
             self.file = self.parent_scan.file.create_group(f'delay_idx_{self.delay_idx}')
         self.connected = self.connect()
         # self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
@@ -148,7 +148,7 @@ class BaseScan(ABC):
         connect to all relevant devices, or inherit from outer scope
         """
         if self.parent_scan is None:
-            logger.info('Connecting')
+            logger.info('BaseScan: Connecting')
             self.afm = NeaSNOM()
             if self.modulation is not Demodulation.none:
                 self.afm.set_pshet(self.modulation)
@@ -156,9 +156,9 @@ class BaseScan(ABC):
                 self.delay_stage = DLStage()
                 ret = self.delay_stage.prepare()
                 if ret is not True:
-                    raise RuntimeError('Error preparing delay stage')
+                    raise RuntimeError('BaseScan: Error preparing delay stage')
         else:
-            logger.info('Inheriting connections from parent scan')
+            logger.info('BaseScan: Inheriting connections from parent scan')
             self.afm = self.parent_scan.afm
             self.delay_stage = self.parent_scan.delay_stage
         self.neaclient_version = self.afm.nea_mic.ClientVersion
@@ -170,7 +170,7 @@ class BaseScan(ABC):
         disconnect from all relevant devices if not inherited
         """
         if self.parent_scan is None:
-            logger.info('Disconnecting')
+            logger.info('BaseScan: Disconnecting')
             # if self.afm is not None:
             self.afm.disconnect()
             self.afm = None
@@ -203,7 +203,7 @@ class BaseScan(ABC):
             self.routine()
             self.export()
         except KeyboardInterrupt:
-            logger.error('Acquisition was interrupted by user')
+            logger.error('BaseScan: Acquisition was interrupted by user')
         finally:
             self.connected = self.disconnect()
         
@@ -216,7 +216,7 @@ class BaseScan(ABC):
         if self.nea_data is not None:
             self.file.write_nea_data(data=self.nea_data)
 
-        logger.info('Collecting metadata')
+        logger.info('BaseScan: Collecting metadata')
         metadata_collector = {}
         for m in self.metadata_keys:
             if m in self.__dict__.keys():
@@ -232,7 +232,7 @@ class BaseScan(ABC):
         metadata_collector['acquisition_mode'] = self.acquisition_mode.value
         for k, v in metadata_collector.items():
             if v is not None:
-                logger.debug(f'writing metadata ({k}: {v})')
+                logger.debug(f'BaseScan: writing metadata ({k}: {v})')
                 self.file.write_metadata(key=k, val=v)
 
 
@@ -268,11 +268,11 @@ class ContinuousScan(BaseScan):
         afm_tracking = []
         daq_tracking = {}
         while not self.afm.scan.IsCompleted:
-            logger.debug(f'Continuous acquisition chunk: {chunk_idx}')
+            logger.debug(f'ContinuousScan: chunk # {chunk_idx}')
             print(f'Chunk no {chunk_idx}. Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
             current = self.afm.get_current()
             afm_tracking.append([chunk_idx] + list(current))
-            logger.debug('Got AFM data')
+            logger.debug('ContinuousScan: Got AFM data')
 
             # n_read = excess
             n_read = 0
@@ -285,7 +285,7 @@ class ContinuousScan(BaseScan):
             # ToDo: clean this up
             data = self.buffer.tail(n=n_read)
             daq_tracking[chunk_idx] = data
-            logger.debug('after DAQ get.')
+            logger.debug('ContinuousScan: after DAQ get.')
             chunk_idx += 1
         self.stop_time = datetime.now()
 
