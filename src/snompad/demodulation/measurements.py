@@ -11,6 +11,7 @@ from ..utility.signals import Scan, Demodulation, Signals
 from ..demodulation.demod_utils import chop_pump_idx
 from ..file_handlers.gwyddion import export_gwy
 from ..file_handlers.hdf5 import ReadH5Acquisition, WriteH5Demodulation, ReadH5Demodulation, h5_to_xr_dataset, xr_to_h5_datasets
+from ..file_handlers.trion import ReadTrionAcquisition
 
 
 class Measurement(ABC):
@@ -19,20 +20,21 @@ class Measurement(ABC):
     def __init__(self, filename: str):
         if filename[-3:] == '.h5':
             self.scan = ReadH5Acquisition(filename)
+        if filename[-3:] == '.nc':
+            self.scan = ReadTrionAcquisition(filename)
         else:
             raise NotImplementedError(f'filetype not supported: {filename}')
-        self.scan.read_data()
         self.afm_data = self.scan.afm_data
         self.nea_data = self.scan.nea_data
         self.daq_data = self.scan.daq_data
-        self.demod_data = None
-        self.demod_cache = {}
-        self.demod_file = None
         self.metadata = self.scan.metadata
         self.name = self.metadata['name']
         self.mode = Scan[self.metadata['acquisition_mode']]
         self.signals = [Signals[s] for s in self.metadata['signals']]
         self.modulation = Demodulation[self.metadata['modulation']]
+        self.demod_data = None
+        self.demod_cache = {}
+        self.demod_file = None
 
     def __str__(self) -> str:
         ret = 'Metadata:\n'

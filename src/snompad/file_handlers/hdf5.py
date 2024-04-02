@@ -4,6 +4,8 @@ import xarray as xr
 import logging
 import h5py
 
+from .base import AcquisitionReader
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,26 +112,18 @@ class WriteH5Acquisition:
         self.file.attrs[key] = val
 
 
-class ReadH5Acquisition:
+class ReadH5Acquisition(AcquisitionReader):
     """ class to read DAQ, AFM and NeaSpec data and metadata from hdf5 file
     """
-    def __init__(self, filename: str):
-        self.filename = filename
-        self.daq_data = None
-        self.afm_data = None
-        self.nea_data = None
-
-        logger.info(f'Opening file: {filename}')
-        self.file = h5py.File(filename, 'r')
-        self.metadata = {}
-        for k, v in self.file.attrs.items():
-            self.metadata[k] = v
-
     def __repr__(self):
         return f'<SNOMpad acquisition file reader: {self.filename}>'
 
-    def __del__(self):
-        self.close_file()
+    def open_file(self):
+        logger.info(f'Opening file: {self.filename}')
+        self.file = h5py.File(self.filename, 'r')
+        self.metadata = {}
+        for k, v in self.file.attrs.items():
+            self.metadata[k] = v
 
     def close_file(self):
         logger.info(f'Closing file: {self.filename}')
