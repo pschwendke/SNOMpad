@@ -96,7 +96,7 @@ def load_nea_image(folder: str) -> xr.Dataset:
     """ Takes directory of NeaSCAN image (the one where all .gsf files are located), combines the .gsf files,
     and parses the metadata .txt file. A Dataset with image data and metadata as attributes is returned
     """
-    if folder[-1] == '/':  # redundant if called by nea_to_gwy.py
+    if folder[-1] == '/':
         folder = folder[:-1]
     channels = ['Z', 'R-Z', 'M1A', 'R-M1A', 'M1P', 'R-M1P', 'O0A', 'R-O0A', 'O1A', 'O1P', 'R-O1A', 'R-O1P',
                 'O2A', 'O2P', 'R-O2A', 'R-O2P', 'O3A', 'O3P', 'R-O3A', 'R-O3P', 'O4A', 'O4P', 'R-O4A', 'R-O4P']
@@ -110,6 +110,8 @@ def load_nea_image(folder: str) -> xr.Dataset:
         if g:  # not all channels are necessarily saved
             filenames.append(g[0])  # takes first one, but there should be only one
             names.append(c)
+    if not filenames:
+        raise RuntimeError('load_nea_image: no .gsf files found in directory')
     ds = combine_gsf(filenames=filenames, names=names)
     ds.attrs = {**ds.attrs, **metadata}
 

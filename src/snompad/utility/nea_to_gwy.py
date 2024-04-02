@@ -1,44 +1,41 @@
 # script to collect gsf files saved by NeaSCAN and metadata and write to single gwy file
-import sys
 import os
-import argparse
-import logging
 
 from ..file_handlers.gwyddion import export_gwy
 from ..file_handlers.neascan import load_nea_image
 
 
-logging.basicConfig(format="%(levelname)-7s - %(name)s - %(message)s")
-logger = logging.getLogger()
+def nea_to_gwy(input_folder: str, output_filename: str):
+    """ collects all .gsf files, as saved by neaSCAN, and combines them to a single .gwy file.
+    """
+    if not os.path.exists(input_folder):
+        raise RuntimeError(f'Input path does not exist. Given input path\n{input_folder}')
 
-parser = argparse.ArgumentParser(
-    description='load all image files saved by NeaSCAN during one image acquisition,'
-                'and save them to one .gwy file.',
-    usage='nea_to_gwy.py [-h] input [-o] [-v]'
-)
-parser.add_argument('input', help='directory containing all .gsf files saved by NeaSCAN')
-parser.add_argument('-o', '--output', default='', help='output file name of .gwy file')
-parser.add_argument('-v', '--verbose', action='count', default=0, help='increase verbosity level')
+    if output_filename == '':
+        output_filename = input_folder.split('/')[-1]
+        output_filename = '_'.join(output_filename.split(' ')[:2]).replace('-', '')
+    if output_filename[-4:] != '.gwy':
+        output_filename += '.gwy'
 
-args = parser.parse_args()
-loglev = max(logger.level - 10 * args.verbose, 10)
-logger.setLevel(loglev)
-logger.debug('arguments: ' + str(args))
+    image_data = load_nea_image(input_folder)
+    export_gwy(filename=output_filename, data=image_data)
+    return True
 
-input_folder = args.input
-if input_folder[-1] == '/':
-    input_folder = input_folder[:-1]
-output_filename = args.output
 
-if output_filename == '':
-    output_filename = input_folder.split('/')[-1]
-    output_filename = '_'.join(output_filename.split(' ')[:2]).replace('-', '')
-if output_filename[-4:] != '.gwy':
-    output_filename += '.gwy'
+if __name__ == '__main__':
+    directory = input('directory containing all .gsf files saved by NeaSCAN:\n')
+    filename = input('path and filename where .gwy file should be created (leave blank to auto generate):\n')
 
-if not os.path.exists(input_folder):
-    logger.error(f'Input path does not exist. Given input path\n{input_folder}')
-    sys.exit(1)
-
-image_data = load_nea_image(input_folder)
-export_gwy(filename=output_filename, data=image_data)
+    done = False
+    while not done:
+        try:
+            done = nea_to_gwy(input_folder=directory, output_filename=filename)
+        except RuntimeError as e:
+            if 'path does not exist' in str(e):
+                directory = input(f'directory does not exist:\n{directory}\nTry again (type "exit" to cancel):\n')
+            elif 'no .gsf files found in directory' in str(e):
+                directory = input(f'No gsf files found in:\n{directory}\nTry again (type "exit" to cancel):\n')
+            else:
+                raise
+        if directory == 'exit':
+            break
