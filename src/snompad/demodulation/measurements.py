@@ -20,7 +20,7 @@ class Measurement(ABC):
     def __init__(self, filename: str):
         if filename[-3:] == '.h5':
             self.scan = ReadH5Acquisition(filename)
-        if filename[-3:] == '.nc':
+        elif filename[-3:] == '.nc':
             self.scan = ReadTrionAcquisition(filename)
         else:
             raise NotImplementedError(f'filetype not supported: {filename}')
@@ -362,7 +362,7 @@ class Retraction(Measurement):
         else:
             chunk_size = demod_npts // self.scan.metadata['npts'] + 1
             demod_npts = self.scan.metadata['npts'] * chunk_size
-        n = len(self.scan.daq_data.keys())
+        n = len(self.daq_data.keys())
         z_res = n // chunk_size
         self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
 
@@ -629,7 +629,7 @@ class Line(Measurement):
             else:
                 chunk_size = demod_npts // self.scan.metadata['npts'] + 1
                 demod_npts = self.scan.metadata['npts'] * chunk_size
-            n = len(self.scan.metadata['daq_data'].keys())
+            n = len(self.daq_data.keys())
             r_res = n // chunk_size
             self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
 
