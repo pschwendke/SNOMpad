@@ -90,17 +90,13 @@ def pshet_binned_kernel(data: np.ndarray, signals: list, tap_res: int = 64, ref_
     """
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
+    tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
     ref_bounds = np.linspace(-np.pi, np.pi, ref_res + 1, endpoint=True)
-    ref_bins = []
+    binned = []
     for i in range(ref_res):
         idx = np.logical_and(ref_bounds[i] < ref_p, ref_p < ref_bounds[i + 1])
-        b = np.vstack([data[idx, signals.index(Signals.sig_a)], tap_p[idx]])
-        ref_bins.append(b)
-
-    tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
-    binned = []
-    for b in ref_bins:
-        binned.append(kernel_interpolation_1d(signal=b[0], x_sig=b[1], x_grid=tap_grid))
+        binned.append(kernel_interpolation_1d(signal=data[idx, signals.index(Signals.sig_a)],
+                                              x_sig=tap_p[idx], x_grid=tap_grid))
     return np.array(binned)
 
 
