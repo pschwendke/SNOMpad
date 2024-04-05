@@ -4,10 +4,11 @@ from scipy.special import jv
 from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
-from ..utility.signals import Signals
 from .demod_utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func,\
     corrected_fft, chop_pump_idx, chopped_data, pumped_data
 from .demod_corrections import normalize_sig_a
+from ..utility.signals import Signals
+from ..utility.multiprocess import process_manager
 
 
 def pshet_binning(data: np.ndarray, signals=list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
@@ -96,11 +97,20 @@ def pshet_binned_kernel(data: np.ndarray, signals: list, tap_res: int = 64, ref_
         idx = np.logical_and(ref_bounds[i] < ref_p, ref_p < ref_bounds[i + 1])
         b = np.vstack([data[idx, signals.index(Signals.sig_a)], tap_p[idx]])
         ref_bins.append(b)
+        # todo Can we pack everything into this for loop?
 
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
+    collector = {}
     binned = []
-    for b in ref_bins:
-        binned.append(kernel_interpolation_1d(signal=b[0], x_sig=b[1], x_grid=tap_grid))
+    for i, b in enumerate(ref_bins):
+        args = {'signal': b[0],
+                'x_sig': b[1],
+                'x_grid': tap_grid}
+        process_manager(func=kernel_interpolation_1d, args=args, collector=collector, identifier=i)
+        binned.append([])
+        # binned.append(kernel_interpolation_1d(signal=b[0], x_sig=b[1], x_grid=tap_grid))
+    for k, v in collector.items():
+        binned[k] = v
     return np.array(binned)
 
 
