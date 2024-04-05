@@ -32,7 +32,7 @@ def pshet_binning(data: np.ndarray, signals=list, tap_res: int = 64, ref_res: in
     """
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
-    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=data[:, signals.index(Signals.sig_y)],
+    returns = binned_statistic_2d(x=tap_p, y=ref_p, values=data[:, signals.index(Signals.sig_a)],
                                   statistic='mean', bins=[tap_res, ref_res],
                                   range=[[-np.pi, np.pi], [-np.pi, np.pi]])
     binned = returns.statistic
@@ -94,7 +94,7 @@ def pshet_binned_kernel(data: np.ndarray, signals: list, tap_res: int = 64, ref_
     ref_bins = []
     for i in range(ref_res):
         idx = np.logical_and(ref_bounds[i] < ref_p, ref_p < ref_bounds[i + 1])
-        b = np.vstack([data[:, signals.index(Signals.sig_a)], tap_p])
+        b = np.vstack([data[idx, signals.index(Signals.sig_a)], tap_p[idx]])
         ref_bins.append(b)
 
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res

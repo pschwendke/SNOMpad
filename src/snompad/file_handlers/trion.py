@@ -77,4 +77,3 @@ class ReadTrionAcquisition(AcquisitionReader):
             data = np.vstack([i for i in npz.values()]).T
             daq_data[int(idx)] = data
         return daq_data
-

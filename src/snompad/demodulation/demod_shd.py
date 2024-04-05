@@ -81,6 +81,7 @@ def shd(data: np.ndarray, signals: list, tap_res: int = 64, chopped='auto', tap_
     coefficients: np.ndarray
         real coefficients for tapping demodulation.
     """
+    # ToDo: It's annoying to have to pass Signals.xxx_x all the time. Find a way to also pass lists or arrays of strings
     if ratiometry is True or (ratiometry == 'auto' and Signals.sig_b in signals):
         data = normalize_sig_a(data=data, signals=signals)
 
