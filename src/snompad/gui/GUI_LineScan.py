@@ -8,7 +8,7 @@ from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, Te
 from bokeh.layouts import column, row, gridplot
 
 from ..acquisition.scans import SteppedLineScan, ContinuousLineScan
-from ..demodulation.measurements import load
+from ..demodulation.scan_demod import load
 
 import logging
 
