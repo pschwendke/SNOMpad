@@ -1,11 +1,17 @@
 # utility functions for analysis of scan data
 import numpy as np
 import xarray as xr
+from sys import platform
+from tqdm import tqdm
+from functools import partial
+from multiprocessing import Pool, set_start_method
 
+from . import shd, pshet
 from .scan_demod_base import BaseScanDemod
 from ..utility.signals import Scan
 
 
+# CONTINUOUS LINE-BASED SCANS ##########################################################################################
 def sort_lines(scan: BaseScanDemod, trim_ratio: float = .05, plot=False):
     """ The function takes a line-based scan (LineScan, Image), and defines left and right turning points of the lines.
     The data taken in between is sorted into 'scan' 'rescan' and given a line number.
@@ -155,3 +161,40 @@ def bin_line(scan: BaseScanDemod, res: int = 100, direction: str = 'scan', line_
     ds.attrs['npts per pixel: min'] = npts_per_idx.min()
     ds.attrs['npts per pixel: max'] = npts_per_idx.max()
     return ds
+
+
+# BATCH DEMODULATION USING MULTIPROCESSING #############################################################################
+if platform != 'win32':
+    set_start_method('fork')
+
+
+def demod_worker(job_idx, measurement: BaseScanDemod, func, **kwargs):
+    idx = measurement.demod_data.idx[job_idx].item()
+    data = np.vstack([measurement.daq_data[i] for i in idx])
+    harm = func(data=data, **kwargs)
+    return harm
+
+
+def batch_demod_1d(measurement: BaseScanDemod, processes: int = None, **kwargs):
+    """ Demodulates all optical data in an instance of BaseScanDemod. measurement object needs an 'demod_data'
+    attribute. All pixels are demodulated using multiprocessing if available.
+    Only does 1D (line scans, retraction) at the moment..
+    """
+    func = [shd, pshet][['shd', 'pshet'].index(measurement.metadata['modulation'])]
+    if platform in ['darwin', 'linux', 'linux2'] and processes != 1:  # with multiprocessing
+        print('Batch demodulation (shd) with multiprocessing')
+        worker_kwargs = {'measurement': measurement, 'func': func}
+        worker_kwargs.update(**kwargs)
+        job_idx = np.arange(len(measurement.demod_data.idx.values))
+        with Pool(processes=processes) as pool:
+            demod_data = pool.map(func=partial(demod_worker, **worker_kwargs), iterable=job_idx)
+    else:  # no multiprocessing
+        print('Batch demodulation (shd) without multiprocessing:')
+        demod_data = []
+        for i, val in tqdm(enumerate(measurement.demod_data.idx), total=len(measurement.demod_data.idx)):
+            idx = val.values.item()
+            data = np.vstack([measurement.daq_data[i] for i in idx])
+            demod_data.append(func(data=data, **kwargs))
+    demod_data = np.array(demod_data)
+    measurement.demod_data['optical'] = xr.DataArray(data=demod_data, dims=('r', 'order'),
+                                                     coords={'order': np.arange(demod_data.shape[1])})
