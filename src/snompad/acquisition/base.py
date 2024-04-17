@@ -69,9 +69,6 @@ class BaseScan(ABC):
                         'pshet': ['tap_x', 'tap_y', 'ref_x', 'ref_y'],
                         'none': []}
             signals += [Signals[s] for s in sig_list[modulation]]
-        if npts > 200_000:
-            logger.error(f'BaseScan: npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
-            npts = 200_000  # ToDo check this
         if filetype == 'hdf':
             self.file = WriteH5Acquisition()
         else:
@@ -101,37 +98,23 @@ class BaseScan(ABC):
         self.log_handler = None
         self.metadata = metadata
         self.metadata_keys = ['name', 'date', 'user', 'sample', 'tip', 'acquisition_mode', 'acquisition_time',
-                              'modulation', 'signals', 'pump_probe', 'ratiometry',
-                              'light_source', 'probe_color_nm', 'pump_color_nm', 'probe_FWHM_nm', 'pump_FWHM_nm',
-                              'probe_power_mW', 'pump_power_mW',
-                              'x_size', 'y_size', 'z_size', 'x_center', 'y_center', 'x_res', 'y_res', 'z_res',
-                              'x_start', 'x_stop', 'y_start', 'y_stop', 'xy_unit',
-                              't', 't_start', 't_stop', 't_unit', 't_res', 't_scale', 't0_mm', 'delay_idx', 'scan_type', 'n',
-                              'device', 'clock_channel', 'npts', 'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms',
-                              'afm_angle_deg', 'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
+                              'modulation', 'signals', 'pump_probe', 'ratiometry', 'npts',
+                              'setpoint', 'tip_velocity_um/s', 'afm_sampling_ms', 'afm_angle_deg',
+                              'tapping_frequency_Hz', 'tapping_amp_nm', 'ref_mirror_frequency_Hz',
+                              'light_source', 'device', 'clock_channel',
+                              'probe_color_nm', 'probe_power_mW', 'probe_FWHM_nm',
+                              'pump_color_nm', 'pump_power_mW', 'pump_FWHM_nm',
+                              'x_size', 'y_size', 'z_size', 'xy_unit',
+                              'x_center', 'y_center', 'x_target', 'y_target',
+                              'x_res', 'y_res', 'z_res',
+                              'x_start', 'x_stop', 'y_start', 'y_stop',
+                              't', 't_start', 't_stop', 't_unit', 't_res', 't_scale', 't0_mm',
                               'snompad_version', 'neaclient_version', 'neaserver_version']
 
-    def prepare(self):
-        """ Start logging, create scan file, call connect(), move delay stage
-        """
-        self.date = datetime.now()
-        self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
-        self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-        logging.getLogger().addHandler(self.log_handler)
-
-        logger.info('BaseScan: Preparing Scan')
-        filename = self.name + '.h5'
-        self.file.create_file(filename)
-        self.connected = self.connect()
-
-        if self.pump_probe:
-            if self.t0_mm is not None:
-                self.delay_stage.reference = self.t0_mm
-            if self.t is not None:
-                self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
-                self.delay_stage.wait_for_stage()
-                self.delay_stage.log_status()
+    def __del__(self):
+        logger.debug('BaseScan.__del__()')
+        if self.connected:
+            self.disconnect()
 
     def connect(self):
         """ Connect to all relevant devices
@@ -167,10 +150,55 @@ class BaseScan(ABC):
         self.log_handler.close()
         return False
 
-    def __del__(self):
-        logger.debug('BaseScan.__del__()')
-        if self.connected:
-            self.disconnect()
+    def setup_logger(self):
+        """ Configure log file
+        """
+        self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
+        self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        logging.getLogger().addHandler(self.log_handler)
+
+    def setup_delay_stage(self):
+        """ Define t_0 and if value for t is given move to delay position
+        """
+        if self.t0_mm is not None:
+            self.delay_stage.reference = self.t0_mm
+        if self.t is not None:
+            self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
+            self.delay_stage.wait_for_stage()
+            self.delay_stage.log_status()
+
+    def collect_metadata(self):
+        logger.info('BaseScan: Collecting metadata')
+        metadata_collector = {}
+        for m in self.metadata_keys:
+            if m in self.__dict__.keys():
+                metadata_collector[m] = self.__dict__[m]
+            elif self.metadata is not None and m in self.metadata.keys():
+                metadata_collector[m] = self.metadata[m]
+            else:
+                metadata_collector[m] = None
+        metadata_collector['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
+        metadata_collector['modulation'] = self.modulation.value
+        metadata_collector['signals'] = [s.value for s in self.signals]
+        metadata_collector['acquisition_mode'] = self.acquisition_mode.value
+        for k, v in metadata_collector.items():
+            if v is not None:
+                logger.info(f'    {k}: {v}')
+                self.file.write_metadata(key=k, val=v)
+
+    def prepare(self):
+        """ All preparations to be done before starting the scan.
+        """
+        self.date = datetime.now()
+        self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
+        self.setup_logger()
+        logger.info('BaseScan: Preparing Scan')
+        self.file.create_file(self.name)
+        self.collect_metadata()
+        self.connected = self.connect()
+        if self.pump_probe:
+            self.setup_delay_stage()
+        self.collect_metadata()
 
     @abstractmethod
     def routine(self):
@@ -192,31 +220,14 @@ class BaseScan(ABC):
         
     def export(self):
         """
-        Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file. Collect and export metadata.
+        Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file
         """
         if self.afm_data is not None:
             self.file.write_afm_data(data=self.afm_data)
         if self.nea_data is not None:
             self.file.write_nea_data(data=self.nea_data)
-
-        logger.info('BaseScan: Collecting metadata')
-        metadata_collector = {}
-        for m in self.metadata_keys:
-            if m in self.__dict__.keys():
-                metadata_collector[m] = self.__dict__[m]
-            elif self.metadata is not None and m in self.metadata.keys():
-                metadata_collector[m] = self.metadata[m]
-            else:
-                metadata_collector[m] = None
-        metadata_collector['date'] = self.date.strftime('%Y-%m-%d_%H:%M:%S')
-        metadata_collector['acquisition_time'] = str(self.stop_time - self.date)
-        metadata_collector['modulation'] = self.modulation.value
-        metadata_collector['signals'] = [s.value for s in self.signals]
-        metadata_collector['acquisition_mode'] = self.acquisition_mode.value
-        for k, v in metadata_collector.items():
-            if v is not None:
-                logger.info(f'BaseScan: writing metadata ({k}: {v})')
-                self.file.write_metadata(key=k, val=v)
+        acquisition_time = str(self.stop_time - self.date)  # this would not go anywhere else... mmh.
+        self.file.write_metadata(key='acquisition_time', val=acquisition_time)
 
 
 class ContinuousScan(BaseScan):

@@ -69,23 +69,23 @@ class WriteH5Acquisition:
     def __del__(self):
         self.close_file()
 
-    def create_file(self, filename: str):
+    def create_file(self, name: str):
         """ create hdf5 file with scan name
         """
-        logger.info(f'Creating scan file: {filename}')
-        self.filename = filename
-        self.file = h5py.File(filename, 'w')
+        logger.info(f'WriteH5Acquisition: Creating scan file: {name}.h5')
+        self.filename = name + '.h5'
+        self.file = h5py.File(self.filename, 'w')
 
     def close_file(self):
         """ close hdf5 file
         """
-        logger.debug(f'Closing acquisition file: {self.filename}')
+        logger.debug(f'WriteH5Acquisition: Closing acquisition file: {self.filename}')
         self.file.close()
 
     def write_daq_data(self, data: dict):
         """ write dictionary of acquired daq chunks into group. Chunks are individual hdf5 datasets
         """
-        logger.info('Saving acquired DAQ data')
+        logger.info('WriteH5Acquisition: Saving acquired DAQ data')
         n_digits = int(np.log10(len(data.keys()))) + 1
         self.file.create_group('daq_data')
         for k, v in data.items():
@@ -94,21 +94,21 @@ class WriteH5Acquisition:
     def write_afm_data(self, data: xr.Dataset):
         """ write xr.Dataset of afm data (xyz, amp, phase) tracked during acquisition into group
         """
-        logger.info('Saving tracked AFM data')
+        logger.info('WriteH5Acquisition: Saving tracked AFM data')
         self.file.create_group('afm_data')
         xr_to_h5_datasets(ds=data, group=self.file['afm_data'])
 
     def write_nea_data(self, data: xr.Dataset):
         """ write xr.Dataset of NeaScan data returned by API after acquisition into group
         """
-        logger.info('Saving NeaScan data')
+        logger.info('WriteH5Acquisition: Saving NeaScan data')
         self.file.create_group('nea_data')
         xr_to_h5_datasets(ds=data, group=self.file['nea_data'])
 
     def write_metadata(self, key, val):
         """ write single instance (key and value) of metadata into root group attrs
         """
-        logger.info(f'Saving metadata: {key}: {val}')
+        logger.info(f'WriteH5Acquisition: Saving metadata: {key}: {val}')
         self.file.attrs[key] = val
 
 

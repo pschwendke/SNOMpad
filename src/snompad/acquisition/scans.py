@@ -1,7 +1,6 @@
 # ToDo: standardize units
 #  standardize names of parameters
 #  note standards in README
-#  rename: npts -> chunk_size
 
 # acquisition scripts
 import numpy as np
@@ -46,7 +45,7 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
     """
     if npts < 0:
         npts = np.inf
-    logger.info(f'single_point: Acquiring {npts} samples ({", ".join([s.name for s in signals])})')
+    logger.debug(f'single_point: Acquiring {npts} samples ({", ".join([s.name for s in signals])})')
     ctrl = DaqController(device, clock_channel=clock_channel)
     buffer = ExtendingArrayBuffer(vars=signals, size=npts, overfill=Overfill.clip)
     n_read = 0
@@ -62,17 +61,18 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
                 n = ctrl.reader.read()
                 n_read += n
             except KeyboardInterrupt:
-                logger.warning("Acquisition interrupted by user.")
+                logger.warning('Acquisition interrupted by user.')
                 break
     finally:
         ctrl.close()
-        logger.info("single_point: Acquisition finished.")
+        logger.debug('single_point: Acquisition finished.')
     data = buffer.buf
     if truncate and np.isfinite(npts):
         data = data[:npts, :]
     return data
 
 
+# ToDo delete this after testing
 # class ContinuousPoint(ContinuousScan):
 #     def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, metadata=None,
 #                  setpoint: float = 0.8, pump_probe=False, signals=None, x_target=None, y_target=None, in_contact=True,
@@ -235,7 +235,7 @@ class SteppedRetraction(BaseScan):
         self.z_res = z_res
         self.x_center = None
         self.y_center = None
-        self.x_target = x_target  # ToDo should this not be x_center? then it would become metadata. CHECK THIS!! elsewhere?
+        self.x_target = x_target
         self.y_target = y_target
 
     def routine(self):
