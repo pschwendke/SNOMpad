@@ -202,7 +202,7 @@ class DaqController:
         analog = self.tasks["analog"]
         
         self.reader = TrionsAnalogReader(buffer=buffer)
-        logger.info(f"Acquiring signals: {', '.join([v.name for v in self.reader.vars])}")
+        logger.debug(f"Acquiring signals: {', '.join([v.name for v in self.reader.vars])}")
         for var in self.reader.vars:
             c = self.reader.channel_map[var]
             lim = self.sig_range if is_optical_signal(var) else self.phase_range
@@ -238,7 +238,7 @@ class DaqController:
         # Finalise setting up the reader and buffer, ie: connect the callbacks?
         # start the actual acquisition
         for t in self.tasks.values():
-            logger.info(f"Starting task: {t.name}")
+            logger.debug(f"Starting task: {t.name}")
             t.start()
         return self
 
@@ -253,7 +253,7 @@ class DaqController:
 
     def stop(self) -> 'DaqController':
         for t in self.tasks.values():
-            logger.info(f"Stopping task: {t.name}")
+            logger.debug(f"Stopping task: {t.name}")
             t.stop()
         logger.debug(f"Task list is now: {self.tasks}")
         try:

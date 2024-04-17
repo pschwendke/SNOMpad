@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 class BaseScan(ABC):
     def __init__(self, modulation: str, signals=None, pump_probe=False, setpoint: float = 0.8, npts: int = 5_000,
                  device='Dev1', clock_channel='pfi0', ratiometry=False, filetype: str = 'hdf5',
-                 metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None,
-                 parent_scan=None, delay_idx=None):
+                 metadata: dict = None, t: float = None, t_unit: str = None, t0_mm: float = None):
         """
         Parameters
         ----------
@@ -37,6 +36,8 @@ class BaseScan(ABC):
             should be 'Dev1' for now.
         clock_channel: str
             should be 'pfi0', as labelled on the DAQ
+        ratiometry: bool
+            if True, sig_b is acquired as well for ratiometric signal correction
         setpoint: float
             AFM setpoint when engaged
         npts: int
@@ -52,10 +53,6 @@ class BaseScan(ABC):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         try:
             self.modulation = Demodulation[modulation]
@@ -74,7 +71,7 @@ class BaseScan(ABC):
             signals += [Signals[s] for s in sig_list[modulation]]
         if npts > 200_000:
             logger.error(f'BaseScan: npts was reduced to max chunk size of 200_000. npts={npts} was passed.')
-            npts = 200_000
+            npts = 200_000  # ToDo check this
         if filetype == 'hdf':
             self.file = WriteH5Acquisition()
         else:
@@ -90,8 +87,6 @@ class BaseScan(ABC):
         self.setpoint = setpoint
         self.pump_probe = pump_probe
         self.ratiometry = ratiometry
-        self.parent_scan = parent_scan
-        self.delay_idx = delay_idx
         self.connected = False
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
@@ -117,26 +112,21 @@ class BaseScan(ABC):
                               'snompad_version', 'neaclient_version', 'neaserver_version']
 
     def prepare(self):
+        """ Start logging, create scan file, call connect(), move delay stage
+        """
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        if self.parent_scan is None:
-            self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
-            self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-            logging.getLogger().addHandler(self.log_handler)
+        self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
+        self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        logging.getLogger().addHandler(self.log_handler)
 
-            logger.info('BaseScan: Preparing Scan')
-            filename = self.name + '.h5'
-            self.file.create_file(filename)
-        else:  # acts as a separate file, for all that we care about:
-            logger.info(f'BaseScan: Creating sub file for delay position: {self.delay_idx}')
-            self.file = self.parent_scan.file.create_group(f'delay_idx_{self.delay_idx}')
+        logger.info('BaseScan: Preparing Scan')
+        filename = self.name + '.h5'
+        self.file.create_file(filename)
         self.connected = self.connect()
-        # self.file.create_group('afm_data')  # afm data (xyz, amp, phase) tracked during acquisition
-        # self.file.create_group('daq_data')  # chunks of daq data, saved with current afm data as attributes
-        # self.file.create_group('nea_data')  # data returned by NeaScan API
 
         if self.pump_probe:
-            if self.t0_mm is not None and self.parent_scan is None:
+            if self.t0_mm is not None:
                 self.delay_stage.reference = self.t0_mm
             if self.t is not None:
                 self.delay_stage.move_abs(val=self.t, unit=self.t_unit)
@@ -144,44 +134,37 @@ class BaseScan(ABC):
                 self.delay_stage.log_status()
 
     def connect(self):
+        """ Connect to all relevant devices
         """
-        connect to all relevant devices, or inherit from outer scope
-        """
-        if self.parent_scan is None:
-            logger.info('BaseScan: Connecting')
-            self.afm = NeaSNOM()
-            if self.modulation is not Demodulation.none:
-                self.afm.set_pshet(self.modulation)
-            if self.pump_probe:
-                self.delay_stage = DLStage()
-                ret = self.delay_stage.prepare()
-                if ret is not True:
-                    raise RuntimeError('BaseScan: Error preparing delay stage')
-        else:
-            logger.info('BaseScan: Inheriting connections from parent scan')
-            self.afm = self.parent_scan.afm
-            self.delay_stage = self.parent_scan.delay_stage
+        logger.info('BaseScan: Connecting to AFM')
+        self.afm = NeaSNOM()
+        if self.modulation is not Demodulation.none:
+            self.afm.set_pshet(self.modulation)
+        if self.pump_probe:
+            logger.info('BaseScan: Connecting to delay stage')
+            self.delay_stage = DLStage()
+            ret = self.delay_stage.prepare()
+            if ret is not True:
+                raise RuntimeError('BaseScan: Error preparing delay stage')
         self.neaclient_version = self.afm.nea_mic.ClientVersion
         self.neaserver_version = self.afm.nea_mic.ServerVersion
         return True
 
     def disconnect(self):
+        """ Disconnect from all relevant devices
         """
-        disconnect from all relevant devices if not inherited
-        """
-        if self.parent_scan is None:
-            logger.info('BaseScan: Disconnecting')
-            # if self.afm is not None:
+        logger.info('BaseScan: Disconnecting')
+        if self.afm is not None:
             self.afm.disconnect()
             self.afm = None
-            # if self.file is not None:
+        if self.file is not None:
             self.file.close_file()
-            if self.delay_stage is not None:
-                self.delay_stage.motor_enabled = False
-                self.delay_stage.disconnect()
-                self.delay_stage = None
-            logging.getLogger().removeHandler(self.log_handler)
-            self.log_handler.close()
+        if self.delay_stage is not None:
+            self.delay_stage.motor_enabled = False
+            self.delay_stage.disconnect()
+            self.delay_stage = None
+        logging.getLogger().removeHandler(self.log_handler)
+        self.log_handler.close()
         return False
 
     def __del__(self):
@@ -232,7 +215,7 @@ class BaseScan(ABC):
         metadata_collector['acquisition_mode'] = self.acquisition_mode.value
         for k, v in metadata_collector.items():
             if v is not None:
-                logger.debug(f'BaseScan: writing metadata ({k}: {v})')
+                logger.info(f'BaseScan: writing metadata ({k}: {v})')
                 self.file.write_metadata(key=k, val=v)
 
 

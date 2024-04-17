@@ -27,11 +27,11 @@ class NeaSNOM:
         self.nea_mic = self.nea_client.Connect()              # Define the Microscope
         sleep(0.1)                              # Short delay makes things work fine (?)
         self.connected = True
-        logger.info('Microscope connected')
+        logger.info('NeaSNOM: Microscope connected')
         self.stop()
 
-        logger.debug("Client Version: " + self.nea_mic.ClientVersion)    # get Client Version
-        logger.debug("Server Version: " + self.nea_mic.ServerVersion)    # get Server Version
+        logger.debug("NeaSNOM: Client Version: " + self.nea_mic.ClientVersion)    # get Client Version
+        logger.debug("NeaSNOM: Server Version: " + self.nea_mic.ServerVersion)    # get Server Version
 
     def __del__(self):
         logger.debug('NeaSNOM.__del__()')
@@ -39,38 +39,41 @@ class NeaSNOM:
             self.disconnect()
 
     def engage(self, setpoint: float = 0.8, settle_s: float = 3):
-        logger.info('Engaging sample')
+        logger.info('NeaSNOM: Engaging sample')
         if not self.nea_mic.IsInContact:
             self.nea_mic.AutoApproach(setpoint)
-        logger.info(f'Waiting {settle_s} s for the AFM to settle')
+        logger.info(f'NeaSNOM: Waiting {settle_s} s for the AFM to settle')
         sleep(settle_s)
 
     def goto_xy(self, x, y):
         # ToDo: units
         if not (0 < x < 100 and 0 < y < 100):
-            logger.error('SNOM error: coordinates out of bounds: 0 < (x, y) < 100')
+            logger.error('NeaSNOM: coordinates out of bounds: 0 < (x, y) < 100')
         reached = self.nea_mic.GotoTipPosition(x, y, self.tip_velocity)
         if not reached:
             raise RuntimeError('Did not reach target position')
 
     def stop(self):
-        logger.info('Stopping any Scan')
+        logger.info('NeaSNOM: Stopping any Scan')
         self.nea_mic.CancelCurrentProcedure()
         self.nea_mic.RegulatorOff()
 
     def disconnect(self):
         if self.nea_mic is not None:
             self.stop()
-        logger.info('Disconnecting microscope')
+        logger.info('NeaSNOM: Disconnecting microscope')
         self.nea_mic = self.nea_client.Disconnect()
         self.connected = False
 
     def set_pshet(self, mod: Demodulation):
-        logger.info(f'Settig NeaSNOM modulation to {mod.value}')
+        logger.info(f'NeaSNOM: Settig NeaSNOM modulation to {mod.value}')
         if mod == Demodulation.shd:
             mod_setter = self.nea_mic.PrepareApproachCurveAfm()
         elif mod == Demodulation.pshet:
             mod_setter = self.nea_mic.PrepareApproachCurvePsHet()
+        else:
+            raise RuntimeError(f'NeaSNOM: pshet can only be off (Demodulation.shd) or on (Demodulation.pshet). '
+                               f'{mod} was passed.')
         mod_setter.Start()
         sleep(0.1)
         self.nea_mic.CancelCurrentProcedure()
@@ -80,7 +83,7 @@ class NeaSNOM:
         #  write doc string
         self.tracked_channels = ['Z', 'M1A', 'M1P']
         if mod not in [Demodulation.pshet, Demodulation.shd]:
-            logger.error(f'SNOM error: {mod.value} is not implemented')
+            logger.error(f'NeaSNOM: {mod.value} is not implemented')
 
         if mod == Demodulation.shd:
             self.scan = self.nea_mic.PrepareApproachCurveAfm()
@@ -100,13 +103,13 @@ class NeaSNOM:
         else:
             self.tracked_channels = ['Z', 'R-Z', 'M1A', 'R-M1A', 'M1P', 'R-M1P']
         if mod not in [Demodulation.pshet, Demodulation.shd]:
-            logger.error(f'SNOM error: {mod.value} is not implemented')
+            logger.error(f'NeaSNOM: {mod.value} is not implemented')
 
         step = x_size / x_res
         vel = step / sampling_time_ms * 1000
-        logger.info(f'Tip velocity is set to {vel:.2} um s^-1')
+        logger.info(f'NeaSNOM: Tip velocity is set to {vel:.2} um s^-1')
         if vel > 4:
-            logger.warning('WARNING: tip velocity > 4 um s^-1')
+            logger.warning('NeaSNOM: WARNING: tip velocity > 4 um s^-1')
         if mod == Demodulation.pshet:
             self.scan = self.nea_mic.PreparePsHetScan()
         elif mod == Demodulation.shd:

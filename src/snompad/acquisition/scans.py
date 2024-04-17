@@ -1,7 +1,7 @@
 # ToDo: standardize units
 #  standardize names of parameters
 #  note standards in README
-#  rename: npts -> chunk_size, in cont.point: n -> npts, and elsewhere?
+#  rename: npts -> chunk_size
 
 # acquisition scripts
 import numpy as np
@@ -20,18 +20,18 @@ from ..drivers import DaqController
 from ..file_handlers.neascan import to_numpy
 from ..acquisition.base import ContinuousScan, BaseScan
 
-import nidaqmx
-from nidaqmx.constants import (Edge, TaskMode)
+# import nidaqmx
+# from nidaqmx.constants import (Edge, TaskMode)
 
 logger = logging.getLogger(__name__)
 
 
 def single_point(device: str, signals: Iterable[Signals], npts: int,
-                 clock_channel: str = 'pfi0', truncate: bool = True, pbar=None):
+                 clock_channel: str = 'pfi0', truncate: bool = True):
     """
     Perform single point acquisition of DAQ data.
 
-    Parameters
+    PARAMETERS
     ----------
     device : str
         Name of NI device.
@@ -43,11 +43,10 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
         Number of pulses to acquire. If < 0, acquires continuously.
     truncate : bool
         Truncate output to exact number of points.
-    pbar : progressbar or None
-        Progressbar to use. Calls pbar.update(n_read).
     """
     if npts < 0:
         npts = np.inf
+    logger.info(f'single_point: Acquiring {npts} samples ({", ".join([s.name for s in signals])})')
     ctrl = DaqController(device, clock_channel=clock_channel)
     buffer = ExtendingArrayBuffer(vars=signals, size=npts, overfill=Overfill.clip)
     n_read = 0
@@ -61,144 +60,141 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
                     break
                 sleep(0.001)
                 n = ctrl.reader.read()
-                if pbar is not None:
-                    pbar.update(n)
                 n_read += n
             except KeyboardInterrupt:
                 logger.warning("Acquisition interrupted by user.")
                 break
     finally:
         ctrl.close()
-        logger.info("Acquisition finished.")
+        logger.info("single_point: Acquisition finished.")
     data = buffer.buf
     if truncate and np.isfinite(npts):
         data = data[:npts, :]
     return data
 
 
-class ContinuousPoint(ContinuousScan):
-    def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, metadata=None,
-                 setpoint: float = 0.8, pump_probe=False, signals=None, x_target=None, y_target=None, in_contact=True,
-                 parent_scan=None, delay_idx=None, ratiometry=False):
-        """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
-
-        Parameters
-        ----------
-        modulation: str
-            either 'shd' or 'pshet'
-        n: int
-            number of samples to acquire.
-        npts: int
-            number of samples from the DAQ that are saved in one chunk
-        t: float
-            if not None, delay stage will be moved to this position before scan
-        t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
-            unit of t value. Needs to ge vien when t is given
-        t0_mm: float
-            position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        metadata: dict
-            dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
-            Specified variables, e.g. self.name have higher priority than passed metadata.
-        setpoint: float
-            AFM setpoint when engaged
-        pump_probe: bool
-            set True if acquiring pump-probe with chopper
-        signals: Iterable[Signals]
-            signals that are acquired from the DAQ
-        x_target: float
-            x coordinate of acquisition. Must be passed together with y_target
-        y_target: float
-            y coordinate of acquisition. Must be passed together with x_target
-        in_contact: bool
-            If True, the samples are acquired while AFM is in contact
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
-        ratiometry: bool
-            if True, sig_b is acquired as well
-        """
-        super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
-                         pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry,
-                         parent_scan=parent_scan, delay_idx=delay_idx)
-        self.acquisition_mode = Scan.point
-        self.xy_unit = 'um'
-        self.x_target = x_target
-        self.y_target = y_target
-        self.in_contact = in_contact
-        self.n = n
-
-    def prepare(self):
-        super().prepare()
-        logger.info(f'ContinuousPoint: acquiring {self.n} samples')
-        if self.x_target is not None and self.y_target is not None:
-            logger.info(f'ContinuousPoint: Moving sample to target position x={self.x_target:.2f} um, '
-                        f'y={self.y_target:.2f} um')
-            self.afm.goto_xy(self.x_target, self.y_target)
-
-    def acquire(self):
-        logger.info('ContinuousPoint: Starting acquisition')
-        # excess = 0
-        chunk_idx = 0
-        afm_tracking = []
-        daq_tracking = {}  # ToDo if this (buffering the daq data instead of writing directly) solves the daq problem. if yes, implement everywhere.
-        while chunk_idx * self.npts < self.n:
-            logger.debug(f'ContinuousPoint: chunk # {chunk_idx}')
-            current = [chunk_idx] + list(self.afm.get_current())
-            afm_tracking.append(current)
-            logger.debug('ContinuousPoint: Got AFM data')
-            # n_read = excess
-            n_read = 0
-            nloop = 0  # for debugging, we are getting stuck somewhere around here.
-            # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
-            try:
-                while n_read < self.npts:
-                    n = self.ctrl.reader.read()
-                    n_read += n
-                    nloop += 1
-                    sleep(0.001)
-                    if nloop > self.npts / 20:
-                        logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}. '
-                                      f' {n_read} samples were read from DAQ, instead of {self.npts}')
-                        break
-            except KeyboardInterrupt:
-                logger.error('ContinuousPoint: Aborting current chunk')
-                logger.debug(f"ContinuousPoint: {n_read} + {n} <? {self.npts}")
-            # excess = (n_read - self.npts) * int(n_read > self.npts)
-            # now all read samples are dumped into the buffer. Chunk size is not defined anymore
-            # ToDo: clean this up
-            logger.debug(f'ContinuousPoint: After read data, nloop {nloop}')
-            data = self.buffer.tail(n=n_read)
-            daq_tracking[chunk_idx] = data
-            logger.debug('ContinuousPoint: after DAQ get.')
-            chunk_idx += 1
-
-        self.file.write_daq_data(data=daq_tracking)
-        afm_tracking = np.array(afm_tracking)
-        self.afm_data = xr.Dataset()
-        tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
-        for i, c in enumerate(tracked_channels[1:]):
-            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
-            if self.t is not None:
-                da = da.expand_dims(dim={'t': np.array([self.t])})
-                da = da.expand_dims(dim={'delay_pos_mm': np.array([self.delay_stage.position])})  # ToDo: clean this up. Where does what information go?
-            self.afm_data[c] = da
-        self.stop_time = datetime.now()
-
-    def routine(self):
-        self.prepare()
-        if self.in_contact and self.parent_scan is None:
-            self.afm.engage(self.setpoint)
-        self.ctrl.start()
-        self.acquire()
+# class ContinuousPoint(ContinuousScan):
+#     def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, metadata=None,
+#                  setpoint: float = 0.8, pump_probe=False, signals=None, x_target=None, y_target=None, in_contact=True,
+#                  parent_scan=None, delay_idx=None, ratiometry=False):
+#         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
+#
+#         Parameters
+#         ----------
+#         modulation: str
+#             either 'shd' or 'pshet'
+#         n: int
+#             number of samples to acquire.
+#         npts: int
+#             number of samples from the DAQ that are saved in one chunk
+#         t: float
+#             if not None, delay stage will be moved to this position before scan
+#         t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
+#             unit of t value. Needs to ge vien when t is given
+#         t0_mm: float
+#             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+#         metadata: dict
+#             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
+#             Specified variables, e.g. self.name have higher priority than passed metadata.
+#         setpoint: float
+#             AFM setpoint when engaged
+#         pump_probe: bool
+#             set True if acquiring pump-probe with chopper
+#         signals: Iterable[Signals]
+#             signals that are acquired from the DAQ
+#         x_target: float
+#             x coordinate of acquisition. Must be passed together with y_target
+#         y_target: float
+#             y coordinate of acquisition. Must be passed together with x_target
+#         in_contact: bool
+#             If True, the samples are acquired while AFM is in contact
+#         parent_scan: BaseScan
+#             when a BaseScan object is passed, no file is created, but data saved into parent's file
+#         delay_idx: str or int
+#             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
+#         ratiometry: bool
+#             if True, sig_b is acquired as well
+#         """
+#         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
+#                          pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry,
+#                          parent_scan=parent_scan, delay_idx=delay_idx)
+#         self.acquisition_mode = Scan.point
+#         self.xy_unit = 'um'
+#         self.x_target = x_target
+#         self.y_target = y_target
+#         self.in_contact = in_contact
+#         self.n = n
+#
+#     def prepare(self):
+#         super().prepare()
+#         logger.info(f'ContinuousPoint: acquiring {self.n} samples')
+#         if self.x_target is not None and self.y_target is not None:
+#             logger.info(f'ContinuousPoint: Moving sample to target position x={self.x_target:.2f} um, '
+#                         f'y={self.y_target:.2f} um')
+#             self.afm.goto_xy(self.x_target, self.y_target)
+#
+#     def acquire(self):
+#         logger.info('ContinuousPoint: Starting acquisition')
+#         # excess = 0
+#         chunk_idx = 0
+#         afm_tracking = []
+#         daq_tracking = {}
+#         while chunk_idx * self.npts < self.n:
+#             logger.debug(f'ContinuousPoint: chunk # {chunk_idx}')
+#             current = [chunk_idx] + list(self.afm.get_current())
+#             afm_tracking.append(current)
+#             logger.debug('ContinuousPoint: Got AFM data')
+#             # n_read = excess
+#             n_read = 0
+#             nloop = 0  # for debugging, we are getting stuck somewhere around here.
+#             # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
+#             try:
+#                 while n_read < self.npts:
+#                     n = self.ctrl.reader.read()
+#                     n_read += n
+#                     nloop += 1
+#                     sleep(0.001)
+#                     if nloop > self.npts / 20:
+#                         logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}.'
+#                                       f' {n_read} samples were read from DAQ, instead of {self.npts}')
+#                         break
+#             except KeyboardInterrupt:
+#                 logger.error('ContinuousPoint: Aborting current chunk')
+#                 logger.debug(f"ContinuousPoint: {n_read} + {n} <? {self.npts}")
+#             # excess = (n_read - self.npts) * int(n_read > self.npts)
+#             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
+#             logger.debug(f'ContinuousPoint: After read data, nloop {nloop}')
+#             data = self.buffer.tail(n=n_read)
+#             daq_tracking[chunk_idx] = data
+#             logger.debug('ContinuousPoint: after DAQ get.')
+#             chunk_idx += 1
+#
+#         self.file.write_daq_data(data=daq_tracking)
+#         afm_tracking = np.array(afm_tracking)
+#         self.afm_data = xr.Dataset()
+#         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
+#         for i, c in enumerate(tracked_channels[1:]):
+#             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
+#             if self.t is not None:
+#                 da = da.expand_dims(dim={'t': np.array([self.t])})
+#                 da = da.expand_dims(dim={'delay_pos_mm': np.array([self.delay_stage.position])})
+#             self.afm_data[c] = da
+#         self.stop_time = datetime.now()
+#
+#     def routine(self):
+#         self.prepare()
+#         if self.in_contact and self.parent_scan is None:
+#             self.afm.engage(self.setpoint)
+#         self.ctrl.start()
+#         self.acquire()
 
 
 class SteppedRetraction(BaseScan):
     def __init__(self, modulation: str, z_size: float = 0.2, z_res: int = 200, signals=None, pump_probe=False, t=None,
                  t_unit=None, t0_mm=None, x_target=None, y_target=None, npts: int = 50_000, setpoint: float = 0.8,
-                 parent_scan=None, delay_idx=None, metadata=None, ratiometry=False):
+                 metadata=None, ratiometry=False):
         """
-        Parameters
+        PARAMETERS
         ----------
         modulation: str
             type of modulation of optical signals, e.g. 'pshet'
@@ -221,13 +217,9 @@ class SteppedRetraction(BaseScan):
         y_target: float
             y coordinate of retraction curve in um. Must be passed together with x_target
         npts: int
-            number of samples per chunk acquired by the DAQ
+            number of samples acquired by the DAQ at every position
         setpoint: float
             AFM setpoint when engaged
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
@@ -235,8 +227,7 @@ class SteppedRetraction(BaseScan):
             if True, sig_b is acquired as well
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts,
-                         parent_scan=parent_scan, delay_idx=delay_idx, ratiometry=ratiometry)
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts, ratiometry=ratiometry)
         self.afm_sampling_ms = 50
         self.acquisition_mode = Scan.stepped_retraction
         self.xy_unit = 'um'
@@ -244,7 +235,7 @@ class SteppedRetraction(BaseScan):
         self.z_res = z_res
         self.x_center = None
         self.y_center = None
-        self.x_target = x_target  # should this not be x_center? then it would become metadata. CHECK THIS!! elsewhere?
+        self.x_target = x_target  # ToDo should this not be x_center? then it would become metadata. CHECK THIS!! elsewhere?
         self.y_target = y_target
 
     def routine(self):
@@ -307,7 +298,7 @@ class SteppedRetraction(BaseScan):
 class SteppedImage(BaseScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int, x_size: float, y_size:
                  float, npts: int = 75_000, setpoint: float = 0.8, metadata=None, signals=None, pump_probe=False, 
-                 ratiometry=False, t=None, t_unit=None, t0_mm=None, parent_scan=None, delay_idx=None):
+                 ratiometry=False, t=None, t_unit=None, t0_mm=None):
         """
         Parameters
         ----------
@@ -344,14 +335,9 @@ class SteppedImage(BaseScan):
             unit of t value. Needs to ge vien when t is given
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str, or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts, ratiometry=ratiometry,
-                         parent_scan=parent_scan, delay_idx=delay_idx)
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts, ratiometry=ratiometry)
         self.acquisition_mode = Scan.stepped_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -370,8 +356,8 @@ class SteppedImage(BaseScan):
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        logger.info(f"SteppedImage: preparing stepped image scan: center {self.x_center:.2f},{self.y_center:.2f}, "
-                    f"size={self.x_size:.2f},{self.y_size:.2f}")
+        logger.info(f'SteppedImage: Preparing stepped image scan: center {self.x_center:.2f},{self.y_center:.2f}, '
+                    f'size={self.x_size:.2f},{self.y_size:.2f}')
         self.afm.engage(self.setpoint)
         logger.info('SteppedImage: Starting acquisition')
         afm_tracking = []
@@ -398,7 +384,7 @@ class SteppedImage(BaseScan):
 class SteppedLineScan(BaseScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float, res: int,
                  npts: int, pump_probe=False, signals=None, ratiometry=False, t=None, t_unit=None, t0_mm=None,
-                 setpoint: float = 0.8, parent_scan=None, delay_idx=None, metadata=None):
+                 setpoint: float = 0.8, metadata=None):
         """
         Parameters
         ----------
@@ -430,17 +416,12 @@ class SteppedLineScan(BaseScan):
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, metadata=metadata,
-                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts, ratiometry=ratiometry,
-                         parent_scan=parent_scan, delay_idx=delay_idx)
+                         t=t, t_unit=t_unit, t0_mm=t0_mm, setpoint=setpoint, npts=npts, ratiometry=ratiometry)
         self.acquisition_mode = Scan.stepped_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -464,7 +445,7 @@ class SteppedLineScan(BaseScan):
         tracked_channels = ['x_target', 'y_target', 'x', 'y', 'z', 'amp', 'phase']
 
         self.prepare()
-        logger.info(f'SteppedLineScan: preparing stepped line scan: {x_pos[0]:.2f},{y_pos[0]:.2f} to '
+        logger.info(f'SteppedLineScan: Preparing stepped line scan: {x_pos[0]:.2f},{y_pos[0]:.2f} to '
                     f'{x_pos[-1]:.2f},{y_pos[-1]:.2f}')
         self.afm.engage(self.setpoint)
         logger.info('SteppedLineScan: Starting acquisition')
@@ -492,7 +473,7 @@ class SteppedLineScan(BaseScan):
 class ContinuousRetraction(ContinuousScan):
     def __init__(self, modulation: str, z_size: float = 0.2, npts: int = 5_000, setpoint: float = 0.8, signals=None,
                  ratiometry=False, pump_probe=False, t=None, t_unit=None, t0_mm=None, x_target=None, y_target=None,
-                 z_res: int = 200, afm_sampling_ms: int = 300, parent_scan=None, delay_idx=None, metadata=None):
+                 z_res: int = 200, afm_sampling_ms: int = 300, metadata=None):
         """
         Parameters
         ----------
@@ -524,17 +505,12 @@ class ContinuousRetraction(ContinuousScan):
             number of pixels of utilized NeaScan approach curve routine
         afm_sampling_ms: int
             time that NeaScan samples for every pixel (in ms). Measure for acquisition speed
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
-                         pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry,
-                         parent_scan=parent_scan, delay_idx=delay_idx)
+                         pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry)
         self.acquisition_mode = Scan.continuous_retraction
         self.xy_unit = 'um'
         self.z_size = z_size
@@ -558,7 +534,7 @@ class ContinuousImage(ContinuousScan):
     def __init__(self, modulation: str, x_center: float, y_center: float, x_res: int, y_res: int,
                  x_size: float, y_size: float, afm_sampling_ms: float, afm_angle_deg: float = 0, signals=None,
                  pump_probe=False, t=None, t_unit=None, t0_mm=None, npts: int = 5_000, setpoint: float = 0.8,
-                 parent_scan=None, delay_idx=None, metadata=None, ratiometry=False):
+                 metadata=None, ratiometry=False):
         """
         Parameters
         ----------
@@ -594,10 +570,6 @@ class ContinuousImage(ContinuousScan):
             number of samples from the DAQ that are saved in one chunk
         setpoint: float
             AFM setpoint when engaged
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str or int
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
@@ -605,8 +577,7 @@ class ContinuousImage(ContinuousScan):
             if True, sig_b is acquired as well
         """
         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
-                         pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry,
-                         parent_scan=parent_scan, delay_idx=delay_idx)
+                         pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry)
         self.acquisition_mode = Scan.continuous_image
         self.xy_unit = 'um'
         self.x_size = x_size
@@ -630,7 +601,7 @@ class ContinuousLineScan(ContinuousScan):
     def __init__(self, modulation: str, x_start: float, y_start: float, x_stop: float, y_stop: float,
                  res: int = 200, n_lines: int = 10, afm_sampling_ms: float = 50, npts: int = 5_000,
                  pump_probe=False, signals=None, t=None, t_unit=None, t0_mm=None, setpoint: float = 0.8,
-                 parent_scan=None, delay_idx=None, metadata=None, ratiometry=False):
+                 metadata=None, ratiometry=False):
         """
         Parameters
         ----------
@@ -664,10 +635,6 @@ class ContinuousLineScan(ContinuousScan):
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         setpoint: float
             AFM setpoint when engaged
-        parent_scan: BaseScan
-            when a BaseScan object is passed, no file is created, but data saved into parent's file
-        delay_idx: str
-            identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
@@ -675,8 +642,7 @@ class ContinuousLineScan(ContinuousScan):
             if True, sig_b is acquired as well
         """
         super().__init__(modulation=modulation, signals=signals, pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm,
-                         npts=npts, setpoint=setpoint, parent_scan=parent_scan, delay_idx=delay_idx,
-                         metadata=metadata, ratiometry=ratiometry)
+                         npts=npts, setpoint=setpoint, metadata=metadata, ratiometry=ratiometry)
         self.acquisition_mode = Scan.continuous_line
         self.xy_unit = 'um'
         self.x_start = x_start
@@ -707,88 +673,92 @@ class ContinuousLineScan(ContinuousScan):
 
 
 class DelayScan(BaseScan):
-    def __init__(self, modulation: str, scan: str, t_unit: str, t0_mm=None,
-                 t_start: float = None, t_stop: float = None, t_res: int = None,
-                 t_targets: np.ndarray = None,  continuous: bool = True, setpoint: float = 0.8, metadata=None,
-                 **scan_kwargs):
+    def __init__(self, modulation: str, npts: int,
+                 t_unit: str, t0_mm=None, t_start: float = None, t_stop: float = None, t_res: int = None,
+                 t_targets: np.ndarray = None, x_target: float = None, y_target: float = None,
+                 setpoint: float = 0.8, ratiometry: bool = False, in_contact: bool = None, metadata=None
+                 ):
         """
-        Parameters
+        PARAMETERS
         ----------
         modulation: str
             either 'shd', 'pshet', or 'none'. 'none' only works for point scans.
-        scan: str
-            Defines the type of scan to be performed at every delay position.
-            Str has to be one of 'point', 'retraction', 'line', or 'image'.
-        t_start: float
-            first position of delay stage
-        t_stop: float
-            last position of delay stage
-        t_targets: np.ndarray
-            time delay targets.
+        npts: int
+            number of samples to acquire at each delay position
         t_unit: str
             Unit of t values. Needs to ge vien when t is given, and has to be one of 'm', 'mm', 's', 'ps', 'fs'
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
+        t_start: float
+            first position of delay stage
+        t_stop: float
+            last position of delay stage
         t_res: int
             Number of steps between t_start and t_stop
-        continuous: bool
-            When True, continuous scan classes are used, e.g. ContinuousLineScan. When False, stepped scan classes
-            are used, e.g. SteppedLineScan
+        t_targets: np.ndarray
+            time delay targets.
+        x_target: float
+            x coordinate of delay scan in um. Must be passed together with y_target
+        y_target: float
+            y coordinate of delay scan in um. Must be passed together with x_target
         setpoint: float
             AFM setpoint when engaged
+        ratiometry: bool
+            if True, sig_b is acquired as well for ratiometric signal correction
+        in_contact: bool
+            when False, AFM probe is not engaged during acquisition
         metadata: dict
             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
             Specified variables, e.g. self.name have higher priority than passed metadata.
-        scan_kwargs:
-            keyword arguments that are passed to scan class
         """
         super().__init__(modulation=modulation, pump_probe=True, t_unit=t_unit, t0_mm=t0_mm, metadata=metadata,
-                         setpoint=setpoint)
-        self.acquisition_mode = Scan.delay_collection
-        self.scan_type = scan
+                         setpoint=setpoint, npts=npts, ratiometry=ratiometry)
+        self.acquisition_mode = Scan.delay_scan
         self.t_start = t_start
         self.t_stop = t_stop
         self.t_res = t_res
+        self.t_targets = t_targets
         if t_targets is None:
             self.t_targets = np.linspace(self.t_start, self.t_stop,
                                          self.t_res)  # ToDo: the sign seems to be flipped. Think about this.
-        else:
-            self.t_targets = t_targets
-        self.x_target = None
-        self.y_target = None
-        if 'x_target' in scan_kwargs and 'y_target' in scan_kwargs:
-            self.x_target = scan_kwargs.pop('x_target')
-            self.y_target = scan_kwargs.pop('y_target')
-        self.scan_kwargs = scan_kwargs
-
-        try:
-            i = ['point', 'retraction', 'line', 'image'].index(scan)
-        except ValueError:
-            raise ValueError(f'Implemented scans are "point", "retraction", "line", and "image". "{scan}" was passed.')
-        if continuous:
-            self.scan_class = [ContinuousPoint, ContinuousRetraction, ContinuousLineScan, ContinuousImage][i]
-        else:
-            self.scan_class = [ContinuousPoint, SteppedRetraction, SteppedLineScan, SteppedImage][i]
+        self.x_target = x_target
+        self.y_target = y_target
+        self.in_contact = in_contact
 
     def routine(self):
         self.prepare()
-        logger.info(f'Preparing DelayScan with parameters:\nt_start: {self.t_start}\nt_stop: {self.t_stop}'
-                    f'\nt_res: {self.t_res}\nt_unit: {self.t_unit}\nt_scale: {self.t_scale}\nt_0(mm): {self.t0_mm}')
-        logger.info(f'Acquisition class arguments:{[f"{a}: {v}" for a, v in self.scan_kwargs.items()]}')
+        logger.info(f'DelayScan: Preparing with parameters:\nt_start: {self.t_start}\nt_stop: {self.t_stop}'
+                    f'\nt_res: {self.t_res}\nt_unit: {self.t_unit}\nt_0(mm): {self.t0_mm}')
+        tracked_channels = ['t_target', 't_pos', 'x', 'y', 'z', 'amp', 'phase']
         if self.x_target is not None and self.y_target is not None:
-            logger.info(f'Moving sample to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
+            logger.info(f'DelayScan: Moving to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
-        if self.scan_type == 'point':
-            if 'in_contact' not in self.scan_kwargs.keys() or self.scan_kwargs['in_contact'] is True:
-                self.afm.engage(self.setpoint)
-        for i, t in tqdm(enumerate(self.t_targets)):
-            logger.info(f'Delay position {i+1} of {len(self.t_targets)}: t = {t:.2f} {self.t_unit}')
-            scan = self.scan_class(modulation=self.modulation.value, t=t, t_unit=self.t_unit, t0_mm=self.t0_mm,
-                                   pump_probe=True, parent_scan=self, delay_idx=i, **self.scan_kwargs)
-            scan.start()
-        logger.info('DelayScan complete')
+        if self.in_contact is not False:
+            self.afm.engage(self.setpoint)
+        logger.info('DelayScan: Starting acquisition')
+        daq_tracking = {}
+        afm_tracking = []
+        for i, t in tqdm(enumerate(self.t_targets), total=len(self.t_targets)):
+            self.delay_stage.move_abs(val=t, unit=self.t_unit)
+            self.delay_stage.wait_for_stage()
+            self.delay_stage.log_status()
+            stage_position = self.delay_stage.position
+            logger.info(f'Delay position {i+1} of {len(self.t_targets)}:'
+                        f't = {t:.2f} {self.t_unit}  ({stage_position:.2f} mm)')
+            data = single_point(self.device, self.signals, self.npts, self.clock_channel, truncate=False)
+            daq_tracking[i] = data
+            current = list(self.afm.get_current())
+            afm_tracking.append([i, t, stage_position] + current)
+
+        logger.info('DelayScan: Acquisition complete')
         self.stop_time = datetime.now()
         self.delay_stage.move_abs(val=self.t_targets[0], unit=self.t_unit)
+
+        self.file.write_daq_data(data=daq_tracking)
+        afm_tracking = np.array(afm_tracking)
+        for i, c in enumerate(tracked_channels):
+            da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
+            self.afm_data[c] = da
         
 
 class NoiseScan(ContinuousScan):
