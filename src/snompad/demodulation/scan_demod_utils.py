@@ -168,28 +168,28 @@ if platform != 'win32':
     set_start_method('fork')
 
 
-def demod_worker(job_idx, measurement: BaseScanDemod, func, **kwargs):
-    idx = measurement.demod_data.idx[job_idx].item()
-    data = np.vstack([measurement.daq_data[i] for i in idx])
+def demod_worker(data: np.ndarray, func, **kwargs):
     harm = func(data=data, **kwargs)
     return harm
 
 
 def batch_demod_1d(measurement: BaseScanDemod, processes: int = None, **kwargs):
     """ Demodulates all optical data in an instance of BaseScanDemod. measurement object needs an 'demod_data'
-    attribute. All pixels are demodulated using multiprocessing if available.
+    attribute. All pixels are demodulated using multiprocessing if available. This stores all DAQ data in memory.
     Only does 1D (line scans, retraction) at the moment..
     """
+    # ToDo: use this in the scan_demod classes
     func = [shd, pshet][['shd', 'pshet'].index(measurement.metadata['modulation'])]
     if platform in ['darwin', 'linux', 'linux2'] and processes != 1:  # with multiprocessing
-        print('Batch demodulation (shd) with multiprocessing')
-        worker_kwargs = {'measurement': measurement, 'func': func}
-        worker_kwargs.update(**kwargs)
-        job_idx = np.arange(len(measurement.demod_data.idx.values))
+        print('Batch demodulation with multiprocessing:')
+        data = []
+        for chunk_idx in measurement.demod_data.idx:
+            data.append(np.vstack([measurement.daq_data[i] for i in chunk_idx.item()]))
+        kwargs.update({'func': func})
         with Pool(processes=processes) as pool:
-            demod_data = pool.map(func=partial(demod_worker, **worker_kwargs), iterable=job_idx)
+            demod_data = pool.map(func=partial(demod_worker, **kwargs), iterable=data)
     else:  # no multiprocessing
-        print('Batch demodulation (shd) without multiprocessing:')
+        print('Batch demodulation without multiprocessing:')
         demod_data = []
         for i, val in tqdm(enumerate(measurement.demod_data.idx), total=len(measurement.demod_data.idx)):
             idx = val.values.item()

@@ -56,6 +56,14 @@ def xr_to_h5_datasets(ds: xr.Dataset, group: h5py.Group):
             group.attrs[k] = v
 
 
+class DaqDataDict(dict):
+    """ Monkey patching dict, so that DAQ data saved in hdf5 files can be accessed like a dictionary
+    """
+    def __getitem__(self, item):
+        dataset = super().__getitem__(item)
+        return np.array(dataset)
+
+
 class WriteH5Acquisition:
     """ class to create and write acquired data into an hdf5 file
     """
@@ -140,10 +148,6 @@ class ReadH5Acquisition(AcquisitionReader):
             logger.info('Reading NeaScan data from file')
             self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
 
-        class DaqDataDict(dict):
-            def __getitem__(self, item):
-                dataset = super().__getitem__(item)
-                return np.array(dataset)
         logger.info('Constructing wrapper around DAQ data')
         self.daq_data = DaqDataDict()
         for k, v in self.file['daq_data'].items():
@@ -160,7 +164,7 @@ class ReadH5Acquisition(AcquisitionReader):
         logger.info('Reading DAQ data from file')
         daq_data = {}
         for k, v in self.file['daq_data'].items():
-            daq_data[int(k)] = v
+            daq_data[int(k)] = np.array(v)
         return daq_data
 
 
