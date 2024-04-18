@@ -1,8 +1,8 @@
 # script to collect gsf files saved by NeaSCAN and metadata and write to single gwy file
 import os
 
-from ..file_handlers.gwyddion import export_gwy
-from ..file_handlers.neascan import load_nea_image
+from snompad.file_handlers.gwyddion import export_gwy
+from snompad.file_handlers.neascan import load_nea_image
 
 
 def nea_to_gwy(input_folder: str, output_filename: str):
@@ -16,15 +16,17 @@ def nea_to_gwy(input_folder: str, output_filename: str):
         output_filename = '_'.join(output_filename.split(' ')[:2]).replace('-', '')
     if output_filename[-4:] != '.gwy':
         output_filename += '.gwy'
-
+    print(f'\033[F{output_filename}')
+    print('loading image files ...')
     image_data = load_nea_image(input_folder)
+    print('exporting gwyddion file ...')
     export_gwy(filename=output_filename, data=image_data)
     return True
 
 
 if __name__ == '__main__':
-    directory = input('directory containing all .gsf files saved by NeaSCAN:\n')
-    filename = input('path and filename where .gwy file should be created (leave blank to auto generate):\n')
+    directory = input('Directory containing all .gsf files saved by NeaSCAN:\n')
+    filename = input('Path and filename where .gwy file should be created (leave blank to auto generate):\n')
 
     done = False
     while not done:
