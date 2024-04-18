@@ -55,19 +55,18 @@ def export_gwy(filename: str, data: xr.Dataset):
         except KeyError:
             z_unit = ''
 
-        container['/' + str(i) + '/data/title'] = t  # ToDo this somehow does not work for the first channel
-        container['/' + str(i) + '/data'] = GwyDataField(image_data,
-                                                         xreal=metadata['x_size'],
-                                                         yreal=metadata['y_size'],
-                                                         xoff=x_offset,
-                                                         yoff=y_offset,
-                                                         si_unit_xy=GwySIUnit(unitstr=xy_unit),
-                                                         si_unit_z=GwySIUnit(unitstr=z_unit),
-                                                         )
+        container[f'/{i}/data/title'] = t  # This does not work for the first channel. Maybe a bug in gwyfile..
+        container[f'/{i}/data'] = GwyDataField(image_data,
+                                               xreal=metadata['x_size'],
+                                               yreal=metadata['y_size'],
+                                               xoff=x_offset,
+                                               yoff=y_offset,
+                                               si_unit_xy=GwySIUnit(unitstr=xy_unit),
+                                               si_unit_z=GwySIUnit(unitstr=z_unit),
+                                               )
         if 'optical' in t and 'amp' in t:
-            container['/' + str(i) + '/base/palette'] = 'Warm'
-        container['/' + str(i) + '/meta'] = metacontainer
-
+            container[f'/{i}/base/palette'] = 'Warm'
+        container[f'/{i}/meta'] = metacontainer
     container['/filename'] = filename
     container.tofile(filename)
 
@@ -85,35 +84,35 @@ def load_gsf(filename):
     Returns
     -------
     data: numpy array
-        array of shape (XRes, YRes) containing image data
+        array of shape (x_res, y_res) containing image data
     metadata: dictionary
         dictionary values are strings
     """
     metadata = {}
     data = None
-    XRes = None
-    YRes = None
+    x_res = None
+    y_res = None
     with open(filename, 'rb') as file:
         first_line = file.readline().decode('utf8')
         if first_line != 'Gwyddion Simple Field 1.0\n':
             logger.error(f'Expected "Gwyddion Simple Field 1.0", got "{first_line}" instead')
 
         # first determine the size of the binary (data) section
-        while XRes is None or YRes is None:
+        while x_res is None or y_res is None:
             try:
                 name, value = file.readline().decode('utf8').split('=')
                 logging.debug(f'reading header: {name}: {value}')
                 if name == 'XRes':
-                    XRes = int(value)
+                    x_res = int(value)
                 if name == 'YRes':
-                    YRes = int(value)
+                    y_res = int(value)
             except ValueError as e:
-                logging.error('While looking for XRes, YRex the following exception occurred:\n' + str(e))
+                logging.error('While looking for x_res, YRex the following exception occurred:\n' + str(e))
                 break
             except UnicodeDecodeError as e:
-                logging.error('While looking for XRes, YRex the following exception occurred:\n' + str(e))
+                logging.error('While looking for x_res, YRex the following exception occurred:\n' + str(e))
                 break
-        binary_size = XRes * YRes * 4  # 4: binary is somehow indexed in bytes
+        binary_size = x_res * y_res * 4  # 4: binary is somehow indexed in bytes
         # and read the binary data
         bindata = file.read()[-binary_size:]
 
@@ -132,10 +131,10 @@ def load_gsf(filename):
                 logging.error('While parsing metadata the following exception occurred:\n' + str(e))
                 break
 
-    if len(bindata) == XRes * YRes * 4:
+    if len(bindata) == x_res * y_res * 4:
         logging.debug('binary data found ... decoding to np.array')
         data = np.frombuffer(bindata, dtype=np.float32)
-        data = data.reshape(YRes, XRes)
+        data = data.reshape(y_res, x_res)
     else:
         logging.error('binary data not found or of the wrong shape')
 
