@@ -380,7 +380,9 @@ class Line(BaseScanDemod):
                 chunk_size = 1  # one chunk of DAQ data per demodulated pixel
                 demod_npts = self.scan.metadata['npts']
             else:
-                chunk_size = demod_npts // self.scan.metadata['npts'] + 1
+                chunk_size = demod_npts // self.scan.metadata['npts']
+                if demod_npts % self.scan.metadata['npts'] != 0:
+                    chunk_size += 1  # round up the chunk size to get at least demod_npts
                 demod_npts = self.scan.metadata['npts'] * chunk_size
             n = len(self.daq_data.keys())
             r_res = n // chunk_size
@@ -392,8 +394,7 @@ class Line(BaseScanDemod):
             y = y[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
             z = self.afm_data['z'].values.squeeze()
             z = z[:r_res * chunk_size].reshape((r_res, chunk_size)).mean(axis=1)
-            r = np.sqrt(x ** 2 + y ** 2)
-            r -= r.min()
+            r = np.sqrt((x - x[0]) ** 2 + (y - y[0]) ** 2)
             self.demod_data['x'] = xr.DataArray(data=x, dims='r', coords={'r': r})
             self.demod_data['y'] = xr.DataArray(data=y, dims='r')
             self.demod_data['z'] = xr.DataArray(data=z, dims='r')
