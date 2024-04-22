@@ -126,8 +126,9 @@ class ReadH5Acquisition(AcquisitionReader):
             self.metadata[k] = v
 
     def close_file(self):
-        logger.info(f'Closing file: {self.filename}')
-        self.file.close()
+        if self.file is not None:
+            logger.info(f'Closing file: {self.filename}')
+            self.file.close()
 
     def read_data(self):
         """ reads afm and nea data from file and stores xr.Datasets. A wrapper is built around DAQ data to save memory.
