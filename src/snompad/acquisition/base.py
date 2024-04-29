@@ -13,6 +13,7 @@ from ..acquisition.buffer import CircularArrayBuffer
 from ..file_handlers.neascan import to_numpy
 from ..drivers import DLStage, NeaSNOM, DaqController
 from ..file_handlers.hdf5 import WriteH5Acquisition
+from ..utility.acquisition_logger import LogFilter
 from ..__init__ import __version__
 
 logger = logging.getLogger(__name__)
@@ -57,8 +58,8 @@ class BaseScan(ABC):
         try:
             self.modulation = Demodulation[modulation]
         except KeyError:
-            logger.error(f'BaseScan only takes "shd", "pshet", and "none" as modulation values.'
-                         f'"{modulation}" was passed.')
+            raise RuntimeError('BaseScan only takes "shd", "pshet", and "none" as modulation values.'
+                               f'"{modulation}" was passed.')
         if signals is None:
             signals = [Signals.sig_a]
             if ratiometry:
@@ -69,7 +70,7 @@ class BaseScan(ABC):
                         'pshet': ['tap_x', 'tap_y', 'ref_x', 'ref_y'],
                         'none': []}
             signals += [Signals[s] for s in sig_list[modulation]]
-        if filetype == 'hdf':
+        if filetype == 'hdf5':
             self.file = WriteH5Acquisition()
         else:
             raise NotImplementedError(f'filetype {filetype} was passed. There is no appropriate file handler.')
@@ -121,6 +122,8 @@ class BaseScan(ABC):
         """
         logger.info('BaseScan: Connecting to AFM')
         self.afm = NeaSNOM()
+        self.neaclient_version = self.afm.nea_mic.ClientVersion
+        self.neaserver_version = self.afm.nea_mic.ServerVersion
         if self.modulation is not Demodulation.none:
             self.afm.set_pshet(self.modulation)
         if self.pump_probe:
@@ -129,8 +132,6 @@ class BaseScan(ABC):
             ret = self.delay_stage.prepare()
             if ret is not True:
                 raise RuntimeError('BaseScan: Error preparing delay stage')
-        self.neaclient_version = self.afm.nea_mic.ClientVersion
-        self.neaserver_version = self.afm.nea_mic.ServerVersion
         return True
 
     def disconnect(self):
@@ -155,6 +156,7 @@ class BaseScan(ABC):
         """
         self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
         self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        # self.log_handler.addFilter(LogFilter())
         logging.getLogger().addHandler(self.log_handler)
 
     def setup_delay_stage(self):
@@ -181,10 +183,12 @@ class BaseScan(ABC):
         metadata_collector['modulation'] = self.modulation.value
         metadata_collector['signals'] = [s.value for s in self.signals]
         metadata_collector['acquisition_mode'] = self.acquisition_mode.value
+        log_msg = 'Metadata:'
         for k, v in metadata_collector.items():
             if v is not None:
-                logger.info(f'    {k}: {v}')
+                log_msg += f'\n    {k}: {v}'
                 self.file.write_metadata(key=k, val=v)
+        logger.info(log_msg)
 
     def prepare(self):
         """ All preparations to be done before starting the scan.
@@ -194,7 +198,6 @@ class BaseScan(ABC):
         self.setup_logger()
         logger.info('BaseScan: Preparing Scan')
         self.file.create_file(self.name)
-        self.collect_metadata()
         self.connected = self.connect()
         if self.pump_probe:
             self.setup_delay_stage()

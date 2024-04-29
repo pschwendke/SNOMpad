@@ -108,7 +108,7 @@ class WriteH5Acquisition:
     def write_metadata(self, key, val):
         """ write single instance (key and value) of metadata into root group attrs
         """
-        logger.info(f'WriteH5Acquisition: Saving metadata: {key}: {val}')
+        logger.debug(f'WriteH5Acquisition: Saving metadata: {key}: {val}')
         self.file.attrs[key] = val
 
 
@@ -134,10 +134,10 @@ class ReadH5Acquisition(AcquisitionReader):
         """ reads afm and nea data from file and stores xr.Datasets. A wrapper is built around DAQ data to save memory.
         Use .load_daq_data() to return dict of all daq data chunks.
         """
-        if self.file['afm_data'].keys():
+        if 'afm_data' in self.file.keys():
             logger.info('Reading AFM data from file')
             self.afm_data = h5_to_xr_dataset(group=self.file['afm_data'])
-        if self.file['nea_data'].keys():
+        if 'nea_data' in self.file.keys():
             logger.info('Reading NeaScan data from file')
             self.nea_data = h5_to_xr_dataset(group=self.file['nea_data'])
 

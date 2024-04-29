@@ -10,7 +10,7 @@ from time import sleep
 from typing import Iterable
 from tqdm import tqdm
 from itertools import product
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..utility.signals import Signals, Scan
 from ..acquisition.buffer import ExtendingArrayBuffer
@@ -686,7 +686,7 @@ class DelayScan(BaseScan):
         npts: int
             number of samples to acquire at each delay position
         t_unit: str
-            Unit of t values. Needs to ge vien when t is given, and has to be one of 'm', 'mm', 's', 'ps', 'fs'
+            Unit of t values. Has to be one of 'm', 'mm', 's', 'ps', 'fs'
         t0_mm: float
             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
         t_start: float
@@ -727,9 +727,9 @@ class DelayScan(BaseScan):
 
     def routine(self):
         self.prepare()
-        logger.info(f'DelayScan: Preparing with parameters:\nt_start: {self.t_start}\nt_stop: {self.t_stop}'
-                    f'\nt_res: {self.t_res}\nt_unit: {self.t_unit}\nt_0(mm): {self.t0_mm}')
-        tracked_channels = ['t_target', 't_pos', 'x', 'y', 'z', 'amp', 'phase']
+        logger.info('DelayScan: Preparing')
+        logger.debug(f'Scan parameters:\n    t_start: {self.t_start}\n    t_stop: {self.t_stop}'
+                     f'\n    t_res: {self.t_res}\n    t_unit: {self.t_unit}\n    t_0(mm): {self.t0_mm}')
         if self.x_target is not None and self.y_target is not None:
             logger.info(f'DelayScan: Moving to target position x={self.x_target:.2f} um, y={self.y_target:.2f} um')
             self.afm.goto_xy(self.x_target, self.y_target)
@@ -738,13 +738,17 @@ class DelayScan(BaseScan):
         logger.info('DelayScan: Starting acquisition')
         daq_tracking = {}
         afm_tracking = []
-        for i, t in tqdm(enumerate(self.t_targets), total=len(self.t_targets)):
+        elapsed = timedelta(seconds=0)
+        for i, t in enumerate(self.t_targets):
             self.delay_stage.move_abs(val=t, unit=self.t_unit)
             self.delay_stage.wait_for_stage()
             self.delay_stage.log_status()
             stage_position = self.delay_stage.position
-            logger.info(f'Delay position {i+1} of {len(self.t_targets)}:'
-                        f't = {t:.2f} {self.t_unit}  ({stage_position:.2f} mm)')
+            step_time = datetime.now() - self.date - elapsed  # s/it
+            elapsed = step_time + elapsed  # timedelta
+            logger.info(f'Delay position {i+1} of {len(self.t_targets)}: '
+                        f't = {t:.2f} {self.t_unit}  ({stage_position:.2f} mm) '
+                        f'[{str(elapsed).split(".")[0]}, {step_time.total_seconds():.1} s/it]')
             data = single_point(self.device, self.signals, self.npts, self.clock_channel, truncate=False)
             daq_tracking[i] = data
             current = list(self.afm.get_current())
@@ -755,8 +759,10 @@ class DelayScan(BaseScan):
         self.delay_stage.move_abs(val=self.t_targets[0], unit=self.t_unit)
 
         self.file.write_daq_data(data=daq_tracking)
+        self.afm_data = xr.Dataset()
+        tracked_channels = ['idx', 't_target', 't_pos', 'x', 'y', 'z', 'amp', 'phase']
         afm_tracking = np.array(afm_tracking)
-        for i, c in enumerate(tracked_channels):
+        for i, c in enumerate(tracked_channels[1:]):
             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
             self.afm_data[c] = da
         
