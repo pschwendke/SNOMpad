@@ -260,7 +260,6 @@ class ContinuousScan(BaseScan):
 
     def acquire(self):
         logger.info('ContinuousScan: Starting acquisition')
-        # excess = 0
         chunk_idx = 0
         afm_tracking = []
         daq_tracking = {}
@@ -270,19 +269,14 @@ class ContinuousScan(BaseScan):
             current = self.afm.get_current()
             afm_tracking.append([chunk_idx] + list(current))
             logger.debug('ContinuousScan: Got AFM data')
-
-            # n_read = excess
             n_read = 0
             while n_read < self.npts:
                 n = self.ctrl.reader.read()
                 n_read += n
                 sleep(0.001)
-            # excess = n_read - self.npts
-            # now all read samples are dumped into the buffer. Chunk size is not defined anymore
-            # ToDo: clean this up
             data = self.buffer.tail(n=n_read)
             daq_tracking[chunk_idx] = data
-            logger.debug('ContinuousScan: after DAQ get.')
+            logger.debug(f'ContinuousScan: Got DAQ data: {n_read} samples')
             chunk_idx += 1
         self.stop_time = datetime.now()
 

@@ -61,6 +61,7 @@ class BaseScanDemod(ABC):
         """
         param_list = ['tap_res', 'ref_res', 'chopped', 'normalize', 'tap_correction', 'binning', 'pshet_demod',
                       'max_order', 'r_res', 'z_res', 'direction', 'line_no', 'trim_ratio', 'demod_npts']
+        # ToDo: max_order seems not to be tracked. Check this.
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
         signature = inspect.signature(demod_func)
         parameters = old_params.copy()  # parameters stored in demod_data dataset before demodulation

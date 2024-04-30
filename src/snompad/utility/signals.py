@@ -51,7 +51,6 @@ class Signals(SortableEnum, NamedEnum):
 
 
 class Scan(NamedEnum):
-    point = auto()
     stepped_retraction = auto()
     stepped_image = auto()
     stepped_line = auto()
