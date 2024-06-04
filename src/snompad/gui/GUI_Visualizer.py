@@ -13,10 +13,11 @@ from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from ..utility.signals import Signals
-from ..demodulation.demod_shd import shd, pshet, chop_pump_idx
-from ..acquisition.buffer import CircularArrayBuffer
-from ..drivers.daq_ctrl import DaqController
+from snompad.utility import Signals
+from snompad.demodulation import shd, pshet
+from snompad.demodulation.demod_utils import chop_pump_idx
+from snompad.acquisition.buffer import CircularArrayBuffer
+from snompad.drivers.daq_ctrl import DaqController
 
 if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')
@@ -115,7 +116,7 @@ def update_harmonics(data, tap, ref):
         # if pshet:
         if mod_button.labels[mod_button.active] == 'pshet':
             coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
-                                        chopped=chop_button.active, normalize=ratiometry_button.active))
+                                        chopped=chop_button.active, ratiometry=ratiometry_button.active))
         # if shd:
         elif mod_button.labels[mod_button.active] == 'shd':
             coefficients = shd(data=data, signals=signals, tap_res=tap,
