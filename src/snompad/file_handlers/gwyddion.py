@@ -100,16 +100,13 @@ def load_gsf(filename):
         # first determine the size of the binary (data) section
         while x_res is None or y_res is None:
             try:
-                name, value = file.readline().decode('utf8').split('=')
+                name, value = file.readline().decode('utf8').replace(' ', '').split('=')
                 logging.debug(f'reading header: {name}: {value}')
                 if name == 'XRes':
                     x_res = int(value)
                 if name == 'YRes':
                     y_res = int(value)
-            except ValueError as e:
-                logging.error('While looking for x_res, YRex the following exception occurred:\n' + str(e))
-                break
-            except UnicodeDecodeError as e:
+            except (ValueError, UnicodeDecodeError) as e:
                 logging.error('While looking for x_res, YRex the following exception occurred:\n' + str(e))
                 break
         binary_size = x_res * y_res * 4  # 4: binary is somehow indexed in bytes
@@ -138,7 +135,7 @@ def load_gsf(filename):
     else:
         logging.error('binary data not found or of the wrong shape')
 
-    return data, metadata
+    return data.copy(), metadata
 
 
 def combine_gsf(filenames: list, names: list = None) -> xr.Dataset:
