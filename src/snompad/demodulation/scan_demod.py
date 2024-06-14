@@ -455,6 +455,27 @@ class Line(BaseScanDemod):
             plt.show()
         plt.close()
 
+    def to_csv(self, filename: str = None):
+        """ Simply exports self.demod_data to a csv file.
+        """
+        if self.demod_data is None:
+            self.demod()
+        if filename is None:
+            filename = f'{self.name}.csv'
+        col_names = ['r', 'z', 'amp', 'phase']
+        out = np.vstack([self.demod_data[c].values for c in col_names])
+        optical = []
+        for o in self.demod_data.order.values:
+            col_names.append(f's_{o}')
+            optical.append(np.abs(self.demod_data.optical.sel(order=o).values))
+            if self.modulation == 'pshet':
+                col_names.append(f'phi_{o}')
+                optical.append(np.angle(self.demod_data.optical.sel(order=o).values))
+        optical = np.array(optical)
+        out = np.vstack([out, optical]).T
+        col_names = ','.join(col_names)
+        np.savetxt(filename, out, delimiter='.', header=col_names)
+
 
 class Noise(BaseScanDemod):
     def __init__(self, filename: str):
