@@ -5,6 +5,7 @@ import logging
 import h5py
 
 from .base import AcquisitionReader
+from .temp import H5Buffer
 
 logger = logging.getLogger(__name__)
 
@@ -82,14 +83,14 @@ class WriteH5Acquisition:
         logger.debug(f'WriteH5Acquisition: Closing acquisition file: {self.filename}')
         self.file.close()
 
-    def write_daq_data(self, data: dict):
+    def write_daq_data(self, data: dict or H5Buffer):
         """ write dictionary of acquired daq chunks into group. Chunks are individual hdf5 datasets
         """
         logger.info('WriteH5Acquisition: Saving acquired DAQ data')
         n_digits = int(np.log10(len(data.keys()))) + 1
         self.file.create_group('daq_data')
         for k, v in data.items():
-            self.file['daq_data'].create_dataset(str(k).zfill(n_digits), data=v, dtype='float32')
+            self.file['daq_data'].create_dataset(str(k).zfill(n_digits), data=v)
 
     def write_afm_data(self, data: xr.Dataset):
         """ write xr.Dataset of afm data (xyz, amp, phase) tracked during acquisition into group

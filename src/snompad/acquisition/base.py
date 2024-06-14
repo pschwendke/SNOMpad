@@ -11,9 +11,10 @@ from time import sleep
 from ..utility.signals import Scan, Demodulation, Signals
 from ..acquisition.buffer import CircularArrayBuffer
 from ..file_handlers.neascan import to_numpy
-from ..drivers import DLStage, NeaSNOM, DaqController
 from ..file_handlers.hdf5 import WriteH5Acquisition
-from ..utility.acquisition_logger import LogFilter
+from ..file_handlers.temp import H5Buffer
+from ..drivers import DLStage, NeaSNOM, DaqController
+# from ..utility.acquisition_logger import LogFilter
 from ..__init__ import __version__
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class BaseScan(ABC):
         self.setpoint = setpoint
         self.pump_probe = pump_probe
         self.ratiometry = ratiometry
+        self.acquisition_buffer = H5Buffer()
         self.connected = False
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
@@ -225,6 +227,8 @@ class BaseScan(ABC):
         """
         Export xr.Datasets in self.afm_data and self.nea_data to hdf5 file
         """
+        self.file.write_daq_data(data=self.acquisition_buffer)
+        self.acquisition_buffer.cleanup()
         if self.afm_data is not None:
             self.file.write_afm_data(data=self.afm_data)
         if self.nea_data is not None:
@@ -262,7 +266,6 @@ class ContinuousScan(BaseScan):
         logger.info('ContinuousScan: Starting acquisition')
         chunk_idx = 0
         afm_tracking = []
-        daq_tracking = {}
         while not self.afm.scan.IsCompleted:
             logger.debug(f'ContinuousScan: chunk # {chunk_idx}')
             print(f'Chunk no {chunk_idx}. Scan progress: {self.afm.scan.Progress * 100:.2f} %', end='\r')
@@ -274,13 +277,11 @@ class ContinuousScan(BaseScan):
                 n = self.ctrl.reader.read()
                 n_read += n
                 sleep(0.001)
-            data = self.buffer.tail(n=n_read)
-            daq_tracking[chunk_idx] = data
+            self.acquisition_buffer[chunk_idx] = self.buffer.tail(n=n_read)
             logger.debug(f'ContinuousScan: Got DAQ data: {n_read} samples')
             chunk_idx += 1
         self.stop_time = datetime.now()
 
-        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']

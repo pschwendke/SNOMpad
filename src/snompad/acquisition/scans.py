@@ -19,9 +19,6 @@ from ..drivers import DaqController
 from ..file_handlers.neascan import to_numpy
 from ..acquisition.base import ContinuousScan, BaseScan
 
-# import nidaqmx
-# from nidaqmx.constants import (Edge, TaskMode)
-
 logger = logging.getLogger(__name__)
 
 
@@ -70,123 +67,6 @@ def single_point(device: str, signals: Iterable[Signals], npts: int,
     if truncate and np.isfinite(npts):
         data = data[:npts, :]
     return data
-
-
-# ToDo delete this after testing
-# class ContinuousPoint(ContinuousScan):
-#     def __init__(self, modulation: str, n: int, npts: int = 5_000, t=None, t_unit=None, t0_mm=None, metadata=None,
-#                  setpoint: float = 0.8, pump_probe=False, signals=None, x_target=None, y_target=None, in_contact=True,
-#                  parent_scan=None, delay_idx=None, ratiometry=False):
-#         """ Collects n samples of optical and AFM data without scan. Data is saved in chunks of npts length.
-#
-#         Parameters
-#         ----------
-#         modulation: str
-#             either 'shd' or 'pshet'
-#         n: int
-#             number of samples to acquire.
-#         npts: int
-#             number of samples from the DAQ that are saved in one chunk
-#         t: float
-#             if not None, delay stage will be moved to this position before scan
-#         t_unit: str in ['m', 'mm', 's', 'ps', 'fs']
-#             unit of t value. Needs to ge vien when t is given
-#         t0_mm: float
-#             position for t_0 on the delay stage. Needs to be given when t_unit is 's', 'ps', or 'fs'
-#         metadata: dict
-#             dictionary of metadata that will be written to acquisition file, if key is in self.metadata_keys.
-#             Specified variables, e.g. self.name have higher priority than passed metadata.
-#         setpoint: float
-#             AFM setpoint when engaged
-#         pump_probe: bool
-#             set True if acquiring pump-probe with chopper
-#         signals: Iterable[Signals]
-#             signals that are acquired from the DAQ
-#         x_target: float
-#             x coordinate of acquisition. Must be passed together with y_target
-#         y_target: float
-#             y coordinate of acquisition. Must be passed together with x_target
-#         in_contact: bool
-#             If True, the samples are acquired while AFM is in contact
-#         parent_scan: BaseScan
-#             when a BaseScan object is passed, no file is created, but data saved into parent's file
-#         delay_idx: str or int
-#             identifier for this scan in the scope of the parent_scan, e.g. 'delay_pos_001'
-#         ratiometry: bool
-#             if True, sig_b is acquired as well
-#         """
-#         super().__init__(modulation=modulation, npts=npts, setpoint=setpoint, signals=signals, metadata=metadata,
-#                          pump_probe=pump_probe, t=t, t_unit=t_unit, t0_mm=t0_mm, ratiometry=ratiometry,
-#                          parent_scan=parent_scan, delay_idx=delay_idx)
-#         self.acquisition_mode = Scan.point
-#         self.xy_unit = 'um'
-#         self.x_target = x_target
-#         self.y_target = y_target
-#         self.in_contact = in_contact
-#         self.n = n
-#
-#     def prepare(self):
-#         super().prepare()
-#         logger.info(f'ContinuousPoint: acquiring {self.n} samples')
-#         if self.x_target is not None and self.y_target is not None:
-#             logger.info(f'ContinuousPoint: Moving sample to target position x={self.x_target:.2f} um, '
-#                         f'y={self.y_target:.2f} um')
-#             self.afm.goto_xy(self.x_target, self.y_target)
-#
-#     def acquire(self):
-#         logger.info('ContinuousPoint: Starting acquisition')
-#         # excess = 0
-#         chunk_idx = 0
-#         afm_tracking = []
-#         daq_tracking = {}
-#         while chunk_idx * self.npts < self.n:
-#             logger.debug(f'ContinuousPoint: chunk # {chunk_idx}')
-#             current = [chunk_idx] + list(self.afm.get_current())
-#             afm_tracking.append(current)
-#             logger.debug('ContinuousPoint: Got AFM data')
-#             # n_read = excess
-#             n_read = 0
-#             nloop = 0  # for debugging, we are getting stuck somewhere around here.
-#             # ToDo This was a quick patch. Revisit this. Is there a better solution, or should this go everywhere?
-#             try:
-#                 while n_read < self.npts:
-#                     n = self.ctrl.reader.read()
-#                     n_read += n
-#                     nloop += 1
-#                     sleep(0.001)
-#                     if nloop > self.npts / 20:
-#                         logging.error(f'ConinuousPoint: Acquisition loop exceeded allowed repetitions: nloop={nloop}.'
-#                                       f' {n_read} samples were read from DAQ, instead of {self.npts}')
-#                         break
-#             except KeyboardInterrupt:
-#                 logger.error('ContinuousPoint: Aborting current chunk')
-#                 logger.debug(f"ContinuousPoint: {n_read} + {n} <? {self.npts}")
-#             # excess = (n_read - self.npts) * int(n_read > self.npts)
-#             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
-#             logger.debug(f'ContinuousPoint: After read data, nloop {nloop}')
-#             data = self.buffer.tail(n=n_read)
-#             daq_tracking[chunk_idx] = data
-#             logger.debug('ContinuousPoint: after DAQ get.')
-#             chunk_idx += 1
-#
-#         self.file.write_daq_data(data=daq_tracking)
-#         afm_tracking = np.array(afm_tracking)
-#         self.afm_data = xr.Dataset()
-#         tracked_channels = ['idx', 'x', 'y', 'z', 'amp', 'phase']
-#         for i, c in enumerate(tracked_channels[1:]):
-#             da = xr.DataArray(data=afm_tracking[:, i+1], dims='idx', coords={'idx': afm_tracking[:, 0].astype('int')})
-#             if self.t is not None:
-#                 da = da.expand_dims(dim={'t': np.array([self.t])})
-#                 da = da.expand_dims(dim={'delay_pos_mm': np.array([self.delay_stage.position])})
-#             self.afm_data[c] = da
-#         self.stop_time = datetime.now()
-#
-#     def routine(self):
-#         self.prepare()
-#         if self.in_contact and self.parent_scan is None:
-#             self.afm.engage(self.setpoint)
-#         self.ctrl.start()
-#         self.acquire()
 
 
 class SteppedRetraction(BaseScan):
@@ -254,7 +134,6 @@ class SteppedRetraction(BaseScan):
         self.afm.start()
         self.x_center, self.y_center, init_z, _, _ = self.afm.get_current()
         afm_tracking = []
-        daq_tracking = {}
         pbar = tqdm(targets)
         for i, t in enumerate(pbar):
             # wait for target z-position during retraction scan
@@ -273,10 +152,8 @@ class SteppedRetraction(BaseScan):
             if self.afm.scan.IsCompleted:
                 break
             self.afm.scan.Suspend()
-            # acquire npts # of samples
-            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
             current = list(self.afm.get_current())
-            daq_tracking[i] = data
+            self.acquisition_buffer[i] = single_point(self.device, self.signals, self.npts, self.clock_channel)
             afm_tracking.append([i, t] + current)
             self.afm.scan.Resume()
 
@@ -285,7 +162,6 @@ class SteppedRetraction(BaseScan):
         logger.info('SteppedRetraction: Acquisition complete')
         self.stop_time = datetime.now()
 
-        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
@@ -361,17 +237,14 @@ class SteppedImage(BaseScan):
         self.afm.engage(self.setpoint)
         logger.info('SteppedImage: Starting acquisition')
         afm_tracking = []
-        daq_tracking = {}
         for idx, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
-            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-            daq_tracking[idx] = data
+            self.acquisition_buffer[idx] = single_point(self.device, self.signals, self.npts, self.clock_channel)
             current = list(self.afm.get_current())
             afm_tracking.append([idx] + current)
 
         logger.info('SteppedImage: Acquisition complete')
         self.stop_time = datetime.now()
-        self.file.write_daq_data(data=daq_tracking)
         self.afm_data = xr.Dataset()
         for c, ch_name in enumerate(tracked_channels):
             ch = np.array([[afm_tracking[targets.index((y, x))][c] for x in x_pos] for y in y_pos])
@@ -450,17 +323,14 @@ class SteppedLineScan(BaseScan):
         self.afm.engage(self.setpoint)
         logger.info('SteppedLineScan: Starting acquisition')
         afm_tracking = []
-        daq_tracking = {}
         for i, (y, x) in enumerate(tqdm(targets)):
             self.afm.goto_xy(x, y)
-            data = single_point(self.device, self.signals, self.npts, self.clock_channel)
-            daq_tracking[i] = data
+            self.acquisition_buffer[i] = single_point(self.device, self.signals, self.npts, self.clock_channel)
             current = list(self.afm.get_current())
             afm_tracking.append([i, x, y] + current)
 
         logger.info('SteppedLineScan: Acquisition complete')
         self.stop_time = datetime.now()
-        self.file.write_daq_data(data=daq_tracking)
         afm_tracking = np.array(afm_tracking)
         self.afm_data = xr.Dataset()
         for i, c in enumerate(tracked_channels):
@@ -664,7 +534,6 @@ class ContinuousLineScan(ContinuousScan):
 
     def prepare(self):
         super().prepare()
-
         logger.info(f'ContinuousLineScan: preparing continuous line scan: length={self.x_size:.3f} um, '
                     f'angle={self.afm_angle_deg:.2f} deg')
         self.afm.prepare_image(mod=self.modulation, x_center=self.x_center, y_center=self.y_center,
@@ -736,7 +605,6 @@ class DelayScan(BaseScan):
         if self.in_contact is not False:
             self.afm.engage(self.setpoint)
         logger.info('DelayScan: Starting acquisition')
-        daq_tracking = {}
         afm_tracking = []
         elapsed = timedelta(seconds=0)
         for i, t in enumerate(self.t_targets):
@@ -749,8 +617,8 @@ class DelayScan(BaseScan):
             logger.info(f'Delay position {i+1} of {len(self.t_targets)}: '
                         f't = {t:.2f} {self.t_unit}  ({stage_position:.2f} mm) '
                         f'[{str(elapsed).split(".")[0]}, {step_time.total_seconds():.1} s/it]')
-            data = single_point(self.device, self.signals, self.npts, self.clock_channel, truncate=False)
-            daq_tracking[i] = data
+            self.acquisition_buffer[i] = single_point(self.device, self.signals, self.npts,
+                                                      self.clock_channel, truncate=False)
             current = list(self.afm.get_current())
             afm_tracking.append([i, t, stage_position] + current)
 
@@ -758,7 +626,6 @@ class DelayScan(BaseScan):
         self.stop_time = datetime.now()
         self.delay_stage.move_abs(val=self.t_targets[0], unit=self.t_unit)
 
-        self.file.write_daq_data(data=daq_tracking)
         self.afm_data = xr.Dataset()
         tracked_channels = ['idx', 't_target', 't_pos', 'x', 'y', 'z', 'amp', 'phase']
         afm_tracking = np.array(afm_tracking)
@@ -819,9 +686,7 @@ class NoiseScan(ContinuousScan):
             # now all read samples are dumped into the buffer. Chunk size is not defined anymore
             # ToDo: clean this up
 
-        daq_data = {0: np.vstack(daq_data)}  # just one chunk / pixel
-        self.file.write_daq_data(data=daq_data)
-
+        self.acquisition_buffer = {0: np.vstack(daq_data)}  # just one chunk / pixel
         logger.info('NoiseScan: Acquisition complete')
         self.nea_data = to_numpy(self.nea_data)
         self.nea_data = {k: xr.DataArray(data=v, dims=('y', 'x'), coords={'x': np.linspace(0, 1, self.x_res), 'y': [0]}
