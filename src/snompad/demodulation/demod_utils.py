@@ -8,24 +8,36 @@ from ..utility.signals import Signals
 # KERNEL INTERPOLATION #################################################################################################
 def gaussian_kernel_1d(x, x0, sigma):
     """ Returns array with not normalized weights for x-coordinates,
-    determined by kernel function centered at x0
+    determined by gaussian function centered at x0
+    IMPORTANT: x are treated as periodic between -pi, pi
     """
     dx = np.array([(x - x0) ** 2, (x - 2 * np.pi - x0) ** 2, (x + 2 * np.pi - x0) ** 2]).min(axis=0, initial=2*np.pi)
     gk = np.exp(-.5 * dx / sigma ** 2)
     return gk
 
 
-def kernel_interpolation_1d(signal, x_sig, x_grid, sigma=None):
+def boxcar_kernel_1d(x, x0, sigma):
+    """ Returns array with not normalized weights for x-coordinates,
+    determined by boxcar function centered at x0
+    """
+    bck = np.zeros(x.shape)
+    bck[np.abs(x - x0) < sigma] = 1
+    return bck
+
+
+def kernel_interpolation_1d(signal, x_sig, x_grid, sigma=None, kernel='gaussian'):
     """ Interpolates signal on coordinates x_sig onto passed coordinates x_grid,
     using gaussian kernel smoothing of width sigma.
     """
+    kernel = [gaussian_kernel_1d, boxcar_kernel_1d][['gaussian', 'boxcar'].index(kernel)]
+
     if sigma is None:
         step = 2 * np.pi / len(x_grid)
         sigma = 1.1 * step
 
     out = np.zeros(x_grid.shape)
     for n, x_n in enumerate(x_grid):
-        window = gaussian_kernel_1d(x_sig, x_n, sigma)
+        window = kernel(x_sig, x_n, sigma)
         out[n] = np.average(a=signal, weights=window)
     return out
 
