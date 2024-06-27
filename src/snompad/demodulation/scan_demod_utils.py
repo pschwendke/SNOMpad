@@ -138,7 +138,7 @@ def bin_line(scan: BaseScanDemod, res: int = 100, direction: str = 'scan', line_
         nearest = (np.linalg.norm([x_out[i], y_out[i]] - np.vstack([x, y]).T, axis=1) < cutoff)
         z.append(scan.afm_data.sel(idx=idx).z[nearest].values.mean())
         amp.append(scan.afm_data.sel(idx=idx).amp[nearest].values.mean())
-        phase.append(scan.afm_data.sel(idx=idx).phase[nearest].values.mean())
+        phase.append(scan.afm_data.sel(idx=idx).phase[nearest].values.mean() / 2 / np.pi * 360)  # rad -> degrees
         idxs.append(scan.afm_data.sel(idx=idx).idx[nearest].values)
 
     idxs = np.array(idxs, dtype=object)

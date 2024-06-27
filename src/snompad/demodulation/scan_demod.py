@@ -10,6 +10,7 @@ from ..utility import Scan, Demodulation, Signals, c_air
 from ..demodulation.demod_utils import chop_pump_idx
 from .scan_demod_base import BaseScanDemod
 from .scan_demod_utils import sort_lines, bin_line
+from .image_corrections import subtract_linear
 from ..file_handlers.gwyddion import export_gwy
 
 
@@ -113,23 +114,25 @@ class Retraction(BaseScanDemod):
         else:
             fig, ax = plt.subplots(2, 1, sharex='col', figsize=(8, 8))
         harm_cmap = cc.glasbey_category10
+        amp_color = cc.glasbey_category10[92]
+        phase_color = cc.glasbey_category10[94]
 
         z = (self.demod_data['z'].values - self.demod_data['z'].values.min()) * 1e3  # nm
 
-        a = self.demod_data['amp'].values / self.demod_data['amp'].values.max()
-        ax[0].plot(z, a, marker='.', lw=1, color='C00')
-        ax[0].set_ylabel('AFM amplitude (scaled)', color='C00')
+        a = self.demod_data['amp'].values
+        ax[0].plot(z, a, marker='.', lw=1, color=amp_color)
+        ax[0].set_ylabel('AFM amplitude (nm)', color=amp_color)
         ax[0].grid(visible=grid, which='major', axis='both')
 
         ax_phase = ax[0].twinx()
         p = self.demod_data['phase'].values
-        ax_phase.plot(z, p, color='C01', marker='.', lw=1)
-        ax_phase.set_ylabel('AFM phase (degrees)', color='C01')
+        ax_phase.plot(z, p, color=phase_color, marker='.', lw=1)
+        ax_phase.set_ylabel('AFM phase (degrees)', color=phase_color)
 
         for o in orders:
             sig = np.abs(self.demod_data['optical'].values[:, o])
             sig /= np.abs(sig).max()
-            ax[1].plot(z, sig, marker='.', lw=1, label=f'abs({o})', color=harm_cmap[o])
+            ax[1].plot(z, sig, marker='.', lw=1, label=r'$s_{{{o}}}$'.format(o=str(o)), color=harm_cmap[o])
         ax[1].grid(visible=grid, which='major', axis='both')
         ax[1].set_ylabel('optical amplitude (scaled)')
         ax[1].legend(loc='upper right')
@@ -137,7 +140,7 @@ class Retraction(BaseScanDemod):
         if self.modulation == Demodulation.pshet:
             for o in orders:
                 sig = np.angle(self.demod_data['optical'].values[:, o])
-                ax[2].plot(z, sig, marker='.', lw=1, label=f'phase({o})', color=harm_cmap[o])
+                ax[2].plot(z, sig, marker='.', lw=1, label=r'$\varphi_{{{o}}}$'.format(o=str(o)), color=harm_cmap[o])
             ax[2].grid(visible=grid, which='major', axis='both')
             ax[2].set_ylabel('optical phase')
             ax[2].set_xlabel('dz (nm)')
@@ -146,7 +149,6 @@ class Retraction(BaseScanDemod):
 
         if save:
             plt.savefig(f'{self.name}.png', dpi=100, bbox_inches='tight')
-            # plt.savefig(f'{self.name}.svg', bbox_inches='tight')
         if show:
             plt.show()
         plt.close()
@@ -433,29 +435,34 @@ class Line(BaseScanDemod):
         else:
             fig, ax = plt.subplots(2, 1, sharex='col', figsize=(8, 8))
         harm_cmap = cc.glasbey_category10
+        z_color = cc.glasbey_category10[95]
+        amp_color = cc.glasbey_category10[92]
+        phase_color = cc.glasbey_category10[94]
 
         r = self.demod_data['r'].values * 1e3  # nm
 
-        z = (self.demod_data['z'].values - self.demod_data['z'].values.min()) * 1e3  # nm
-        ax[0].plot(r, z, marker='.', lw=1, color='C00')
-        ax[0].set_ylabel('AFM topography (nm)', color='C00')
+        # z = (self.demod_data['z'].values - self.demod_data['z'].values.min()) * 1e3  # nm
+        z = self.demod_data['z'].values * 1e3  # nm
+        z = subtract_linear(line=z)
+        ax[0].plot(r, z, marker='.', lw=1, color=z_color)
+        ax[0].set_ylabel('AFM topography, corrected linear (nm)', color=z_color)
         ax[0].grid(visible=grid, which='major', axis='both')
 
         ax_amp = ax[0].twinx()
         a = self.demod_data['amp'].values
-        ax_amp.plot(r, a, color='C01', marker='.', lw=1, label='AFM amplitude')
+        ax_amp.plot(r, a, color=amp_color, marker='.', lw=1, label='AFM amplitude', alpha=0.5)
         ax_amp.tick_params(right=False, labelright=False)
         ax_amp.legend(loc='upper right')
 
         ax_phase = ax[0].twinx()
         p = self.demod_data['phase'].values
-        ax_phase.plot(r, p, color='C02', marker='.', lw=1)
-        ax_phase.set_ylabel('AFM phase (rad)', color='C02')
+        ax_phase.plot(r, p, color=phase_color, marker='.', lw=1)
+        ax_phase.set_ylabel('AFM phase (degrees)', color=phase_color)
 
         for o in orders:
             sig = np.abs(self.demod_data['optical'].values[:, o])
             sig /= np.abs(sig).max()
-            ax[1].plot(r, sig, marker='.', lw=1, label=f'abs({o})', color=harm_cmap[o])
+            ax[1].plot(r, sig, marker='.', lw=1, label=r'$s_{{{o}}}$'.format(o=str(o)), color=harm_cmap[o])
         ax[1].grid(visible=grid, which='major', axis='both')
         ax[1].set_ylabel('optical amplitude (scaled)')
         ax[1].legend(loc='upper right')
@@ -463,7 +470,7 @@ class Line(BaseScanDemod):
         if self.modulation == Demodulation.pshet:
             for o in orders:
                 sig = np.angle(self.demod_data['optical'].values[:, o])
-                ax[2].plot(r, sig, marker='.', lw=1, label=f'phase({o})', color=harm_cmap[o])
+                ax[2].plot(r, sig, marker='.', lw=1, label=r'$\varphi_{{{o}}}$'.format(o=str(o)), color=harm_cmap[o])
             ax[2].grid(visible=grid, which='major', axis='both')
             ax[2].set_ylabel('optical phase')
             ax[2].set_xlabel('dz (nm)')
@@ -471,7 +478,7 @@ class Line(BaseScanDemod):
         ax[-1].set_xlabel('r (nm)')
 
         if save:
-            plt.savefig(f'{self.name}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'{self.name}.png', dpi=100, bbox_inches='tight')
         if show:
             plt.show()
         plt.close()

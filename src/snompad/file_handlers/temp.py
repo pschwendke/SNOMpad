@@ -17,6 +17,7 @@ class H5Buffer:
 
     def __setitem__(self, key, value):
         self.h5_file.create_dataset(str(key), data=value, dtype='float32')  # maybe 16 bit is even enough???
+        # self.h5_file.flush()  # this is probably not necessary
 
     def __del__(self):
         logger.debug('H5Buffer: __del__()')

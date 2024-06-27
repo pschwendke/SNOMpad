@@ -197,7 +197,7 @@ class BaseScan(ABC):
         """
         self.date = datetime.now()
         self.name = self.date.strftime('%y%m%d-%H%M%S_') + self.acquisition_mode.value
-        self.setup_logger()
+        self.setup_logger()  # maybe some of this should be called in __init__ this about this later...
         logger.info('BaseScan: Preparing Scan')
         self.file.create_file(self.name)
         self.connected = self.connect()
