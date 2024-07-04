@@ -4,9 +4,9 @@ import numpy as np
 import sys
 import os
 import threading
-import logging
+# import logging
 from time import sleep, perf_counter
-from scipy.stats import binned_statistic, binned_statistic_2d
+# from scipy.stats import binned_statistic, binned_statistic_2d
 
 import colorcet as cc
 from bokeh.plotting import figure, ColumnDataSource, curdoc
@@ -22,15 +22,16 @@ from snompad.drivers.daq_ctrl import DaqController
 if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')
 
-logger = logging.getLogger()
-logger.setLevel('INFO')
+# logger = logging.getLogger()
+# logger.setLevel('INFO')
 
-callback_interval = 150  # ms  # ToDo: make this longer when using pshet. or dynamic??
+# callback_interval = 150  # ms  # ToDo: make this longer when using pshet. or dynamic??
 buffer_size = 200_000
-harm_plot_size = 40  # number of values on x-axis when plotting harmonics
-raw_plot_tail = 670  # number of raw data samples that are added every acquisition cycle (callback interval)
-raw_plot_size = 2 * raw_plot_tail  # number of raw data samples that are displayed at one point in time
-max_harm = 4  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
+harm_plot_size = 40  # of values on x-axis when plotting harmonics
+# raw_plot_tail = 670  # of raw data samples that are added every acquisition cycle (callback interval)
+# raw_plot_size = 250  # of raw data samples that are displayed at one point in time. selected from raw sample size
+raw_sample_size = 5000  # size of slice of data to be displayed vs phase. every 20th point is plotted
+max_harm = 8  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 acquisition_buffer = None  # global variable, so that it can be shared across threads
 signals = [
     Signals.sig_a,
@@ -102,8 +103,12 @@ def update():
             data = acquisition_buffer.tail(n=npts_input.value)
             rtn = update_harmonics(data=data, tap=tap, ref=ref)
             update_raw_and_phase(data=data, tap_res=tap, ref_res=ref)
-            update_message_box(msg=rtn, t=t)
             update_signal_to_noise()
+            dt = (perf_counter() - t) * 1e3  # ms
+            if dt > callback_input.value:
+                callback_input.value = dt
+            update_message_box(msg=rtn, dt=dt)
+            callback._period = callback_input.value
         except Exception as e:
             update_message_box(msg=str(e))
             # raise
@@ -116,10 +121,11 @@ def update_harmonics(data, tap, ref):
         # if pshet:
         if mod_button.labels[mod_button.active] == 'pshet':
             coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
-                                        chopped=chop_button.active, ratiometry=ratiometry_button.active))
+                                        chopped=chop_button.active, pshet_demod='sidebands',
+                                        ratiometry=ratiometry_button.active))
         # if shd:
         elif mod_button.labels[mod_button.active] == 'shd':
-            coefficients = shd(data=data, signals=signals, tap_res=tap,
+            coefficients = shd(data=data, signals=signals, tap_res=tap, binning='binning',
                                chopped=chop_button.active, ratiometry=ratiometry_button.active)
         
         # if no mod:
@@ -167,36 +173,36 @@ def update_harmonics(data, tap, ref):
 def update_raw_and_phase(data, tap_res, ref_res):
     if mod_button.labels[mod_button.active] == 'no mod':
         return
+    # ToDo: restructure this. selection of data can be more efficient / better strucured
     theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     # phase data
-    if raw_theta_button.active == 1:  # 'raw vs theta_ref'
-        returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
-                                      bins=[tap_res, ref_res], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
-        binned = returns.statistic
-    else:
-        returns = binned_statistic(x=theta_tap, values=None, statistic='count',
-                                   bins=tap_res, range=[-np.pi, np.pi])
-        binned = returns.statistic[np.newaxis, :]
-    new_data = {'binned': [binned]}
-    phase_plot_data.data = new_data
+    # if raw_theta_button.active == 1:  # 'raw vs theta_ref'
+    #     returns = binned_statistic_2d(x=theta_tap, y=theta_ref, values=None, statistic='count',
+    #                                   bins=[tap_res, ref_res], range=[[-np.pi, np.pi], [-np.pi, np.pi]])
+    #     binned = returns.statistic
+    # else:
+    #     returns = binned_statistic(x=theta_tap, values=None, statistic='count',
+    #                                bins=tap_res, range=[-np.pi, np.pi])
+    #     binned = returns.statistic[np.newaxis, :]
+    # new_data = {'binned': [binned]}
+    # phase_plot_data.data = new_data
 
     # raw data
-    new_data = {c.value: data[-raw_plot_tail:, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
+    new_data = {c.value: data[-raw_sample_size::20, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
     if raw_theta_button.active == 1:  # 'raw vs theta_ref'
-        new_data.update({'theta': theta_ref[-raw_plot_tail:]})
+        new_data.update({'theta': theta_ref[-raw_sample_size::20]})
     else:  # 'raw vs theta_tap'
-        new_data.update({'theta': theta_tap[-raw_plot_tail:]})
-    raw_plot_data.stream(new_data, rollover=raw_plot_size)
+        new_data.update({'theta': theta_tap[-raw_sample_size::20]})
+    raw_plot_data.stream(new_data, rollover=raw_sample_size//20)
 
 
-def update_message_box(msg: any, t: float = 0.):
+def update_message_box(msg: any, dt: float = 0.):
     """ prints how many samples have been acquired and demodulated in how much time,
     and when empty bins occurred during binning
     """
     if isinstance(msg, int):
         if msg == 0:
-            dt = (perf_counter() - t) * 1e3  # ms
             message_box.styles['background-color'] = '#FFFFFF'
             message_box.text = f'demod and plotting: {dt:.0f} ms'
         elif msg % 10 == 1:
@@ -230,9 +236,9 @@ normalize_button.on_click(reset_normalization)
 
 raw_theta_button = RadioButtonGroup(labels=['raw vs theta_tap', 'raw vs theta_ref'], active=0)
 
-tap_input = NumericInput(title='# tap bins', value=64, mode='int', low=16, high=256, width=90)
-ref_input = NumericInput(title='# ref bins', value=64, mode='int', low=16, high=256, width=90)
-npts_input = NumericInput(title='# of samples', value=100_000, mode='int', low=10_000, high=buffer_size, width=90)
+tap_input = NumericInput(title='# tap bins', value=128, mode='int', low=16, high=256, width=90)
+ref_input = NumericInput(title='# ref bins', value=84, mode='int', low=16, high=256, width=90)
+npts_input = NumericInput(title='# of samples', value=50_000, mode='int', low=10_000, high=buffer_size, width=90)
 
 message_box = Div(text='message box')
 message_box.styles = {
@@ -247,6 +253,8 @@ noise_table = column(
     row([signal_noise[h] for h in range(4)]),
     row([signal_noise[h] for h in range(4, 8)])
 )
+
+callback_input = NumericInput(title='Periodic callback interval (ms)', value=150, mode='int', width=90)
 
 
 # SET UP PLOTS #########################################################################################################
@@ -274,11 +282,12 @@ class PlottingBuffer:
 
 
 def setup_harm_plot(buffer: ColumnDataSource):
-    fig = figure(aspect_ratio=4, tools='pan,ywheel_zoom,box_zoom,reset,save',
+    default_vis = [3, 4, 5]
+    fig = figure(aspect_ratio=3, tools='pan,ywheel_zoom,box_zoom,reset,save',
                  active_scroll='ywheel_zoom', active_drag='pan')
     for h in range(max_harm+1):
         fig.line(x='t', y=str(h), source=buffer, line_color=harm_colors[h], line_width=2,
-                 syncable=False, legend_label=f'{h}')
+                 syncable=False, legend_label=f'{h}', visible=h in default_vis)
     fig.legend.location = 'center_left'
     fig.legend.click_policy = 'hide'
     return fig
@@ -286,10 +295,10 @@ def setup_harm_plot(buffer: ColumnDataSource):
 
 def setup_raw_plot():
     channels = ['sig_a', 'sig_b', 'chop']
-    init_data = {c: np.zeros(raw_plot_tail) for c in channels}
-    init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_plot_tail)})
+    init_data = {c: np.zeros(raw_sample_size//20) for c in channels}
+    init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_sample_size//20)})
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=400, width=400, tools='pan,ywheel_zoom,box_zoom,reset,save',
+    fig = figure(height=400, width=800, tools='pan,ywheel_zoom,box_zoom,reset,save',
                  active_scroll='ywheel_zoom', active_drag='pan')
     for i, c in enumerate(channels):
         fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=harm_colors[i],
@@ -299,23 +308,23 @@ def setup_raw_plot():
     return fig, plot_data
 
 
-def setup_phase_plot():
-    init_data = {'binned': [np.random.uniform(size=(64, 64))]}
-    plot_data = ColumnDataSource(init_data)
-    fig = figure(height=400, width=400, toolbar_location=None)
-    cmap = LinearColorMapper(palette=cc.bgy, nan_color='#FF0000')
-    plot = fig.image(image='binned', source=plot_data, color_mapper=cmap,
-                     dh=2*np.pi, dw=2*np.pi, x=-np.pi, y=-np.pi, syncable=False)
-    cbar = plot.construct_color_bar(padding=1)
-    fig.add_layout(cbar, 'right')
-    return fig, plot_data
+# def setup_phase_plot():
+#     init_data = {'binned': [np.random.uniform(size=(64, 64))]}
+#     plot_data = ColumnDataSource(init_data)
+#     fig = figure(height=400, width=400, toolbar_location=None)
+#     cmap = LinearColorMapper(palette=cc.bgy, nan_color='#FF0000')
+#     plot = fig.image(image='binned', source=plot_data, color_mapper=cmap,
+#                      dh=2*np.pi, dw=2*np.pi, x=-np.pi, y=-np.pi, syncable=False)
+#     cbar = plot.construct_color_bar(padding=1)
+#     fig.add_layout(cbar, 'right')
+#     return fig, plot_data
 
 
 # SET UP ROUTINE #######################################################################################################
 harmonics_plot_data = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])
 harmonics_plot = setup_harm_plot(buffer=harmonics_plot_data.buffer)
 raw_plot, raw_plot_data = setup_raw_plot()
-phase_plot, phase_plot_data = setup_phase_plot()
+# phase_plot, phase_plot_data = setup_phase_plot()
 
 acquisition_loop = threading.Thread(target=Acquisitor, daemon=True)
 acquisition_loop.start()
@@ -328,14 +337,15 @@ controls_box = column([
     row([raw_theta_button, abs_button]),
     row([stop_server_button, ratiometry_button, normalize_button]),
     noise_table,
+    callback_input,
     message_box
 ])
 
 gui = layout(children=[
     [harmonics_plot],
-    [phase_plot, raw_plot, controls_box]
+    [raw_plot, controls_box]
 ], sizing_mode='stretch_width')
 
 curdoc().add_root(gui)
-curdoc().add_periodic_callback(update, callback_interval)
+callback = curdoc().add_periodic_callback(update, callback_input.value)
 curdoc().title = 'SNOMpad visualizer'
