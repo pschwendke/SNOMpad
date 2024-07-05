@@ -11,7 +11,7 @@ from time import sleep, perf_counter
 import colorcet as cc
 from bokeh.plotting import figure, ColumnDataSource, curdoc
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
-from bokeh.layouts import layout, column, row
+from bokeh.layouts import layout, column, row, grid
 
 from snompad.utility import Signals
 from snompad.demodulation import shd, pshet
@@ -22,17 +22,16 @@ from snompad.drivers.daq_ctrl import DaqController
 if __name__ == '__main__':
     os.system('bokeh serve --show GUI_Visualizer.py')
 
-# logger = logging.getLogger()
-# logger.setLevel('INFO')
-
-# callback_interval = 150  # ms  # ToDo: make this longer when using pshet. or dynamic??
 buffer_size = 200_000
+refresh_rate = 100  # ms after which bokeh refreshes the plots
 harm_plot_size = 40  # of values on x-axis when plotting harmonics
-# raw_plot_tail = 670  # of raw data samples that are added every acquisition cycle (callback interval)
-# raw_plot_size = 250  # of raw data samples that are displayed at one point in time. selected from raw sample size
-raw_sample_size = 5000  # size of slice of data to be displayed vs phase. every 20th point is plotted
-max_harm = 8  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
+raw_sample_size = 5000  # size of slice of data to be displayed vs phase. every 10th point is plotted
+max_harm = 7  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 acquisition_buffer = None  # global variable, so that it can be shared across threads
+return_msg = 'message box'  # message to be displayed in message box
+# ToDo error code could be in binary like in delay stage. CHECK THIS
+err_code = 0  # global error code
+err_msg = ''
 signals = [
     Signals.sig_a,
     Signals.sig_b,
@@ -48,13 +47,15 @@ signal_noise = {  # collection of signal to noise ratios
     h: Div(text='-', styles={'color': harm_colors[h], 'font-size': '200%'}) for h in range(8)
 }
 
+doc = curdoc()
 
-# SIMPLE ACQUISITION IN BACKGROUND #####################################################################################
+
+# ACQUISITION DAEMON ###################################################################################################
 class Acquisitor:
     def __init__(self) -> None:
-        self.waiting_loop()  # to make the thread 'start listening'
+        self.idle_loop()  # to make the thread 'start listening'
 
-    def waiting_loop(self):
+    def idle_loop(self):
         """ when 'GO' button is not active
         """
         while not go_button.active:
@@ -64,7 +65,7 @@ class Acquisitor:
     def acquisition_loop(self):
         """ when 'GO' button is active
         """
-        global acquisition_buffer, harm_scaling
+        global acquisition_buffer, harm_scaling, return_msg, err_code, err_msg
         harm_scaling = np.zeros(max_harm + 1)
         acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
         daq = DaqController(dev='Dev1', clock_channel='pfi0')
@@ -76,12 +77,54 @@ class Acquisitor:
                 daq.reader.read()
         except Exception as e:
             # ToDo check if there are 'usual suspects' and catch them specifically
-            update_message_box(msg=str(e))
+            if err_code == 0:
+                err_code = 10
+                err_msg = str(e)
+            raise
         finally:
             daq.close()
-            # update_message_box(msg='Acquisition stopped')
-            go_button.active = False
-            self.waiting_loop()
+            self.idle_loop()
+
+
+# DEMODULATION DAEMON ##################################################################################################
+class Demodulator:
+    def __init__(self) -> None:
+        self.idle_loop()  # to make the thread 'start listening'
+
+    def idle_loop(self):
+        """ when 'GO' button is not active
+        """
+        while not go_button.active:
+            sleep(.01)
+        self.demod_loop()
+
+    def demod_loop(self):
+        """ when 'GO' button is active
+        """
+        global acquisition_buffer, return_msg, err_code, err_msg
+        try:
+            sleep(.5)  # give the acquisition daemon a little head start
+            while go_button.active:
+                t = perf_counter()
+                tap = tap_input.value
+                ref = ref_input.value
+                data = acquisition_buffer.tail(n=npts_input.value)
+                rtn = update_harmonics(data=data, tap=tap, ref=ref)
+                if isinstance(rtn, int):
+                    if rtn == 0:
+                        return_msg = f'time for demodulation: {(perf_counter() - t) * 1e3:.0f} ms'
+                    elif rtn % 10 == 1:
+                        return_msg = 'empty bins detected'
+                else:
+                    return_msg = rtn
+        except Exception as e:
+            # ToDo check if there are 'usual suspects' and catch them specifically
+            if err_code == 0:
+                err_code = 20
+                err_msg = str(e)
+            raise
+        finally:
+            self.idle_loop()
 
 
 # CALLBACKS ############################################################################################################
@@ -95,43 +138,44 @@ def reset_normalization(button):
 
 
 def update():
+    global err_code, err_msg
     if go_button.active:
         try:
-            tap = tap_input.value
-            ref = ref_input.value
-            t = perf_counter()
+            # t = perf_counter()
             data = acquisition_buffer.tail(n=npts_input.value)
-            rtn = update_harmonics(data=data, tap=tap, ref=ref)
-            update_raw_and_phase(data=data, tap_res=tap, ref_res=ref)
+            # rtn = update_harmonics(data=data, tap=tap, ref=ref)
+            update_raw_and_phase(data=data)
             update_signal_to_noise()
-            dt = (perf_counter() - t) * 1e3  # ms
-            if dt > callback_input.value:
-                callback_input.value = dt
-            update_message_box(msg=rtn, dt=dt)
-            callback._period = callback_input.value
+            # update_message_box(msg=rtn, dt=(perf_counter() - t) * 1e3)
+            update_message_box(msg=return_msg)
         except Exception as e:
-            update_message_box(msg=str(e))
-            # raise
-        
-    
-def update_harmonics(data, tap, ref):
-    global harm_scaling
+            if err_code == 0:
+                err_code = 30
+                err_msg = str(e)
+            raise
+    if err_code != 0:
+        # ToDo: manage error messages
+        go_button.active = False
+
+
+async def update_harmonics(data, tap, ref):
+    global harm_scaling, err_code, err_msg
     rtn_value = 0
     try:
         # if pshet:
-        if mod_button.labels[mod_button.active] == 'pshet':
+        if await mod_button.labels[mod_button.active] == 'pshet':
             coefficients = np.abs(pshet(data=data, signals=signals, tap_res=tap, ref_res=ref, binning='binning',
                                         chopped=chop_button.active, pshet_demod='sidebands',
                                         ratiometry=ratiometry_button.active))
         # if shd:
-        elif mod_button.labels[mod_button.active] == 'shd':
+        elif await mod_button.labels[mod_button.active] == 'shd':
             coefficients = shd(data=data, signals=signals, tap_res=tap, binning='binning',
                                chopped=chop_button.active, ratiometry=ratiometry_button.active)
         
         # if no mod:
-        elif mod_button.labels[mod_button.active] == 'no mod':
+        elif await mod_button.labels[mod_button.active] == 'no mod':
             coefficients = np.zeros(max_harm+1)
-            if chop_button.active:
+            if await chop_button.active:
                 chopped_idx, pumped_idx = chop_pump_idx(data[:, signals.index(Signals.chop)])
                 chopped = data[chopped_idx, signals.index(Signals.sig_a)].mean()
                 pumped = data[pumped_idx, signals.index(Signals.sig_a)].mean()
@@ -145,13 +189,13 @@ def update_harmonics(data, tap, ref):
                 coefficients[1] = data[:, signals.index(Signals.sig_b)].mean()
                 rtn_value = '(0) sig_a -- (1) sig_b'
 
-        if abs_button.active:
+        if await abs_button.active:
             coefficients = np.abs(coefficients[: max_harm+1])
         else:
             coefficients = np.real(coefficients[: max_harm+1])
 
         # normalize modulated data
-        if mod_button.labels[mod_button.active] != 'no mod':
+        if await mod_button.labels[mod_button.active] != 'no mod':
             if harm_scaling[0] == 0:
                 harm_scaling = np.ones(max_harm+1) / np.abs(coefficients)
             for i, over_limit in enumerate(np.abs(coefficients * harm_scaling) > 1):
@@ -160,17 +204,21 @@ def update_harmonics(data, tap, ref):
                     harm_scaling[i] = 1 / np.abs(coefficients[i])
             coefficients *= harm_scaling
 
-        harmonics_plot_data.put(data=coefficients[:max_harm + 1])
+        doc.add_next_tick_callback(harmonics_plot_data.put(data=coefficients[:max_harm + 1]))
 
     except Exception as e:
         if 'empty bins' in str(e):
             rtn_value += 1  # empty bins
+            err_code = 41
         else:
-            rtn_value = str(e)
+            if err_code == 0:
+                err_code = 40
+                err_msg = str(e)
+            raise
     return rtn_value
 
 
-def update_raw_and_phase(data, tap_res, ref_res):
+def update_raw_and_phase(data):
     if mod_button.labels[mod_button.active] == 'no mod':
         return
     # ToDo: restructure this. selection of data can be more efficient / better strucured
@@ -189,28 +237,22 @@ def update_raw_and_phase(data, tap_res, ref_res):
     # phase_plot_data.data = new_data
 
     # raw data
-    new_data = {c.value: data[-raw_sample_size::20, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
+    new_data = {c.value: data[-raw_sample_size::10, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
     if raw_theta_button.active == 1:  # 'raw vs theta_ref'
-        new_data.update({'theta': theta_ref[-raw_sample_size::20]})
+        new_data.update({'theta': theta_ref[-raw_sample_size::10]})
     else:  # 'raw vs theta_tap'
-        new_data.update({'theta': theta_tap[-raw_sample_size::20]})
-    raw_plot_data.stream(new_data, rollover=raw_sample_size//20)
+        new_data.update({'theta': theta_tap[-raw_sample_size::10]})
+    raw_plot_data.stream(new_data, rollover=raw_sample_size//10)
 
 
 def update_message_box(msg: any, dt: float = 0.):
     """ prints how many samples have been acquired and demodulated in how much time,
     and when empty bins occurred during binning
     """
-    if isinstance(msg, int):
-        if msg == 0:
-            message_box.styles['background-color'] = '#FFFFFF'
-            message_box.text = f'demod and plotting: {dt:.0f} ms'
-        elif msg % 10 == 1:
-            message_box.styles['background-color'] = '#FF7777'
-            message_box.text = 'empty bins detected'
-    else:
+    message_box.styles['background-color'] = '#FFFFFF'
+    message_box.text = msg
+    if 'empty bins' in msg:
         message_box.styles['background-color'] = '#FF7777'
-        message_box.text = msg
 
 
 def update_signal_to_noise():
@@ -248,13 +290,11 @@ message_box.styles = {
     'background-color': '#FFFFFF'
 }
 
-noise_table = column(
+noise_table = grid(sizing_mode='stretch_width', children=column(
     Div(text='Signal to noise'),
     row([signal_noise[h] for h in range(4)]),
     row([signal_noise[h] for h in range(4, 8)])
-)
-
-callback_input = NumericInput(title='Periodic callback interval (ms)', value=150, mode='int', width=90)
+))
 
 
 # SET UP PLOTS #########################################################################################################
@@ -295,8 +335,8 @@ def setup_harm_plot(buffer: ColumnDataSource):
 
 def setup_raw_plot():
     channels = ['sig_a', 'sig_b', 'chop']
-    init_data = {c: np.zeros(raw_sample_size//20) for c in channels}
-    init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_sample_size//20)})
+    init_data = {c: np.zeros(raw_sample_size//10) for c in channels}
+    init_data.update({'theta': np.linspace(-np.pi, np.pi, raw_sample_size//10)})
     plot_data = ColumnDataSource(init_data)
     fig = figure(height=400, width=800, tools='pan,ywheel_zoom,box_zoom,reset,save',
                  active_scroll='ywheel_zoom', active_drag='pan')
@@ -329,6 +369,9 @@ raw_plot, raw_plot_data = setup_raw_plot()
 acquisition_loop = threading.Thread(target=Acquisitor, daemon=True)
 acquisition_loop.start()
 
+demod_loop = threading.Thread(target=Demodulator, daemon=True)
+demod_loop.start()
+
 
 # GUI OUTPUT ###########################################################################################################
 controls_box = column([
@@ -337,7 +380,6 @@ controls_box = column([
     row([raw_theta_button, abs_button]),
     row([stop_server_button, ratiometry_button, normalize_button]),
     noise_table,
-    callback_input,
     message_box
 ])
 
@@ -346,6 +388,6 @@ gui = layout(children=[
     [raw_plot, controls_box]
 ], sizing_mode='stretch_width')
 
-curdoc().add_root(gui)
-callback = curdoc().add_periodic_callback(update, callback_input.value)
-curdoc().title = 'SNOMpad visualizer'
+doc.add_root(gui)
+idle_callback = doc.add_periodic_callback(update, refresh_rate)
+doc.title = 'SNOMpad visualizer'
