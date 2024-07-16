@@ -305,6 +305,20 @@
                 <td>[read-only]<div></div></td>
                 <td>
                   <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.Microscope.PowerMeter">PowerMeter</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Gets the current measurement from the power meter.
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
                     <a href="#P:Nea.Client.Hardware.SDK.Microscope.ServerVersion">ServerVersion</a>
                   </b>
                 </td>
@@ -373,18 +387,6 @@
                   <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage()">ActivateBottomParabolicMirrorStage</a>
                   </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK/BottomIllumionationStage.html">BottomIllumionationStage</a></nobr><blockquote>
-            Activates the bottom parabolic mirror stage.
-            </blockquote></td>
-              </tr>
-              <tr valign="top">
-                <td>
-                  <div>
-                  </div>
-                </td>
-                <td colspan="2">
-                  <b>
-                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage()">ActivateBottomParabolicMirrorStage</a>
-                  </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a></nobr><blockquote>
             Activates the bottom parabolic mirror stage.
             </blockquote></td>
               </tr>
@@ -481,7 +483,7 @@
                   <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.CancelCurrentProcedure()">CancelCurrentProcedure</a>
                   </b>()<blockquote>
-            Stopps any pending operation (auto-approach, scan, auto-alignment, ...)
+            Stops any pending operation (auto-approach, scan, auto-alignment, ...)
             </blockquote></td>
               </tr>
               <tr valign="top">
@@ -515,6 +517,30 @@
                 </td>
                 <td colspan="2">
                   <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3()">GetAOUT3</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a></nobr><blockquote>
+            Get output voltage on AOUT3.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4()">GetAOUT4</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a></nobr><blockquote>
+            Get output voltage on AOUT4.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetCalibrationSetting(System.String)">GetCalibrationSetting</a>
                   </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>)<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a></nobr><blockquote><span class="NotEntered">Documentation for this section has not yet been entered.</span></blockquote></td>
               </tr>
@@ -537,9 +563,45 @@
                 </td>
                 <td colspan="2">
                   <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR()">GetLaserSourceNanoFTIR</a>
+                  </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK/LaserSource.html">LaserSource</a></nobr><blockquote>
+            Get access to 4.5-15 µm nano-FTIR laser source
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime()">GetSamplingTime</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a></nobr><blockquote>
+            Gets the sampling time in milliseconds.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage()">GetTappingAmplitudeVoltage</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a></nobr><blockquote>
+            Gets tapping amplitude voltage of the tip in mVpp
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.GotoInterferometerPosition(System.Double)">GotoInterferometerPosition</a>
                   </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a></nobr><blockquote>
-            Move the interfernometer coordinate.
+            Move the interferometer coordinate.
             </blockquote></td>
               </tr>
               <tr valign="top">
@@ -597,6 +659,18 @@
                 </td>
                 <td colspan="2">
                   <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment()">PrepareAutoAlignment</a>
+                  </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK/AutoAlignment.html">AutoAlignment</a></nobr><blockquote>
+            Prepares Auto-Alignment.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.PrepareCfmScan()">PrepareCfmScan</a>
                   </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK.Scan/CfmScan.html">Nea.Client.Hardware.SDK.Scan.CfmScan</a></nobr><blockquote>
             Prepares an CFM scan.
@@ -612,6 +686,18 @@
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.PrepareFourierScan()">PrepareFourierScan</a>
                   </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK.Scan/FourierScan.html">Nea.Client.Hardware.SDK.Scan.FourierScan</a></nobr><blockquote>
             Prepares a Fourier scan.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep()">PrepareFrequencySweep</a>
+                  </b>()<nobr> : <a href="../Nea.Client.Hardware.SDK/FrequencySweep.html">FrequencySweep</a></nobr><blockquote>
+            Prepares an AFM frequency sweep
             </blockquote></td>
               </tr>
               <tr valign="top">
@@ -669,8 +755,56 @@
                 </td>
                 <td colspan="2">
                   <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double)">SetAOUT3</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set output voltage on AOUT3. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double)">SetAOUT4</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Set output voltage on AOUT4 in milliVots. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Microscope.SetCalibrationSetting(System.String,System.String)">SetCalibrationSetting</a>
                   </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>)<blockquote><span class="NotEntered">Documentation for this section has not yet been entered.</span></blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double)">SetSamplingTime</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets the sampling time.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double)">SetTappingAmplitudeVoltage</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            Sets tapping amplitude voltage of the tip in mVpp
+            </blockquote></td>
               </tr>
             </table>
           </div>
@@ -687,29 +821,6 @@
             </div>
           <h2>Syntax</h2>
           <div class="Signature">public <a href="../Nea.Client.Hardware.SDK/BottomIllumionationStage.html">BottomIllumionationStage</a> <b>ActivateBottomParabolicMirrorStage</b> ()</div>
-          <h4 class="Subsection">See Also</h4>
-          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():See Also">
-            <div>
-              <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.Deactivate">Stage.Deactivate</a>
-            </div>
-          </blockquote>
-          <h4 class="Subsection">Returns</h4>
-          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():Returns">An object that represents a stage.</blockquote>
-          <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():Remarks">Only one stage can be active at a time. Before activating another stage, 
-            you need to call <a href="../Nea.Client.Hardware.SDK/Stage.html#M:Nea.Client.Hardware.SDK.Stage.Deactivate">Stage.Deactivate</a> on the returned object.</div>
-          <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():Version Information">
-            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
-          <hr size="1" />
-        </blockquote>
-        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage()">ActivateBottomParabolicMirrorStage Method</h3>
-        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():member">
-          <div class="msummary">
-            Activates the bottom parabolic mirror stage.
-            </div>
-          <h2>Syntax</h2>
-          <div class="Signature">public <a href="../Nea.Client.Hardware.SDK/Stage.html">Stage</a> <b>ActivateBottomParabolicMirrorStage</b> ()</div>
           <h4 class="Subsection">See Also</h4>
           <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.ActivateBottomParabolicMirrorStage():See Also">
             <div>
@@ -886,7 +997,7 @@
         <h3 id="M:Nea.Client.Hardware.SDK.Microscope.CancelCurrentProcedure()">CancelCurrentProcedure Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.CancelCurrentProcedure():member">
           <div class="msummary">
-            Stopps any pending operation (auto-approach, scan, auto-alignment, ...)
+            Stops any pending operation (auto-approach, scan, auto-alignment, ...)
             </div>
           <h2>Syntax</h2>
           <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>CancelCurrentProcedure</b> ()</div>
@@ -950,6 +1061,44 @@
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3()">GetAOUT3 Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3():member">
+          <div class="msummary">
+            Get output voltage on AOUT3.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>GetAOUT3</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3():Returns">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3():Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4()">GetAOUT4 Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4():member">
+          <div class="msummary">
+            Get output voltage on AOUT4.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>GetAOUT4</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4():Returns">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4():Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
         <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetCalibrationSetting(System.String)">GetCalibrationSetting Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetCalibrationSetting(System.String):member">
           <div class="msummary">
@@ -1007,10 +1156,64 @@
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR()">GetLaserSourceNanoFTIR Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR():member">
+          <div class="msummary">
+            Get access to 4.5-15 µm nano-FTIR laser source
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="../Nea.Client.Hardware.SDK/LaserSource.html">LaserSource</a> <b>GetLaserSourceNanoFTIR</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR():Returns">
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime()">GetSamplingTime Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime():member">
+          <div class="msummary">
+            Gets the sampling time in milliseconds.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>GetSamplingTime</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime():Returns">The sampling time in milliseconds.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime():Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage()">GetTappingAmplitudeVoltage Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage():member">
+          <div class="msummary">
+            Gets tapping amplitude voltage of the tip in mVpp
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>GetTappingAmplitudeVoltage</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage():Returns">double</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
         <h3 id="M:Nea.Client.Hardware.SDK.Microscope.GotoInterferometerPosition(System.Double)">GotoInterferometerPosition Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.GotoInterferometerPosition(System.Double):member">
           <div class="msummary">
-            Move the interfernometer coordinate.
+            Move the interferometer coordinate.
             </div>
           <h2>Syntax</h2>
           <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>GotoInterferometerPosition</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> interferometerPosition)</div>
@@ -1039,7 +1242,7 @@
             Move the tip to XY coordinates.
             </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>GotoTipPosition</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionX, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionY, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> micrometersPerMilliseconds)</div>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>GotoTipPosition</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionX, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> physicalPositionY, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> micrometersPerSecond)</div>
           <h4 class="Subsection">Parameters</h4>
           <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.GotoTipPosition(System.Double,System.Double,System.Double):Parameters">
             <dl>
@@ -1055,10 +1258,6 @@
                 <i>micrometersPerSecond</i>
               </dt>
               <dd>Velocity limit for movement in µm/s.</dd>
-              <dt>
-                <i>micrometersPerMilliseconds</i>
-              </dt>
-              <dd>Velocity limit for movement in µm/ms.</dd>
             </dl>
           </blockquote>
           <h4 class="Subsection">Returns</h4>
@@ -1101,9 +1300,26 @@
             </blockquote>
           <h2 class="Section">Remarks</h2>
           <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Microscope.IsInContact:Remarks">The tip is considered "in contact", if the last auto approach was successful 
-            and the regulator has not beed disengaged since.</div>
+            and the regulator has not been disengaged since.</div>
           <h2 class="Section">Requirements</h2>
           <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Microscope.IsInContact:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter">PowerMeter Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter:member">
+          <div class="msummary">
+            Gets the current measurement from the power meter.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>PowerMeter</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter:Value">Power in mW.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter:Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter:Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
@@ -1170,6 +1386,23 @@
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment()">PrepareAutoAlignment Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment():member">
+          <div class="msummary">
+            Prepares Auto-Alignment.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="../Nea.Client.Hardware.SDK/AutoAlignment.html">AutoAlignment</a> <b>PrepareAutoAlignment</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment():Returns">M0A and M1P data during auto-alignment.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment():Remarks">In order to start auto-alignment you need to call <a href="../Nea.Client.Hardware.SDK/AutoAlignment.html#M:Nea.Client.Hardware.SDK.AutoAlignment.Start">AutoAlignment.Start</a> 
+            on the returned object.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
         <h3 id="M:Nea.Client.Hardware.SDK.Microscope.PrepareCfmScan()">PrepareCfmScan Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.PrepareCfmScan():member">
           <div class="msummary">
@@ -1201,6 +1434,23 @@
             on the returned object.</div>
           <h2 class="Section">Requirements</h2>
           <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFourierScan():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep()">PrepareFrequencySweep Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep():member">
+          <div class="msummary">
+            Prepares an AFM frequency sweep
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="../Nea.Client.Hardware.SDK/FrequencySweep.html">FrequencySweep</a> <b>PrepareFrequencySweep</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep():Returns">Frequency, Amplitude(M1A) and Phase (M1P) data during sweep and also the Resonant Frequency and its corresponding Amplitude.</blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep():Remarks">In order to start the sweep you need to call <a href="../Nea.Client.Hardware.SDK/FrequencySweep.html#M:Nea.Client.Hardware.SDK.FrequencySweep.Start">FrequencySweep.Start</a> 
+            on the returned object.</div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep():Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
@@ -1289,6 +1539,58 @@
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double)">SetAOUT3 Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double):member">
+          <div class="msummary">
+            Set output voltage on AOUT3. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetAOUT3</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> millivolts)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>millivolts</i>
+              </dt>
+              <dd>
+                <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double)">SetAOUT4 Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double):member">
+          <div class="msummary">
+            Set output voltage on AOUT4 in milliVots. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetAOUT4</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> millivolts)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>millivolts</i>
+              </dt>
+              <dd>
+                <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
         <h3 id="M:Nea.Client.Hardware.SDK.Microscope.SetCalibrationSetting(System.String,System.String)">SetCalibrationSetting Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.SetCalibrationSetting(System.String,System.String):member">
           <div class="msummary">
@@ -1319,6 +1621,57 @@
           </div>
           <h2 class="Section">Requirements</h2>
           <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetCalibrationSetting(System.String,System.String):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double)">SetSamplingTime Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double):member">
+          <div class="msummary">
+            Sets the sampling time.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetSamplingTime</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> milliseconds)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>milliseconds</i>
+              </dt>
+              <dd>Sampling time in milliseconds.</dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double):Remarks">
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double)">SetTappingAmplitudeVoltage Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double):member">
+          <div class="msummary">
+            Sets tapping amplitude voltage of the tip in mVpp
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetTappingAmplitudeVoltage</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> value)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>value</i>
+              </dt>
+              <dd>
+                <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double):Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double):Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>

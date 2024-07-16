@@ -458,23 +458,6 @@
                 </td>
                 <td>
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows">SkipRows</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
-                  </i>. 
-            Gets or sets the number of rows to be skipped.
-            </td>
-              </tr>
-              <tr valign="top">
-                <td>
-                  <div>
-                  </div>
-                </td>
-                <td>
-                  <b>
                     <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">SkipRows</a>
                   </b>
                 </td>
@@ -482,8 +465,8 @@
                   <i>
                     <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>
                   </i>. 
-            SkipRows is the number skipped rows in a serpent scan 
-             (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
+             SkipRows is the number skipped rows in a serpent scan 
+              (<i>Inherited from <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html">BasicScan</a>.</i>)</td>
               </tr>
               <tr valign="top">
                 <td>
@@ -602,8 +585,10 @@
                   <b>
                     <a href="#M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">SetSerpentScan</a>
                   </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>)<blockquote>
-            Sets the scan as serpent.
-            </blockquote></td>
+             Gets or sets the number of rows to be skipped.
+             
+             Sets the scan as serpent.
+             </blockquote></td>
               </tr>
               <tr valign="top">
                 <td>
@@ -640,17 +625,16 @@
         <h3 id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">SetSerpentScan Method</h3>
         <blockquote id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):member">
           <div class="msummary">
-            Sets the scan as serpent.
-            </div>
+             Gets or sets the number of rows to be skipped.
+             
+             Sets the scan as serpent.
+             </div>
           <h2>Syntax</h2>
           <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetSerpentScan</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> take, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> skip)</div>
           <h4 class="Subsection">See Also</h4>
           <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):See Also">
             <div>
               <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows">SerpentableScan2D.TakeRows</a>
-            </div>
-            <div>
-              <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows">SerpentableScan2D.SkipRows</a>
             </div>
             <div>
               <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">BasicScan.SkipRows</a>
@@ -669,54 +653,30 @@
               <dd>The number skipped rows.</dd>
             </dl>
           </blockquote>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Returns">
+             The number of consecutive rows that will be skipped.
+             </blockquote>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Remarks">Consecutive rows will alternately be taken and skipped in this scan.</div>
-          <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Version Information">
-            <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
-          <hr size="1" />
-        </blockquote>
-        <h3 id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows">SkipRows Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:member">
-          <div class="msummary">
-            Gets or sets the number of rows to be skipped.
-            </div>
-          <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> <b>SkipRows</b>  { get; set; }</div>
-          <h4 class="Subsection">See Also</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:See Also">
-            <div>
-              <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows">SerpentableScan2D.TakeRows</a>
-            </div>
-            <div>
-              <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">SerpentableScan2D.SetSerpentScan(uint, uint)</a>
-            </div>
-          </blockquote>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:Value">
-            The number of consecutive rows that will be skipped.
-            </blockquote>
-          <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Remarks">
             <ul>
               <li>A value of 0 indicates a normal scan (no serpent mode).</li>
               <li>Images from serpent scans result in a lower resolution than <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows">BasicScan.ResolutionRows</a>.</li>
-            </ul>
-          </div>
+            </ul>Consecutive rows will alternately be taken and skipped in this scan.</div>
           <h2 class="Section">Example</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:Example:1">
-            This example shows how to start a serpent AFM scan with 100x20 pixels:
-            <table class="CodeExampleTable"><tr><td><b><font size="-1"> Example</font></b></td></tr><tr><td><pre class="">
-            var scan = microscope.PrepareAfmScan();
-            scan.SetResolution(100, 100);
-            
-            scan.TakeRows = 1;
-            scan.SkipRows = 4;
-            
-            scan.Start();
-            </pre></td></tr></table></div>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Example:1">
+             This example shows how to start a serpent AFM scan with 100x20 pixels:
+             <table class="CodeExampleTable"><tr><td><b><font size="-1"> Example</font></b></td></tr><tr><td><pre class="">
+             var scan = microscope.PrepareAfmScan();
+             scan.SetResolution(100, 100);
+             
+             scan.TakeRows = 1;
+             scan.SkipRows = 4;
+             
+             scan.Start();
+             </pre></td></tr></table></div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32):Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK.Scan<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
@@ -730,13 +690,10 @@
           <h4 class="Subsection">See Also</h4>
           <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows:See Also">
             <div>
-              <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SkipRows">SerpentableScan2D.SkipRows</a>
+              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">BasicScan.SkipRows</a>
             </div>
             <div>
               <a href="../Nea.Client.Hardware.SDK.Scan/SerpentableScan2D.html#M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">SerpentableScan2D.SetSerpentScan(uint, uint)</a>
-            </div>
-            <div>
-              <a href="../Nea.Client.Hardware.SDK.Scan/BasicScan.html#P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">BasicScan.SkipRows</a>
             </div>
           </blockquote>
           <h4 class="Subsection">Value</h4>

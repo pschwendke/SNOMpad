@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Nea.Client.Hardware.SDK.FrequencySweep</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
+      a { text-decoration: none; color: #0072c6; }
+      a:hover { color: #3390b1; }
+      a:active { color: #00709f; }
+
+      div.SideBar {
+        padding-left: 1em;
+        padding-right: 1em;
+        right: 0;
+        float: right;
+        border: thin solid black;
+        background-color: #f2f2f2;
+      }
+    
+      .CollectionTitle { font-weight: bold }
+      .PageTitle { font-size: 150%; font-weight: bold }
+
+      .Summary { }
+      .Signature { }          
+      .Remarks { }
+      .Members { }
+      .Copyright { }
+      
+      .Section { font-size: 125%; font-weight: bold }
+      p.Summary {
+        margin-left: 1em;
+      }
+      .SectionBox { margin-left: 2em }
+      .NamespaceName { font-family: monospace; font-size: 105%; font-weight: bold }
+      .NamespaceSumary { }
+      .MemberName { font-family: monospace; font-size: 115%; font-weight: bold; margin-top: 1em }
+      .Subsection { font-size: 105%; font-weight: bold }
+      .SubsectionBox { margin-left: 2em; margin-bottom: 1em }
+
+      .CodeExampleTable { font-family: monospace; background-color: #f5f5dd; border: thin solid black; padding: .25em; margin-top: 10px; }
+      
+      dd {
+        margin-bottom: 5px;
+      }
+
+      .TypesListing {
+        font-family: monospace; border-collapse: collapse;
+      }
+
+      td {
+        vertical-align: top;
+      }
+      table td:last-child {
+        width: 100%;
+      }
+      th {
+        text-align: left;
+      }
+
+      .TypesListing td { 
+        margin: 0px;  
+        padding: .25em;
+        border: solid gray 1px;
+      }
+
+      .TypesListing th { 
+        margin: 0px;  
+        padding: .25em;
+        background-color: #f2f2f2;
+        border: solid gray 1px;
+      }
+
+      div.Footer {
+        border-top: 1px solid gray;
+        margin-top: 1.5em;
+        padding-top: 0.6em;
+        text-align: center;
+        color: gray;
+      }
+
+      span.NotEntered /* Documentation for this section has not yet been entered */ {
+        font-style: italic;
+        color: red;	
+      }
+
+      div.Header {
+        background: #B0C4DE;
+        border: double;
+        border-color: white;
+        border-width: 7px;
+        padding: 0.5em;
+      }
+
+      div.Header * {
+        font-size: smaller;
+      }
+
+      div.Note {
+      }
+
+      i.ParamRef {
+      }
+
+      i.subtitle {
+      }
+
+      ul.TypeMembersIndex {
+        text-align: left;
+        background: #F8F8F8;
+      }
+
+      ul.TypeMembersIndex li {
+        display: inline;
+        margin:  0.5em;
+      }
+
+      table.HeaderTable {
+      }
+
+      table.SignatureTable {
+      }
+
+      table.Documentation, table.Enumeration, table.TypeDocumentation {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.Documentation tr th, table.TypeMembers tr th, table.Enumeration tr th, table.TypeDocumentation tr th {
+        background: whitesmoke;
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: bottom;
+      }
+
+      table.Documentation tr td, table.TypeMembers tr td, table.Enumeration tr td, table.TypeDocumentation tr td {
+        padding: 0.5em;
+        border: 1px solid gray;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table.TypeMembers {
+        border: 1px solid #C0C0C0;
+        width: 100%;
+      }
+
+      table.TypeMembers tr td {
+        background: #F8F8F8;
+	color: #636363;
+        border: white;
+      }
+
+      table.Documentation {
+        margin-bottom: 0.5em;
+      }
+
+      table.TypeMembers td tr {
+	border-left: none;
+	border-right: none;
+      }
+
+      div.CodeExample {
+        width: 100%;
+        border: 1px solid #DDDDDD;
+        background-color: #F8F8F8;
+      }
+
+      div.CodeExample p {
+        margin: 0.5em;
+        border-bottom: 1px solid #DDDDDD;
+      }
+
+      div.CodeExample div {
+        margin: 0.5em;
+      }
+
+      h4 {
+        margin-bottom: 0;
+      }
+
+      div.Signature {
+        border: 1px solid #C0C0C0;
+        background: #F2F2F2;
+        padding: 1em;
+      }
+    </style>
+    <script type="text/JavaScript">
+      function toggle_display (block) {
+        var w = document.getElementById (block);
+        var t = document.getElementById (block + ":toggle");
+        if (w.style.display == "none") {
+          w.style.display = "block";
+          t.innerHTML = "⊟";
+        } else {
+          w.style.display = "none";
+          t.innerHTML = "⊞";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="CollectionTitle">
+      <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
+    <div class="SideBar">
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.FrequencySweep">Overview</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.FrequencySweep:Signature">Signature</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.FrequencySweep:Docs">Remarks</a>
+      </p>
+      <p>
+        <a href="#Members">Members</a>
+      </p>
+      <p>
+        <a href="#T:Nea.Client.Hardware.SDK.FrequencySweep:Members">Member Details</a>
+      </p>
+    </div>
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.FrequencySweep">FrequencySweep  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Summary">
+            Represents Afm Frequency sweep
+            </p>
+    <div>
+      <h2>Syntax</h2>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Signature">public class  <b>FrequencySweep</b></div>
+    </div>
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Docs">
+      <h2 class="Section">Remarks</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Docs:Remarks">
+        <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+      </div>
+      <h2 class="Section">Requirements</h2>
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Docs:Version Information">
+        <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+      <h2 class="Section" id="Members">Members</h2>
+      <div class="SectionBox" id="_Members">
+        <p>
+								See Also: Inherited members from
+								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
+							</p>
+        <h2 class="Section">Public Properties</h2>
+        <div class="SectionBox" id="Public Properties">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency">AmplitudeOfResonantHeadFrequency</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Amplitude of the Resonant Frequency of the tip
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation">Interpolation</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="javascript:alert(&quot;Documentation not found.&quot;)">Nea.Client.SharedDefinitions.Lorentz</a>
+                  </i>. 
+            Lorentz interpolation of the recorder data
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted">IsSweepCompleted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Indicates if sweep is completed 
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted">IsSweepStarted</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
+                  </i>. 
+            Indicates if sweep has started 
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude">MaxAmplitude</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Maximum Amplitude after sweep
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency">MaxFrequency</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Afm Head Frequency with Maximum Amplitude after sweep
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase">MaxPhase</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Phase with Maximum Amplitude after sweep
+            </td>
+              </tr>
+              <tr valign="top">
+                <td>[read-only]<div></div></td>
+                <td>
+                  <b>
+                    <a href="#P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency">ResonantFrequency</a>
+                  </b>
+                </td>
+                <td>
+                  <i>
+                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
+                  </i>. 
+            Resonant Frequency of the tip
+            </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String)">GetChannel</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>)<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[]</nobr><blockquote>
+            Gets the recorded data during the sweep for the specified channel
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32)">SetStepsSweep</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a>)<blockquote>
+            Set the amount of data points of the sweep
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double)">SetSweepRange</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>)<blockquote>
+            method that sets the range of the frequency sweep.
+            </blockquote></td>
+              </tr>
+              <tr valign="top">
+                <td>
+                  <div>
+                  </div>
+                </td>
+                <td colspan="2">
+                  <b>
+                    <a href="#M:Nea.Client.Hardware.SDK.FrequencySweep.Start()">Start</a>
+                  </b>()<blockquote>
+            Starts frequency sweep 
+            </blockquote></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.FrequencySweep:Members">
+      <h2 class="Section" id="MemberDetails">Member Details</h2>
+      <div class="SectionBox" id="_MemberDetails">
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency">AmplitudeOfResonantHeadFrequency Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency:member">
+          <div class="msummary">
+            Amplitude of the Resonant Frequency of the tip
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>AmplitudeOfResonantHeadFrequency</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String)">GetChannel Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String):member">
+          <div class="msummary">
+            Gets the recorded data during the sweep for the specified channel
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[] <b>GetChannel</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a> acronym)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String):Parameters">
+            <dl>
+              <dt>
+                <i>acronym</i>
+              </dt>
+              <dd> string related to the channel: "M1A" for Amplitude, "M1P" for Phase, "F" for Head Frequency in Hz</dd>
+            </dl>
+          </blockquote>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String):Returns">
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String):Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation">Interpolation Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation:member">
+          <div class="msummary">
+            Lorentz interpolation of the recorder data
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="javascript:alert(&quot;Documentation not found.&quot;)">Nea.Client.SharedDefinitions.Lorentz</a> <b>Interpolation</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted">IsSweepCompleted Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted:member">
+          <div class="msummary">
+            Indicates if sweep is completed 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsSweepCompleted</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted">IsSweepStarted Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted:member">
+          <div class="msummary">
+            Indicates if sweep has started 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsSweepStarted</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude">MaxAmplitude Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude:member">
+          <div class="msummary">
+            Maximum Amplitude after sweep
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MaxAmplitude</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency">MaxFrequency Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency:member">
+          <div class="msummary">
+            Afm Head Frequency with Maximum Amplitude after sweep
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MaxFrequency</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase">MaxPhase Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase:member">
+          <div class="msummary">
+            Phase with Maximum Amplitude after sweep
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MaxPhase</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency">ResonantFrequency Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency:member">
+          <div class="msummary">
+            Resonant Frequency of the tip
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>ResonantFrequency</b>  { get; }</div>
+          <h4 class="Subsection">Value</h4>
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency:Value">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency:Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32)">SetStepsSweep Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32):member">
+          <div class="msummary">
+            Set the amount of data points of the sweep
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetStepsSweep</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.UInt32">uint</a> steps)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32):Parameters">
+            <dl>
+              <dt>
+                <i>steps</i>
+              </dt>
+              <dd>
+              </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32):Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double)">SetSweepRange Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double):member">
+          <div class="msummary">
+            method that sets the range of the frequency sweep.
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>SetSweepRange</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> low, <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> high)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double):Parameters">
+            <dl>
+              <dt>
+                <i>low</i>
+              </dt>
+              <dd> starting frequency value of the sweep in KHz </dd>
+              <dt>
+                <i>high</i>
+              </dt>
+              <dd>ending frequency value of the sweep in KHz </dd>
+            </dl>
+          </blockquote>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double):Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double):Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+        <h3 id="M:Nea.Client.Hardware.SDK.FrequencySweep.Start()">Start Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.FrequencySweep.Start():member">
+          <div class="msummary">
+            Starts frequency sweep 
+            </div>
+          <h2>Syntax</h2>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Start</b> ()</div>
+          <h2 class="Section">Remarks</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.Start():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          </div>
+          <h2 class="Section">Requirements</h2>
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.FrequencySweep.Start():Version Information">
+            <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
+          <hr size="1" />
+        </blockquote>
+      </div>
+    </div>
+    <hr size="1" />
+    <div class="Copyright">
+    </div>
+  </body>
+</html>

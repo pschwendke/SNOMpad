@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Nea.Client.Hardware.SDK.Cooler</title>
+    <title>Nea.Client.Hardware.SDK.AutoAlignment</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style>
       body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
@@ -205,35 +205,36 @@
       <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
     <div class="SideBar">
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler">Overview</a>
+        <a href="#T:Nea.Client.Hardware.SDK.AutoAlignment">Overview</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Signature">Signature</a>
+        <a href="#T:Nea.Client.Hardware.SDK.AutoAlignment:Signature">Signature</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Docs">Remarks</a>
+        <a href="#T:Nea.Client.Hardware.SDK.AutoAlignment:Docs">Remarks</a>
       </p>
       <p>
         <a href="#Members">Members</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Members">Member Details</a>
+        <a href="#T:Nea.Client.Hardware.SDK.AutoAlignment:Members">Member Details</a>
       </p>
     </div>
-    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Cooler">Cooler  Class</h1>
-    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Cooler:Summary">
-            Gets the Cooler sample and magnet temperature and if the sample temperature is in the right range
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.AutoAlignment">AutoAlignment  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Summary">
+            Represents the Auto-Alignment procedure of the AFM head
             </p>
     <div>
       <h2>Syntax</h2>
-      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Cooler:Signature">public class  <b>Cooler</b></div>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Signature">public class  <b>AutoAlignment</b></div>
     </div>
-    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Cooler:Docs">
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Docs">
       <h2 class="Section">Remarks</h2>
-      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Remarks">
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Docs:Remarks">
+        <span class="NotEntered">Documentation for this section has not yet been entered.</span>
       </div>
       <h2 class="Section">Requirements</h2>
-      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Version Information">
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Docs:Version Information">
         <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
       <h2 class="Section" id="Members">Members</h2>
       <div class="SectionBox" id="_Members">
@@ -246,118 +247,119 @@
           <div class="SubsectionBox">
             <table class="TypeMembers">
               <tr valign="top">
-                <td>
-                  <div>
-                  </div>
-                </td>
+                <td>[read-only]<div></div></td>
                 <td>
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool</a>
+                    <a href="#P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted">IsCompleted</a>
                   </b>
                 </td>
                 <td>
                   <i>
                     <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
                   </i>. 
-            Gets a value indicating whether if sample temperature is in the right range.
+            boolean variable that returns that Auto Alignment is completed
             </td>
               </tr>
+            </table>
+          </div>
+        </div>
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
+          <div class="SubsectionBox">
+            <table class="TypeMembers">
               <tr valign="top">
                 <td>
                   <div>
                   </div>
                 </td>
-                <td>
+                <td colspan="2">
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
-                  </i>. 
-             Gets the magnet temperature in Kelvin
-             </td>
+                    <a href="#M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String)">GetChannel</a>
+                  </b>(<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a>)<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[]</nobr><blockquote>
+            Gets the recorded data of requested channel during the sweep  
+            </blockquote></td>
               </tr>
               <tr valign="top">
                 <td>
                   <div>
                   </div>
                 </td>
-                <td>
+                <td colspan="2">
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
-                  </i>. 
-             sample temperature in Kelvin
-             </td>
+                    <a href="#M:Nea.Client.Hardware.SDK.AutoAlignment.Start()">Start</a>
+                  </b>()<blockquote>
+             Starts Auto Alignment 
+            </blockquote></td>
               </tr>
             </table>
           </div>
         </div>
       </div>
     </div>
-    <div class="Members" id="T:Nea.Client.Hardware.SDK.Cooler:Members">
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.AutoAlignment:Members">
       <h2 class="Section" id="MemberDetails">Member Details</h2>
       <div class="SectionBox" id="_MemberDetails">
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:member">
+        <h3 id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String)">GetChannel Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String):member">
           <div class="msummary">
-            Gets a value indicating whether if sample temperature is in the right range.
+            Gets the recorded data of requested channel during the sweep  
             </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsCool</b>  { get; set; }</div>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Value">
-            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[] <b>GetChannel</b> (<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.String">string</a> acronym)</div>
+          <h4 class="Subsection">Parameters</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String):Parameters">
+            <dl>
+              <dt>
+                <i>acronym</i>
+              </dt>
+              <dd> string related to the channel, in this case M0A and M1p</dd>
+            </dl>
+          </blockquote>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String):Returns">
           </blockquote>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String):Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String):Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:member">
+        <h3 id="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted">IsCompleted Property</h3>
+        <blockquote id="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted:member">
           <div class="msummary">
-             Gets the magnet temperature in Kelvin
-             </div>
+            boolean variable that returns that Auto Alignment is completed
+            </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MagnetTemperature</b>  { get; set; }</div>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsCompleted</b>  { get; }</div>
           <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Value">
+          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted:Value">
             <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </blockquote>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Remarks">
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted:Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Version Information">
+          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted:Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:member">
+        <h3 id="M:Nea.Client.Hardware.SDK.AutoAlignment.Start()">Start Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.AutoAlignment.Start():member">
           <div class="msummary">
-             sample temperature in Kelvin
-             </div>
+             Starts Auto Alignment 
+            </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>SampleTemperature</b>  { get; set; }</div>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Value">
-            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
-          </blockquote>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Start</b> ()</div>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.Start():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.AutoAlignment.Start():Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>

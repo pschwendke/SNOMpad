@@ -9,6 +9,12 @@
             Channel ist eine Kombination aus LineScan, Signal, Harmonic und SignalComponent
             </summary>
         </member>
+        <member name="P:Nea.Client.SharedDefinitions.Channel.SortKey">
+            <summary>
+            Sort key
+            LSSHHC = Linescan, Signal, Harmonic, Component
+            </summary>
+        </member>
         <member name="T:Nea.Client.SharedDefinitions.ChannelTypeConverter">
             <summary>
             Channel in XAML 
@@ -44,14 +50,13 @@
             <param name="received">Response Bytes.</param>
             <typeparam name="T">Datentyp.</typeparam>
         </member>
-        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.#ctor(System.String,System.String,System.Int32,System.Func{System.Int64,System.Int64})">
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.#ctor(System.String,System.Func{System.Int64,System.Int64},System.String)">
             <summary>
             Rpc Client
             </summary>
-            <param name="name">Bezeichnung, nur für Logfiles</param>
-            <param name="hostname">Addresse des Servers</param>
-            <param name="port">Port des Servers</param>
+            <param name="name">Name for this Client to appear in logs</param>
             <param name="encrypt">Funktion die Challange-Response implementiert</param>
+            <param name="apiKeyBase64">base64 encoded string represenation of the 32bytes-long API Key</param>
         </member>
         <member name="M:Nea.Client.Hardware.Microscope.RpcClient.ReceiveBytes(System.UInt32,System.Boolean)">
             <summary>
@@ -64,11 +69,11 @@
         </member>
         <member name="T:Nea.Client.Hardware.Microscope.RpcClient.ResponseQueueItem">
             Empfangene Daten, die eine Antwort auf einen Request sind,
-            werden in die Response Queue eingereiht.
+               werden in die Response Queue eingereiht.
         </member>
         <member name="E:Nea.Client.Hardware.Microscope.RpcClient.UnsolicitedDataReceived">
             Empfangene Daten, die unangefordert ankommen,
-            werden als Event durchgereicht.
+               werden als Event durchgereicht.
         </member>
         <member name="M:Nea.Client.Hardware.Microscope.RpcClient.ReceiveThread">
             <summary>
@@ -76,15 +81,16 @@
             Size, MessageType, Data, Size, MessageType ... empfängt.
             </summary>
         </member>
-        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest)">
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
             <summary>
             Stellt einen Requests ohne Antwort, asynchron
             </summary>
             <param name="m">Request.</param>
+            <param name="cancellationToken"></param>
         </member>
-        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue``1(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
             <summary>
-            Stellt einen Requests ohne Antwort, asynchron
+            Asynchroner Request mit Antwort vom Typ T
             </summary>
             <param name="m">Request.</param>
             <param name="cancellationToken"></param>
@@ -95,12 +101,11 @@
             </summary>
             <param name="m">Request.</param>
         </member>
-        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue``1(Nea.Client.Hardware.Microscope.IRequest,System.Threading.CancellationToken)">
+        <member name="M:Nea.Client.Hardware.Microscope.RpcClient.Enqueue(Nea.Client.Hardware.Microscope.IRequest)">
             <summary>
-            Asynchroner Request mit Antwort vom Typ T
+            Stellt einen Requests ohne Antwort, asynchron
             </summary>
             <param name="m">Request.</param>
-            <param name="cancellationToken"></param>
         </member>
         <member name="M:Nea.Client.Hardware.Microscope.RpcClient.EnqueueAndWait``1(Nea.Client.Hardware.Microscope.IRequest)">
             <summary>
@@ -286,6 +291,12 @@
             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.IsCompleted"/>
             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress"/>
         </member>
+        <member name="T:Nea.Client.Hardware.SDK.LaserSource">
+            <summary>
+            Represents a laser source.
+            </summary>
+            <remarks></remarks>
+        </member>
         <member name="T:Nea.Client.Hardware.SDK.Microscope">
             <summary>
             Represents a remote microscope.
@@ -308,6 +319,13 @@
             <remarks>The version in the string is in format "<c>[major].[minor].[revision]</c>".</remarks>
             <seealso cref="P:Nea.Client.Hardware.SDK.Microscope.ClientVersion"/>
         </member>
+        <member name="P:Nea.Client.Hardware.SDK.Microscope.PowerMeter">
+            <summary>
+            Gets the current measurement from the power meter.
+            </summary>
+            <value>Power in mW.</value>
+            <remarks></remarks>
+        </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.RegulatorOn">
             <summary>
             Engages the regulator for Z.
@@ -328,7 +346,7 @@
             Returns <c>true</c> if the tip is in contact, otherwise <c>false</c>.
             </returns>
             <remarks>The tip is considered "in contact", if the last auto approach was successful 
-            and the regulator has not beed disengaged since.</remarks>
+            and the regulator has not been disengaged since.</remarks>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.AutoApproach(System.Double)">
             <summary>
@@ -344,11 +362,11 @@
             microscope.AutoApproach(0.80); // Auto-Approach with 80%
             </code>
             </example>
-            <param name="relativeSetpoint">Setpointrelative to maximum value. <para>(0.0 &lt; relativeSetpoint &lt; 1.0)</para></param>
+            <param name="relativeSetpoint">Setpoint relative to maximum value. <para>(0.0 &lt; relativeSetpoint &lt; 1.0)</para></param>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.CancelCurrentProcedure">
             <summary>
-            Stopps any pending operation (auto-approach, scan, auto-alignment, ...)
+            Stops any pending operation (auto-approach, scan, auto-alignment, ...)
             </summary>
             <remarks></remarks>
         </member>
@@ -445,6 +463,20 @@
             <returns>An object that represents a stage.</returns>
             <seealso cref="M:Nea.Client.Hardware.SDK.Stage.Deactivate"/>
         </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.SetSamplingTime(System.Double)">
+            <summary>
+            Sets the sampling time.
+            </summary>
+            <remarks></remarks>
+            <param name="milliseconds">Sampling time in milliseconds.</param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetSamplingTime">
+            <summary>
+            Gets the sampling time in milliseconds.
+            </summary>
+            <remarks></remarks>
+            <returns>The sampling time in milliseconds.</returns>
+        </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.GotoTipPosition(System.Double,System.Double,System.Double)">
             <summary>
             Move the tip to XY coordinates.
@@ -513,6 +545,30 @@
             </summary>
             <remarks></remarks>
         </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT3(System.Double)">
+            <summary>
+            Set output voltage on AOUT3. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT3">
+            <summary>
+            Get output voltage on AOUT3.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.SetAOUT4(System.Double)">
+            <summary>
+            Set output voltage on AOUT4 in milliVots. Voltage ranges goes from -10000 mV to + 10000 mV.
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetAOUT4">
+            <summary>
+            Get output voltage on AOUT4.
+            </summary>
+            <remarks></remarks>
+        </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.Dispose">
             <summary>
             Performs tasks associated with freeing, releasing, or resetting unmanaged resources.
@@ -521,9 +577,8 @@
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Microscope.GotoInterferometerPosition(System.Double)">
             <summary>
-            Move the interfernometer coordinate.
+            Move the interferometer coordinate.
             </summary>
-            <param name="offset">current sample x and y position in µm </param>
             <param name="interferometerPosition">set interferometer position in µm.</param>
             <remarks>Velocity must fall within range 0.5-10.0µm/s.</remarks>
             <returns><c>true</c> if interferometer reached target position, otherwise <c>false</c>.</returns>
@@ -532,22 +587,46 @@
              <summary>
              Gets sample and magnet temperatures of the active cooler.
              </summary>
-            <remarks></remarks>
+            <remarks></remarks>        
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareFrequencySweep">
+            <summary>
+            Prepares an AFM frequency sweep
+            </summary>
+            <remarks>In order to start the sweep you need to call <see cref="M:Nea.Client.Hardware.SDK.FrequencySweep.Start"></see> 
+            on the returned object.</remarks>       
+             <returns>Frequency, Amplitude(M1A) and Phase (M1P) data during sweep and also the Resonant Frequency and its corresponding Amplitude.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetTappingAmplitudeVoltage">
+            <summary>
+            Gets tapping amplitude voltage of the tip in mVpp
+            </summary>
+            <returns>double</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.SetTappingAmplitudeVoltage(System.Double)">
+            <summary>
+            Sets tapping amplitude voltage of the tip in mVpp
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.PrepareAutoAlignment">
+            <summary>
+            Prepares Auto-Alignment.
+            </summary>
+            <remarks>In order to start auto-alignment you need to call <see cref="M:Nea.Client.Hardware.SDK.AutoAlignment.Start"></see> 
+            on the returned object.</remarks>       
+             <returns>M0A and M1P data during auto-alignment.</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.Microscope.GetLaserSourceNanoFTIR">
+            <summary>
+            Get access to 4.5-15 µm nano-FTIR laser source
+            </summary>
+            <returns></returns>
         </member>
         <member name="T:Nea.Client.Hardware.SDK.Cooler">
             <summary>
             Gets the Cooler sample and magnet temperature and if the sample temperature is in the right range
             </summary>
             <remarks></remarks>
-        </member>
-        <member name="M:Nea.Client.Hardware.SDK.Cooler.#ctor(System.Double,System.Double,System.Boolean)">
-             <summary>
-            Cooler  constructor with its corresonding properties
-             </summary>
-             <param name="sample">current temperature of sample in Kelvin </param>
-             <param name="magnet">current temperature of teh magnet in Kelvin </param>
-             <param name="iscool">informs wether the sample temperature is in the right range </param>
-             <remarks></remarks>
         </member>
         <member name="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">
             <summary>
@@ -566,6 +645,119 @@
             Gets a value indicating whether if sample temperature is in the right range.
             </summary>
             <remarks></remarks>>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.FrequencySweep">
+            <summary>
+            Represents Afm Frequency sweep
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.FrequencySweep.SetStepsSweep(System.UInt32)">
+            <summary>
+            Set the amount of data points of the sweep
+            </summary>
+            <param name="steps"></param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.FrequencySweep.SetSweepRange(System.Double,System.Double)">
+            <summary>
+            method that sets the range of the frequency sweep.
+            </summary>
+            <param name="low"> starting frequency value of the sweep in KHz </param>
+            <param name="high">ending frequency value of the sweep in KHz </param>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.FrequencySweep.GetChannel(System.String)">
+            <summary>
+            Gets the recorded data during the sweep for the specified channel
+            </summary>
+            <param name="acronym"> string related to the channel: "M1A" for Amplitude, "M1P" for Phase, "F" for Head Frequency in Hz</param>
+            <returns></returns>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepStarted">
+            <summary>
+            Indicates if sweep has started 
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.IsSweepCompleted">
+            <summary>
+            Indicates if sweep is completed 
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxFrequency">
+            <summary>
+            Afm Head Frequency with Maximum Amplitude after sweep
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxAmplitude">
+            <summary>
+            Maximum Amplitude after sweep
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.MaxPhase">
+            <summary>
+            Phase with Maximum Amplitude after sweep
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.Interpolation">
+            <summary>
+            Lorentz interpolation of the recorder data
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.ResonantFrequency">
+            <summary>
+            Resonant Frequency of the tip
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.FrequencySweep.AmplitudeOfResonantHeadFrequency">
+            <summary>
+            Amplitude of the Resonant Frequency of the tip
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.FrequencySweep.Start">
+            <summary>
+            Starts frequency sweep 
+            </summary>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.DataRecorder">
+            <summary>
+            Allows to record demodulated data from microscope
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.DataRecorder.GetData">
+            <summary>
+            Get recorded data.
+            </summary>
+            <returns>array of floats</returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.DataRecorder.Start">
+            <summary>
+            Start recording demodulated data
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.DataRecorder.Stop">
+            <summary>
+            Stops recording demodulated data
+            </summary>
+        </member>
+        <member name="T:Nea.Client.Hardware.SDK.AutoAlignment">
+            <summary>
+            Represents the Auto-Alignment procedure of the AFM head
+            </summary>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.AutoAlignment.IsCompleted">
+            <summary>
+            boolean variable that returns that Auto Alignment is completed
+            </summary>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.AutoAlignment.GetChannel(System.String)">
+            <summary>
+            Gets the recorded data of requested channel during the sweep  
+            </summary>
+            <param name="acronym"> string related to the channel, in this case M0A and M1p</param>
+            <returns></returns>
+        </member>
+        <member name="M:Nea.Client.Hardware.SDK.AutoAlignment.Start">
+            <summary>
+             Starts Auto Alignment 
+            </summary>
         </member>
         <member name="T:Nea.Client.Hardware.SDK.Scan.FourierScan">
             <summary>
@@ -728,11 +920,11 @@
             </summary>
             <remarks></remarks>
         </member>
-        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.#ctor(Nea.Client.Hardware.IHardware)">
+        <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.#ctor(Nea.Client.Hardware.SDK.Microscope)">
             <summary>
             Initializes a new instance of the <see cref="T:Nea.Client.Hardware.SDK.Scan.PsHetScan" /> class.
             </summary>
-            <param name="h">The h.</param>
+            <param name="m">The microscope.</param>
         </member>
         <member name="P:Nea.Client.Hardware.SDK.Scan.PsHetScan.MirrorAmplitudeAndOffsetScalingInPsHet">
              <summary>
@@ -742,20 +934,20 @@
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.SetMirrorOffset(System.Double)">
             <summary>
-            Sets the refference mirror offset position in z direction.
+            Sets the reference mirror offset position in z direction.
             </summary>
             <param name="volts">voltage in V.</param>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.GetMirrorOffset">
             <summary>
-            Gets the refference mirror offset position in z direction
+            Gets the reference mirror offset position in z direction
             </summary>
             <remarks></remarks>
             <returns>voltage in V</returns>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Scan.PsHetScan.SetMirrorAmplitude(System.Double)">
             <summary>
-            Sets the mirror voltage amplitud, Vpp in V.
+            Sets the mirror voltage amplitude, Vpp in V.
             </summary>
             <param name="volts">The volts.</param>
         </member>
@@ -770,6 +962,13 @@
             Represents a scan with Whitelight parameters.
             </summary>
             <remarks></remarks>
+        </member>
+        <member name="P:Nea.Client.Hardware.SDK.Scan.WhitelightScan.InterferometerPosition">
+            <summary>
+            Gets or sets the interferometer position for this scan
+            </summary>
+            <remarks></remarks>
+            <value>Position of interferometer in µm</value>
         </member>
         <member name="T:Nea.Client.Hardware.SDK.Scan.CfmScan">
             <summary>
@@ -818,14 +1017,53 @@
             <seealso cref="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)"/>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.SetSerpentScan(System.UInt32,System.UInt32)">
+             <summary>
+             Gets or sets the number of rows to be skipped.
+             </summary>
+             <value>
+             The number of consecutive rows that will be skipped.
+             </value>
+             <remarks>
+             <list type="bullet">
+               <item>
+                 <term>A value of 0 indicates a normal scan (no serpent mode).</term>
+               </item>
+               <item>
+                 <term>Images from serpent scans result in a lower resolution than <see cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.ResolutionRows"/>.</term>
+               </item>
+             </list>
+             </remarks>
+             <example>
+             This example shows how to start a serpent AFM scan with 100x20 pixels:
+             <code>
+             var scan = microscope.PrepareAfmScan();
+             scan.SetResolution(100, 100);
+             
+             scan.TakeRows = 1;
+             scan.SkipRows = 4;
+             
+             scan.Start();
+             </code>
+             </example>
+             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows"/>
+             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows"/>
+            
+             <summary>
+             Sets the scan as serpent.
+             </summary>
+             <remarks>Consecutive rows will alternately be taken and skipped in this scan.</remarks>
+             <param name="take">The number scanned rows.</param>
+             <param name="skip">The number skipped rows.</param>
+             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows"/>
+             <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows"/>
+        </member>
+        <member name="F:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.OffsetM">
             <summary>
-            Sets the scan as serpent.
             </summary>
-            <remarks>Consecutive rows will alternately be taken and skipped in this scan.</remarks>
-            <param name="take">The number scanned rows.</param>
-            <param name="skip">The number skipped rows.</param>
-            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.TakeRows"/>
-            <seealso cref="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows"/>
+        </member>
+        <member name="F:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.LengthM">
+            <summary>
+            </summary>
         </member>
         <member name="M:Nea.Client.Hardware.SDK.Scan.SerpentableScan2D.DoStart">
             
@@ -983,8 +1221,8 @@
         </member>
         <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.SkipRows">
             <summary>
-            SkipRows is the number skipped rows in a serpent scan 
-            </summary>
+             SkipRows is the number skipped rows in a serpent scan 
+             </summary>
         </member>
         <member name="P:Nea.Client.Hardware.SDK.Scan.BasicScan.Progress">
             <summary>
@@ -1268,23 +1506,6 @@
             <summary>
               Overrides the current thread's CurrentUICulture property for all
               resource lookups using this strongly typed resource class.
-            </summary>
-        </member>
-        <member name="P:Nea.Client.Hardware.Properties.Resources.log4net_xml">
-            <summary>
-              Looks up a localized string similar to &lt;log4net&gt;
-            &lt;appender name=&quot;FileAppender&quot; type=&quot;log4net.Appender.RollingFileAppender&quot;&gt;
-            	&lt;param name=&quot;File&quot; value=&quot;Nea.Client.Hardware.log&quot; /&gt;
-            	&lt;appendToFile value=&quot;true&quot; /&gt;
-            	&lt;rollingStyle value=&quot;Size&quot; /&gt;
-            	&lt;maxSizeRollBackups value=&quot;9&quot; /&gt;
-            	&lt;maximumFileSize value=&quot;10MB&quot; /&gt;
-            	&lt;staticLogFileName value=&quot;true&quot; /&gt;
-            	&lt;layout type=&quot;log4net.Layout.PatternLayout&quot;&gt;
-            	&lt;conversionPattern value=&quot;%date [%thread] %-5level %logger - %message%newline&quot; /&gt;
-            	&lt;/layout&gt;
-            &lt;/appender&gt;
-            &lt;appender name=&quot;ConsoleAppende [rest of string was truncated]&quot;;.
             </summary>
         </member>
     </members>

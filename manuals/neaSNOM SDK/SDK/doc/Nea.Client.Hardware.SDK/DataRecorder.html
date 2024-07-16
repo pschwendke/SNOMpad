@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Nea.Client.Hardware.SDK.Cooler</title>
+    <title>Nea.Client.Hardware.SDK.DataRecorder</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style>
       body { font-family: "SegoeUI", "Lucida Grande", Verdana, Arial, Helvetica, sans-serif; font-size: 12px; }
@@ -205,35 +205,36 @@
       <a href="../index.html">Nea.Client.Hardware</a> : <a href="index.html">Nea.Client.Hardware.SDK Namespace</a></div>
     <div class="SideBar">
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler">Overview</a>
+        <a href="#T:Nea.Client.Hardware.SDK.DataRecorder">Overview</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Signature">Signature</a>
+        <a href="#T:Nea.Client.Hardware.SDK.DataRecorder:Signature">Signature</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Docs">Remarks</a>
+        <a href="#T:Nea.Client.Hardware.SDK.DataRecorder:Docs">Remarks</a>
       </p>
       <p>
         <a href="#Members">Members</a>
       </p>
       <p>
-        <a href="#T:Nea.Client.Hardware.SDK.Cooler:Members">Member Details</a>
+        <a href="#T:Nea.Client.Hardware.SDK.DataRecorder:Members">Member Details</a>
       </p>
     </div>
-    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.Cooler">Cooler  Class</h1>
-    <p class="Summary" id="T:Nea.Client.Hardware.SDK.Cooler:Summary">
-            Gets the Cooler sample and magnet temperature and if the sample temperature is in the right range
+    <h1 class="PageTitle" id="T:Nea.Client.Hardware.SDK.DataRecorder">DataRecorder  Class</h1>
+    <p class="Summary" id="T:Nea.Client.Hardware.SDK.DataRecorder:Summary">
+            Allows to record demodulated data from microscope
             </p>
     <div>
       <h2>Syntax</h2>
-      <div class="Signature" id="T:Nea.Client.Hardware.SDK.Cooler:Signature">public class  <b>Cooler</b></div>
+      <div class="Signature" id="T:Nea.Client.Hardware.SDK.DataRecorder:Signature">public class  <b>DataRecorder</b></div>
     </div>
-    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.Cooler:Docs">
+    <div class="Remarks" id="T:Nea.Client.Hardware.SDK.DataRecorder:Docs">
       <h2 class="Section">Remarks</h2>
-      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Remarks">
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.DataRecorder:Docs:Remarks">
+        <span class="NotEntered">Documentation for this section has not yet been entered.</span>
       </div>
       <h2 class="Section">Requirements</h2>
-      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.Cooler:Docs:Version Information">
+      <div class="SectionBox" id="T:Nea.Client.Hardware.SDK.DataRecorder:Docs:Version Information">
         <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
       <h2 class="Section" id="Members">Members</h2>
       <div class="SectionBox" id="_Members">
@@ -241,8 +242,8 @@
 								See Also: Inherited members from
 								<a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Object">object</a>.
 							</p>
-        <h2 class="Section">Public Properties</h2>
-        <div class="SectionBox" id="Public Properties">
+        <h2 class="Section">Public Methods</h2>
+        <div class="SectionBox" id="Public Methods">
           <div class="SubsectionBox">
             <table class="TypeMembers">
               <tr valign="top">
@@ -250,114 +251,92 @@
                   <div>
                   </div>
                 </td>
-                <td>
+                <td colspan="2">
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a>
-                  </i>. 
-            Gets a value indicating whether if sample temperature is in the right range.
-            </td>
+                    <a href="#M:Nea.Client.Hardware.SDK.DataRecorder.GetData()">GetData</a>
+                  </b>()<nobr> : <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[]</nobr><blockquote>
+            Get recorded data.
+            </blockquote></td>
               </tr>
               <tr valign="top">
                 <td>
                   <div>
                   </div>
                 </td>
-                <td>
+                <td colspan="2">
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
-                  </i>. 
-             Gets the magnet temperature in Kelvin
-             </td>
+                    <a href="#M:Nea.Client.Hardware.SDK.DataRecorder.Start()">Start</a>
+                  </b>()<blockquote>
+            Start recording demodulated data
+            </blockquote></td>
               </tr>
               <tr valign="top">
                 <td>
                   <div>
                   </div>
                 </td>
-                <td>
+                <td colspan="2">
                   <b>
-                    <a href="#P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature</a>
-                  </b>
-                </td>
-                <td>
-                  <i>
-                    <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a>
-                  </i>. 
-             sample temperature in Kelvin
-             </td>
+                    <a href="#M:Nea.Client.Hardware.SDK.DataRecorder.Stop()">Stop</a>
+                  </b>()<blockquote>
+            Stops recording demodulated data
+            </blockquote></td>
               </tr>
             </table>
           </div>
         </div>
       </div>
     </div>
-    <div class="Members" id="T:Nea.Client.Hardware.SDK.Cooler:Members">
+    <div class="Members" id="T:Nea.Client.Hardware.SDK.DataRecorder:Members">
       <h2 class="Section" id="MemberDetails">Member Details</h2>
       <div class="SectionBox" id="_MemberDetails">
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.IsCool">IsCool Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:member">
+        <h3 id="M:Nea.Client.Hardware.SDK.DataRecorder.GetData()">GetData Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.DataRecorder.GetData():member">
           <div class="msummary">
-            Gets a value indicating whether if sample temperature is in the right range.
+            Get recorded data.
             </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Boolean">bool</a> <b>IsCool</b>  { get; set; }</div>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Value">
-            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
-          </blockquote>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Single">float</a>[] <b>GetData</b> ()</div>
+          <h4 class="Subsection">Returns</h4>
+          <blockquote class="SubsectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.GetData():Returns">array of floats</blockquote>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.GetData():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.IsCool:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.GetData():Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature">MagnetTemperature Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:member">
+        <h3 id="M:Nea.Client.Hardware.SDK.DataRecorder.Start()">Start Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.DataRecorder.Start():member">
           <div class="msummary">
-             Gets the magnet temperature in Kelvin
-             </div>
+            Start recording demodulated data
+            </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>MagnetTemperature</b>  { get; set; }</div>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Value">
-            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
-          </blockquote>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Start</b> ()</div>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.Start():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.MagnetTemperature:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.Start():Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
-        <h3 id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature">SampleTemperature Property</h3>
-        <blockquote id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:member">
+        <h3 id="M:Nea.Client.Hardware.SDK.DataRecorder.Stop()">Stop Method</h3>
+        <blockquote id="M:Nea.Client.Hardware.SDK.DataRecorder.Stop():member">
           <div class="msummary">
-             sample temperature in Kelvin
-             </div>
+            Stops recording demodulated data
+            </div>
           <h2>Syntax</h2>
-          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Double">double</a> <b>SampleTemperature</b>  { get; set; }</div>
-          <h4 class="Subsection">Value</h4>
-          <blockquote class="SubsectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Value">
-            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
-          </blockquote>
+          <div class="Signature">public <a href="http://www.go-mono.com/docs/monodoc.ashx?link=T:System.Void">void</a> <b>Stop</b> ()</div>
           <h2 class="Section">Remarks</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Remarks">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.Stop():Remarks">
+            <span class="NotEntered">Documentation for this section has not yet been entered.</span>
           </div>
           <h2 class="Section">Requirements</h2>
-          <div class="SectionBox" id="P:Nea.Client.Hardware.SDK.Cooler.SampleTemperature:Version Information">
+          <div class="SectionBox" id="M:Nea.Client.Hardware.SDK.DataRecorder.Stop():Version Information">
             <b>Namespace: </b>Nea.Client.Hardware.SDK<br /><b>Assembly: </b>Nea.Client.Hardware (in Nea.Client.Hardware.dll)</div>
           <hr size="1" />
         </blockquote>
