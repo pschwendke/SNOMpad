@@ -28,3 +28,7 @@ def notebook_logger():
     logger.addHandler(handler)
 
     return logger
+
+
+def gui_logger():
+    pass
