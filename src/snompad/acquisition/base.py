@@ -2,8 +2,10 @@
 #  format logging messages: ClassName:
 
 import logging
+import ctypes
 import numpy as np
 import xarray as xr
+from threading import Thread, get_native_id
 from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
@@ -14,7 +16,6 @@ from ..file_handlers.neascan import to_numpy
 from ..file_handlers.hdf5 import WriteH5Acquisition
 from ..file_handlers.temp import H5Buffer
 from ..drivers import DLStage, NeaSNOM, DaqController
-# from ..utility.acquisition_logger import LogFilter
 from ..__init__ import __version__
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ class BaseScan(ABC):
         self.pump_probe = pump_probe
         self.ratiometry = ratiometry
         self.acquisition_buffer = H5Buffer()
+        self.abort = False
         self.connected = False
         self.acquisition_mode = None  # should be defined in subclass __init__
         self.afm_data = None
@@ -158,7 +160,6 @@ class BaseScan(ABC):
         """
         self.log_handler = logging.FileHandler(filename=self.name + '.log', encoding='utf-8')
         self.log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-        # self.log_handler.addFilter(LogFilter())
         logging.getLogger().addHandler(self.log_handler)
 
     def setup_delay_stage(self):
@@ -216,7 +217,27 @@ class BaseScan(ABC):
         starts the acquisition
         """
         try:
-            self.routine()
+            # ToDo: This whole thing might just work with calling KeyboardInterrupt in bokeh. Try that first.
+            class AcquisitionDaemon(Thread):
+                def get_id(self):
+                    if hasattr(self, '_thread_id'):
+                        return self._thread_id
+                    else:
+                        raise RuntimeError('Aborting BaseScan: Unable to find thread id')
+
+                def stop(self):
+                    thread_id = self.get_id()
+                    res = ctypes.pythonapi.PyThreadState_SetAsynExc(thread_id, ctypes.py_object(KeyboardInterrupt))
+                    if res != 1:
+                        logger.error(f'BaseScan: {res} threads killed instead of 1')
+
+            acquisition_daemon = AcquisitionDaemon(target=self.routine, daemon=True)
+            acquisition_daemon.start()
+            while acquisition_daemon.is_alive():
+                sleep(.5)
+                if self.abort:
+                    acquisition_daemon.stop()
+            acquisition_daemon.join()
             self.export()
         except KeyboardInterrupt:
             logger.error('BaseScan: Acquisition was interrupted by user')
@@ -260,6 +281,7 @@ class ContinuousScan(BaseScan):
         super().disconnect()
         self.ctrl.close()
         self.ctrl = None
+        self.buffer = None
         return False
 
     def acquire(self):
