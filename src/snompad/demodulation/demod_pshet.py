@@ -187,7 +187,7 @@ def pshet_sidebands(tap_ft: np.ndarray, max_order=None):
 
 
 def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64, chopped='auto', tap_correction='fft',
-          binning='binned_kernel', pshet_demod='fitting', ratiometry='auto', max_order=5) -> np.ndarray:
+          binning='binned_kernel', pshet_demod='fitting', ratiometry='auto', max_order: int = 5) -> np.ndarray:
     """ Simple combination pshet demodulation functions. Pump-probe demodulation,
     tapping phase correction, and ratiometric correction is also handled here.
 

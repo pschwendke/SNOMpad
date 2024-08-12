@@ -1,10 +1,10 @@
-# code to read and write SNOMpad data from and to hdf5 files
+# classes to read and write SNOMpad data from and to hdf5 files
 import numpy as np
 import xarray as xr
 import logging
 import h5py
 
-from .base import AcquisitionReader
+from .base import AcquisitionReader, DemodulationFile
 from .temp import H5Buffer
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ def h5_to_xr_dataset(group: h5py.Group):
     """ takes an hdf5 group that has previously been converted from an xr.Dataset, and reproduces this xr.Dataset.
     Datasets labeled with _real and _imag are combined into one complex valued DataArray.
     """
+    # ToDo: real and imag. Is it really doing this???
     ds = xr.Dataset()
     ds.attrs = group.attrs
     for ch, dset in group.items():
@@ -133,7 +134,7 @@ class ReadH5Acquisition(AcquisitionReader):
 
     def read_data(self):
         """ reads afm and nea data from file and stores xr.Datasets. A wrapper is built around DAQ data to save memory.
-        Use .load_daq_data() to return dict of all daq data chunks.
+        Use load_daq_data() to return dict of all daq data chunks.
         """
         if 'afm_data' in self.file.keys():
             logger.info('Reading AFM data from file')
@@ -166,11 +167,47 @@ class ReadH5Acquisition(AcquisitionReader):
         return daq_data
 
 
-class WriteH5Demodulation:
-    def __init__(self):
-        pass
+class H5DemodulationFile(DemodulationFile):
+    """ Class to read and write demodulated scan data to an hdf5 file
+    """
+    def __init__(self, name: str):
+        filename = name + '_demod.h5'
+        super().__init__(filename)
 
+    def open_file(self):
+        """ Just opens a hdf5 file with the defined filename.
+        """
+        try:
+            self.file = h5py.File(self.filename, 'r+')
+        except FileNotFoundError:
+            self.file = h5py.File(self.filename, 'w-')
 
-class ReadH5Demodulation:
-    def __init__(self):
-        pass
+    def close_file(self):
+        self.file.close()
+
+    def load_demod_data(self, cache: dict):
+        """ Loads hdf5 groups, converts them into xarray datasets and puts them into the demod cache, if they are not
+        already there. The cache is modified in place.
+        """
+        for key, group in self.file.items():
+            if key != 'metadata' and key not in cache.keys():
+                cache[key] = h5_to_xr_dataset(group=group)
+
+    def write_demod_data(self, cache: dict):
+        """ Takes all xarray datasets from the demod cache, converts them into hdf5 groups and writes them to the
+        demod file, if they do not already exist there.
+        """
+        for key, dset in cache.items():
+            if key not in self.file.keys():
+                self.file.create_group(key)
+                xr_to_h5_datasets(ds=dset, group=self.file[key])
+
+    def load_metadata(self) -> dict:
+        metadata = {}
+        for k, v in self.file.attrs.items():
+            metadata[k] = v
+        return metadata
+
+    def write_metadata(self, metadata: dict):
+        for k, v in metadata.items():
+            self.file.attrs[k] = v
