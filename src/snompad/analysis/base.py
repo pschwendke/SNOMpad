@@ -1,4 +1,3 @@
-# base class to load scan data acquired with TRION or SNOMpad package
 import inspect
 from abc import ABC, abstractmethod
 
@@ -17,7 +16,7 @@ class BaseScanDemod(ABC):
         elif filename[-3:] == '.nc':
             self.scan_file = ReadTrionAcquisition(filename)
         else:
-            raise NotImplementedError(f'filetype not supported: {filename}')
+            raise NotImplementedError(f'Filetype not supported: {filename}')
         self.afm_data = self.scan_file.afm_data
         self.nea_data = self.scan_file.nea_data
         self.daq_data = self.scan_file.daq_data
@@ -88,6 +87,66 @@ class BaseScanDemod(ABC):
     def demod(self):
         """ Collect and demodulate raw data, to produce NF images, retraction curves, spectra etc.
         """
+
+    @abstractmethod
+    def plot(self):
+        """ Plot (and save) demodulated data, e.g. images or curves
+        """
+
+
+class BaseDemodReader(ABC):
+    """ Base class do open, view, and modify demod files.
+    """
+    def __init__(self, filename: str):
+        if filename[-9:] == '_demod.h5':
+            self.file = H5DemodulationFile(name=filename)
+        else:
+            raise NotImplementedError(f'Filetype not supported: {filename}')
+        self.metadata = self.file.load_metadata()
+        self.name = self.file.attrs
+        self.demod_data = None
+        self.demod_cache = {}
+        self.file.load_demod_data(cache=self.demod_cache)
+        self.index_cache()
+
+    def __repr__(self) -> str:
+        return f'SNOMpad demodulation file reader: {self.file.filename}'
+
+    def __str__(self) -> str:
+        ret = 'Metadata:\n'
+        for k, v in self.metadata.items():
+            ret += f'{k}: {v}\n'
+        return ret
+
+    def __del__(self):
+        self.file.close_file()
+
+    def add_metadata(self, key: str, value):
+        self.metadata[key] = value
+        self.file.write_metadata(metadata=self.metadata)
+
+    def write_demod_data(self):
+        """ Write demod_cache to file
+        """
+        self.file.write_demod_data(cache=self.demod_cache)
+
+    def index_cache(self):
+        indexed = {}
+        for i, (key, dset) in enumerate(self.demod_cache.items()):
+            indexed[i] = (dset.attrs['demod_params'], dset)
+        self.demod_cache = indexed
+
+    def show_cache(self) -> str:
+        out = 'Cached demod data:\n'
+        for i, (params, dset) in self.demod_cache.items():
+            out += f'{i}\n'
+            for k, v in params.items():
+                out += f'\u0009{k}: {v}\n'
+        print(out)
+
+    def select(self, index: int):
+        _, dset = self.demod_cache[index]
+        self.demod_data = dset
 
     @abstractmethod
     def plot(self):

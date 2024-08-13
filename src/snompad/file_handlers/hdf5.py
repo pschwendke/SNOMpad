@@ -171,8 +171,10 @@ class H5DemodulationFile(DemodulationFile):
     """ Class to read and write demodulated scan data to an hdf5 file
     """
     def __init__(self, name: str):
-        filename = name + '_demod.h5'
-        super().__init__(filename)
+        if name[-9:] == '_demod.h5':
+            super().__init__(name)
+        else:
+            super().__init__(name + '_demod.h5')
 
     def open_file(self):
         """ Just opens a hdf5 file with the defined filename.

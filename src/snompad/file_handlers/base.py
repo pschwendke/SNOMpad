@@ -72,13 +72,13 @@ class DemodulationFile(ABC):
 
     @abstractmethod
     def load_demod_data(self, cache: dict):
-        """ Demod data is loaded from file and placed in cache.
+        """ Demod data is loaded from file and placed in cache, a dictionary of xr.Datasets.
         """
         pass
 
     @abstractmethod
     def write_demod_data(self, cache: dict):
-        """ Demod cache is written do demod file.
+        """ Demod cache, a dict of xr.Datasets, is written do demod file.
         """
         pass
 

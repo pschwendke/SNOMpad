@@ -1,5 +1,12 @@
 # measurement classes corresponding to acquisition scan classes.
 # classes hold methods to read, demodulate, save, and plot SNOM data.
+""" Classes all have a similar structure: First the raw data is put to a specific shape, i.e. indexed pixels with
+associated chunks of DAQ data, and averaged AFM data.
+These indexed pixels are then demodulated, and the optical data stored together with AFM data in the xr.Dataset
+demod_data.
+demod_data is as well stored in the demod_cache, to avoid an unnecessary repetition of the demodulation.
+The demod_cache can be written to and read from demod_file, which represents hdf5 storage on the hard drive.
+"""
 import numpy as np
 import xarray as xr
 import colorcet as cc
@@ -12,23 +19,6 @@ from ..demodulation import shd, pshet
 from ..demodulation.utils import chop_pump_idx
 from ..utility import Scan, Demodulation, Signals, c_air
 from ..file_handlers.gwyddion import export_gwy
-
-
-def load(filename: str) -> BaseScanDemod:
-    """ Loads scan from file and returns BaseScanDemod object. The function is agnostic to scan type.
-    """
-    if 'retraction' in filename:
-        return Retraction(filename)
-    elif 'image' in filename:
-        return Image(filename)
-    elif 'line' in filename:
-        return Line(filename)
-    elif 'noise' in filename:
-        return Noise(filename)
-    elif 'delay' in filename:
-        return Delay(filename)
-    else:
-        raise NotImplementedError
 
 
 class Retraction(BaseScanDemod):
@@ -86,6 +76,8 @@ class Retraction(BaseScanDemod):
         """
         if self.demod_data is None:
             self.reshape()
+        if save and self.demod_file is None:
+            self.open_demod_file()
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
         demod_params = self.demod_params(params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
         demod_key = ''.join(sorted([k + str(v) for k, v in demod_params.items()]))
@@ -662,6 +654,8 @@ class Delay(BaseScanDemod):
         """
         if self.demod_data is None:
             self.reshape()
+        if save and self.demod_file is None:
+            self.open_demod_file()
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
         demod_params = self.demod_params(params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
         demod_key = ''.join(sorted([k + str(v) for k, v in demod_params.items()]))
