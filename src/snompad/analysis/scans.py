@@ -5,13 +5,13 @@ import xarray as xr
 import colorcet as cc
 from tqdm import tqdm
 
-from . import shd, pshet
-from ..utility import Scan, Demodulation, Signals, c_air
-from ..demodulation.demod_utils import chop_pump_idx
-from .scan_demod_base import BaseScanDemod
-from .scan_demod_utils import sort_lines, bin_line
+from snompad.demodulation import shd, pshet
+from snompad.utility import Scan, Demodulation, Signals, c_air
+from snompad.demodulation.utils import chop_pump_idx
+from .base import BaseScanDemod
+from .utils import sort_lines, bin_line
 from .image_corrections import subtract_linear
-from ..file_handlers.gwyddion import export_gwy
+from snompad.file_handlers.gwyddion import export_gwy
 
 
 def load(filename: str) -> BaseScanDemod:

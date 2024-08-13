@@ -4,11 +4,11 @@ import os
 import colorcet as cc
 from datetime import datetime
 from bokeh.plotting import figure, ColumnDataSource, curdoc
-from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Dropdown, Select
+from bokeh.models import Button, NumericInput, Div, RadioButtonGroup, Toggle, TextInput, Select
 from bokeh.layouts import column, row, gridplot
 
 from ..acquisition.scans import SteppedLineScan, ContinuousLineScan
-from ..demodulation.scan_demod import load
+from snompad.analysis.scans import load
 
 import logging
 

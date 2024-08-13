@@ -1,6 +1,5 @@
-from .demod_shd import shd
-from .demod_pshet import pshet
-from .scan_demod import load
+from .shd import shd
+from .pshet import pshet
 
 import colorcet as cc
 from matplotlib.colors import LinearSegmentedColormap

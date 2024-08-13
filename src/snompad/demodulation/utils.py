@@ -1,7 +1,7 @@
 # tools and helper functions
 import numpy as np
 
-from .demod_corrections import phase_offset
+from .corrections import phase_offset
 from ..utility.signals import Signals
 
 

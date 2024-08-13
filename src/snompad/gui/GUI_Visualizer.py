@@ -15,7 +15,7 @@ from bokeh.layouts import layout, column, row
 
 from snompad.utility import Signals
 from snompad.demodulation import shd, pshet
-from snompad.demodulation.demod_utils import chop_pump_idx
+from snompad.demodulation.utils import chop_pump_idx
 from snompad.acquisition.buffer import CircularArrayBuffer
 from snompad.drivers.daq_ctrl import DaqController
 
