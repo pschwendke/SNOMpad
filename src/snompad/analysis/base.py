@@ -2,10 +2,10 @@
 import inspect
 from abc import ABC, abstractmethod
 
-from snompad.demodulation import shd, pshet
-from snompad.utility.signals import Scan, Demodulation, Signals
-from snompad.file_handlers.hdf5 import ReadH5Acquisition, H5DemodulationFile
-from snompad.file_handlers.trion import ReadTrionAcquisition
+from ..demodulation import shd, pshet
+from ..utility.signals import Scan, Demodulation, Signals
+from ..file_handlers.hdf5 import ReadH5Acquisition, H5DemodulationFile
+from ..file_handlers.trion import ReadTrionAcquisition
 
 
 class BaseScanDemod(ABC):
