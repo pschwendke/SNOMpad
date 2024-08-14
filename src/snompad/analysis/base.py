@@ -103,7 +103,6 @@ class BaseDemodReader(ABC):
         else:
             raise NotImplementedError(f'Filetype not supported: {filename}')
         self.metadata = self.file.load_metadata()
-        self.name = self.file.attrs
         self.demod_data = None
         self.demod_cache = {}
         self.file.load_demod_data(cache=self.demod_cache)
@@ -133,20 +132,20 @@ class BaseDemodReader(ABC):
     def index_cache(self):
         indexed = {}
         for i, (key, dset) in enumerate(self.demod_cache.items()):
-            indexed[i] = (dset.attrs['demod_params'], dset)
+            indexed[i] = dset
         self.demod_cache = indexed
 
-    def show_cache(self) -> str:
+    def show_cache(self):
         out = 'Cached demod data:\n'
-        for i, (params, dset) in self.demod_cache.items():
+        for i, dset in self.demod_cache.items():
             out += f'{i}\n'
+            params = dset.attrs['demod_params']
             for k, v in params.items():
                 out += f'\u0009{k}: {v}\n'
         print(out)
 
     def select(self, index: int):
-        _, dset = self.demod_cache[index]
-        self.demod_data = dset
+        self.demod_data = self.demod_cache[index]
 
     @abstractmethod
     def plot(self):
