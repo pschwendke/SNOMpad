@@ -6,30 +6,43 @@ from ..utility.signals import Signals
 
 
 # KERNEL INTERPOLATION #################################################################################################
-def gaussian_kernel_1d(x, x0, sigma):
+def gaussian_kernel_1d_cyclic(x, x0, sigma):
     """ Returns array with not normalized weights for x-coordinates,
     determined by gaussian function centered at x0
     IMPORTANT: x are treated as periodic between -pi, pi
     """
     dx = np.array([(x - x0) ** 2, (x - 2 * np.pi - x0) ** 2, (x + 2 * np.pi - x0) ** 2]).min(axis=0, initial=2*np.pi)
-    gk = np.exp(-.5 * dx / sigma ** 2)
-    return gk
+    kernel = np.exp(-.5 * dx / sigma ** 2)
+    return kernel
+
+
+def gaussian_kernel_1d(x, x0, sigma):
+    """Returns array with not normalized weights for x-coordinates,
+    determined by gaussian function centered at x0. This is the non-cyclic version of gaussian_kernel_1d_cyclic.
+    """
+    kernel = np.exp(-.5 * (x - x0) ** 2 / sigma ** 2)
+    return kernel
 
 
 def boxcar_kernel_1d(x, x0, sigma):
     """ Returns array with not normalized weights for x-coordinates,
     determined by boxcar function centered at x0
     """
-    bck = np.zeros(x.shape)
-    bck[np.abs(x - x0) < sigma] = 1
-    return bck
+    bcar = np.abs(x - x0) < sigma
+    kernel = bcar.astype(float)
+    return kernel
 
 
-def kernel_interpolation_1d(signal, x_sig, x_grid, sigma=None, kernel='gaussian'):
+def kernel_interpolation_1d(signal, x_sig, x_grid, sigma=None, kernel='cyclic'):
     """ Interpolates signal on coordinates x_sig onto passed coordinates x_grid,
     using gaussian kernel smoothing of width sigma.
+    kernel: str
+        'cyclic': Gaussian kernel that determines dx on cyclic domain
+        'gaussian': Gaussian kernel that determines dx on linear domain
+        'boxcar': boxcar kernel (1 if dx < sigma, 0 otherwise) on linear domain
     """
-    kernel = [gaussian_kernel_1d, boxcar_kernel_1d][['gaussian', 'boxcar'].index(kernel)]
+    idx = ['cyclic', 'gaussian', 'boxcar'].index(kernel)
+    kernel = [gaussian_kernel_1d_cyclic, gaussian_kernel_1d, boxcar_kernel_1d][idx]
 
     if sigma is None:
         step = 2 * np.pi / len(x_grid)
@@ -50,13 +63,14 @@ def gaussian_kernel_2d(x, y, x0, y0, sigma):
                      [(x - 2 * np.pi - x0) ** 2, (y - 2 * np.pi - y0) ** 2],
                      [(x + 2 * np.pi - x0) ** 2, (y + 2 * np.pi - y0) ** 2]]).min(axis=0, initial=2*np.pi)
     r = np.sqrt(dxdy.sum(axis=0))
-    gk = np.exp(-.5 * r ** 2 / sigma ** 2)
-    return gk
+    kernel = np.exp(-.5 * r ** 2 / sigma ** 2)
+    return kernel
 
 
 def kernel_interpolation_2d(signal, x_sig, y_sig, x_grid, y_grid, sigma=None):
     """ Interpolates signal on coordinates x_sig, y_sig onto passed grid x_grid, y_grid,
     using gaussian kernel smoothing of width sigma.
+    IMPORTANT: x and y are treated as periodic between -pi, pi
     """
     if sigma is None:
         step = 2 * np.pi / np.max([len(x_grid), len(y_grid)])
