@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class H5Buffer:
     """ This is just a wrapper to put a dictionary of 32-bit data arrays in a temporary hdf5 file.
     """
@@ -16,7 +17,7 @@ class H5Buffer:
         return self.h5_file[key]
 
     def __setitem__(self, key, value):
-        self.h5_file.create_dataset(str(key), data=value, dtype='float32')  # maybe 16 bit is even enough???
+        self.h5_file.create_dataset(str(key), data=value, dtype='float32')  # ToDo: maybe 16 bit is even enough???
         # self.h5_file.flush()  # this is probably not necessary
 
     def __del__(self):

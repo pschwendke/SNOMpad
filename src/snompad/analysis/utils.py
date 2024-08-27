@@ -2,8 +2,8 @@
 import numpy as np
 import xarray as xr
 
-from .scan_demod_base import BaseScanDemod
-from ..utility.signals import Scan
+from .base import BaseScanDemod
+from snompad.utility.signals import Scan
 
 
 def sort_lines(scan: BaseScanDemod, trim_ratio: float = .05, plot=False):

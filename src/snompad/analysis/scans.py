@@ -1,34 +1,24 @@
 # measurement classes corresponding to acquisition scan classes.
 # classes hold methods to read, demodulate, save, and plot SNOM data.
+""" Classes all have a similar structure: First the raw data is put to a specific shape, i.e. indexed pixels with
+associated chunks of DAQ data, and averaged AFM data.
+These indexed pixels are then demodulated, and the optical data stored together with AFM data in the xr.Dataset
+demod_data.
+demod_data is as well stored in the demod_cache, to avoid an unnecessary repetition of the demodulation.
+The demod_cache can be written to and read from demod_file, which represents hdf5 storage on the hard drive.
+"""
 import numpy as np
 import xarray as xr
 import colorcet as cc
 from tqdm import tqdm
 
-from . import shd, pshet
-from ..utility import Scan, Demodulation, Signals, c_air
-from ..demodulation.demod_utils import chop_pump_idx
-from .scan_demod_base import BaseScanDemod
-from .scan_demod_utils import sort_lines, bin_line
+from .base import BaseScanDemod
+from .utils import sort_lines, bin_line
 from .image_corrections import subtract_linear
+from ..demodulation import shd, pshet
+from ..demodulation.utils import chop_pump_idx
+from ..utility import Scan, Demodulation, Signals, c_air
 from ..file_handlers.gwyddion import export_gwy
-
-
-def load(filename: str) -> BaseScanDemod:
-    """ Loads scan from .h5 file and returns BaseScanDemod object. The function is agnostic to scan type.
-    """
-    if 'retraction' in filename:
-        return Retraction(filename)
-    elif 'image' in filename:
-        return Image(filename)
-    elif 'line' in filename:
-        return Line(filename)
-    elif 'noise' in filename:
-        return Noise(filename)
-    elif 'delay' in filename:
-        return Delay(filename)
-    else:
-        raise NotImplementedError
 
 
 class Retraction(BaseScanDemod):
@@ -46,9 +36,9 @@ class Retraction(BaseScanDemod):
 
         chunk_size = 1  # one chunk of DAQ data per demodulated pixel
         if isinstance(demod_npts, int):
-            chunk_size = demod_npts // self.scan.metadata['npts'] + 1
-            chunk_size -= int(demod_npts % self.scan.metadata['npts'] == 0)  # subtract extra chunk for exact matches
-        demod_npts = self.scan.metadata['npts'] * chunk_size
+            chunk_size = demod_npts // self.metadata['npts'] + 1
+            chunk_size -= int(demod_npts % self.metadata['npts'] == 0)  # subtract extra chunk for exact matches
+        demod_npts = self.metadata['npts'] * chunk_size
         n = len(self.daq_data.keys())
         z_res = n // chunk_size
         self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'z_res': z_res}
@@ -73,34 +63,39 @@ class Retraction(BaseScanDemod):
         idx = np.array(idx, dtype=object)   # different lengths to save as xr.DataArray
         self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='z', coords={'z': z})
 
-    def demod(self, **kwargs):
+    def demod(self, save: bool = False, **kwargs):
         """ Demodulates optical data for every pixel along dimension z. A complex-valued DataArray for demodulated
         harmonics with extra dimension 'order' is created in self.demod_data, and to self.demod_cache.
 
         PARAMETERS
         ----------
+        save: bool
+            if True, demod data will be stored in, and read from a file if available
         **kwargs
             keyword arguments that are passed to demod function, i.e. shd() or pshet()
         """
         if self.demod_data is None:
             self.reshape()
+        if save and self.demod_file is None:
+            self.open_demod_file()
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
-        demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
-        hash_key = str(demod_params['hash_key'])
-        if hash_key in self.demod_cache.keys() and self.demod_cache[hash_key].attrs['demod_params'] == demod_params:
-            self.demod_data = self.demod_cache[hash_key]
+        demod_params = self.demod_params(params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
+        demod_key = ''.join(sorted([k + str(v) for k, v in demod_params.items()]))
+        if demod_key in self.demod_cache.keys():
+            self.demod_data = self.demod_cache[demod_key]
         else:
             harmonics = []
             for idx in tqdm(self.demod_data.idx):
-                data = np.vstack([self.scan.daq_data[i] for i in idx.item()])
+                data = np.vstack([self.daq_data[i] for i in idx.item()])
                 harmonics.append(demod_func(data=data, signals=self.signals, **kwargs))
             harmonics = np.array(harmonics)
             self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('z', 'order'),
                                                       coords={'order': np.arange(harmonics.shape[1]),
                                                               'z': self.demod_data['z'].values})
             self.demod_data.attrs['demod_params'] = demod_params
-            self.demod_cache[hash_key] = self.demod_data
-            self.cache_to_file()
+            self.demod_cache[demod_key] = self.demod_data
+            if save:
+                self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
         import matplotlib.pyplot as plt
@@ -212,7 +207,7 @@ class Image(BaseScanDemod):
         harmonics = np.zeros((len(y), len(x), max_order + 1), dtype=complex)
         #  this indexing needs to be redone when demodulating continuous images
         for i in tqdm(self.afm_data.idx.values.flatten()):
-            data = self.scan.daq_data[i]
+            data = self.daq_data[i]
             if self.modulation == Demodulation.shd:
                 coefficients = shd(data=data, signals=self.signals, **kwargs)
             elif self.modulation == Demodulation.pshet:
@@ -329,10 +324,10 @@ class Line(BaseScanDemod):
 
             chunk_size = 1  # one chunk of DAQ data per demodulated pixel
             if isinstance(demod_npts, int):
-                chunk_size = demod_npts // self.scan.metadata['npts'] + 1
+                chunk_size = demod_npts // self.metadata['npts'] + 1
                 chunk_size -= int(
-                    demod_npts % self.scan.metadata['npts'] == 0)  # subtract extra chunk for exact matches
-            demod_npts = self.scan.metadata['npts'] * chunk_size
+                    demod_npts % self.metadata['npts'] == 0)  # subtract extra chunk for exact matches
+            demod_npts = self.metadata['npts'] * chunk_size
             n = len(self.daq_data.keys())
             r_res = n // chunk_size
             self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 'r_res': r_res}
@@ -379,34 +374,39 @@ class Line(BaseScanDemod):
         else:
             raise NotImplementedError
 
-    def demod(self, **kwargs):
+    def demod(self, save: bool = False, **kwargs):
         """ Demodulates optical data for every pixel along dimension r. A complex-valued DataArray for demodulated
         harmonics with extra dimension 'order' is created in self.demod_data, and saved to self.demod_cache.
 
         PARAMETERS
         ----------
+        save: bool
+            if True, demod data will be stored in, and read from a file if available
         **kwargs
             keyword arguments that are passed to demod function, i.e. shd() or pshet()
         """
         if self.demod_data is None:
             self.reshape()
+        if save and self.demod_file is None:
+            self.open_demod_file()
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
-        demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
-        hash_key = str(demod_params['hash_key'])
-        if hash_key in self.demod_cache.keys() and self.demod_cache[hash_key].attrs['demod_params'] == demod_params:
-            self.demod_data = self.demod_cache[hash_key]
+        demod_params = self.demod_params(params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
+        demod_key = ''.join(sorted([k + str(v) for k, v in demod_params.items()]))
+        if demod_key in self.demod_cache.keys():
+            self.demod_data = self.demod_cache[demod_key]
         else:
             harmonics = []
             for idx in tqdm(self.demod_data.idx):
-                data = np.vstack([self.scan.daq_data[i] for i in idx.item()])
+                data = np.vstack([self.daq_data[i] for i in idx.item()])
                 harmonics.append(demod_func(data=data, signals=self.signals, **kwargs))
             harmonics = np.array(harmonics)
             self.demod_data['optical'] = xr.DataArray(data=harmonics, dims=('r', 'order'),
                                                       coords={'order': np.arange(harmonics.shape[1]),
                                                               'r': self.demod_data['r'].values})
             self.demod_data.attrs['demod_params'] = demod_params
-            self.demod_cache[hash_key] = self.demod_data
-            self.cache_to_file()
+            self.demod_cache[demod_key] = self.demod_data
+            if save:
+                self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
         """ Plots line scan.
@@ -525,7 +525,7 @@ class Noise(BaseScanDemod):
 
         signals = [Signals[s] for s in self.metadata['signals']]
 
-        daq_data = np.array(self.scan.daq_data[0])
+        daq_data = np.array(self.daq_data[0])
         tap_x = daq_data[:, signals.index(Signals.tap_x)]
         tap_y = daq_data[:, signals.index(Signals.tap_y)]
         tap_p = np.arctan2(tap_y, tap_x)
@@ -598,9 +598,9 @@ class Delay(BaseScanDemod):
 
         chunk_size = 1  # one chunk of DAQ data per demodulated pixel
         if isinstance(demod_npts, int):
-            chunk_size = demod_npts // self.scan.metadata['npts'] + 1
-            chunk_size -= int(demod_npts % self.scan.metadata['npts'] == 0)  # subtract extra chunk for exact matches
-        demod_npts = self.scan.metadata['npts'] * chunk_size
+            chunk_size = demod_npts // self.metadata['npts'] + 1
+            chunk_size -= int(demod_npts % self.metadata['npts'] == 0)  # subtract extra chunk for exact matches
+        demod_npts = self.metadata['npts'] * chunk_size
         n = len(self.daq_data.keys())
         t_res = n // chunk_size
         self.demod_data.attrs['demod_params'] = {'demod_npts': demod_npts, 't_res': t_res}
@@ -641,27 +641,31 @@ class Delay(BaseScanDemod):
         idx = np.array(idx, dtype=object)   # different lengths to save as xr.DataArray
         self.demod_data['idx'] = xr.DataArray(data=idx[:-1], dims='t_pos', coords={'t_pos': t_pos})
         
-    def demod(self, **kwargs):
+    def demod(self, save: bool = False, **kwargs):
         """ Demodulates optical data for every pixel along dimension t_pos. A complex-valued DataArray for demodulated
         harmonics with extra dimension 'order' is created in self.demod_data, and to self.demod_cache.
 
         PARAMETERS
         ----------
+        save: bool
+            if True, demod data will be stored in, and read from a file if available
         **kwargs
             keyword arguments that are passed to demod function, i.e. shd() or pshet()
         """
         if self.demod_data is None:
             self.reshape()
+        if save and self.demod_file is None:
+            self.open_demod_file()
         demod_func = [shd, pshet][[Demodulation.shd, Demodulation.pshet].index(self.modulation)]
-        demod_params = self.demod_params(old_params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
-        hash_key = str(demod_params['hash_key'])
-        if hash_key in self.demod_cache.keys() and self.demod_cache[hash_key].attrs['demod_params'] == demod_params:
-            self.demod_data = self.demod_cache[hash_key]
+        demod_params = self.demod_params(params=self.demod_data.attrs['demod_params'], kwargs=kwargs)
+        demod_key = ''.join(sorted([k + str(v) for k, v in demod_params.items()]))
+        if demod_key in self.demod_cache.keys():
+            self.demod_data = self.demod_cache[demod_key]
         else:
             harmonics_pumped = []
             harmonics_chopped = []
             for idx in tqdm(self.demod_data.idx):
-                data = np.vstack([self.scan.daq_data[i] for i in idx.item()])
+                data = np.vstack([self.daq_data[i] for i in idx.item()])
                 chop_idx, pump_idx = chop_pump_idx(data[:, self.signals.index(Signals.chop)])
                 harmonics_pumped.append(demod_func(data=data[pump_idx], signals=self.signals, **kwargs))
                 harmonics_chopped.append(demod_func(data=data[chop_idx], signals=self.signals, **kwargs))
@@ -679,8 +683,9 @@ class Delay(BaseScanDemod):
                                                                  coords={'t_pos': self.demod_data['t_pos'],
                                                                          'order': np.arange(pp_harmonics.shape[1])})
             self.demod_data.attrs['demod_params'] = demod_params
-            self.demod_cache[hash_key] = self.demod_data
-            self.cache_to_file()
+            self.demod_cache[demod_key] = self.demod_data
+            if save:
+                self.cache_to_file()
 
     def plot(self, max_order: int = 4, orders=None, grid=False, show=True, save=False):
         """ Plots delay scan
@@ -734,3 +739,7 @@ class Delay(BaseScanDemod):
         if show:
             plt.show()
         plt.close()
+
+    def to_csv(self, filename: str = None):
+        # ToDo: this
+        pass

@@ -99,7 +99,8 @@ def load_nea_image(folder: str) -> xr.Dataset:
     if folder[-1] == '/':
         folder = folder[:-1]
     channels = ['Z', 'R-Z', 'M1A', 'R-M1A', 'M1P', 'R-M1P', 'O0A', 'R-O0A', 'O1A', 'O1P', 'R-O1A', 'R-O1P',
-                'O2A', 'O2P', 'R-O2A', 'R-O2P', 'O3A', 'O3P', 'R-O3A', 'R-O3P', 'O4A', 'O4P', 'R-O4A', 'R-O4P']
+                'O2A', 'O2P', 'R-O2A', 'R-O2P', 'O3A', 'O3P', 'R-O3A', 'R-O3P',
+                'O4A', 'O4P', 'R-O4A', 'R-O4P', 'O5A', 'O5P', 'R-O5A', 'R-O5P']
 
     scan_name = folder.split('/')[-1].split('\\')[-1]  # works on Win and Mac. There is probably a better way though...
     metadata = load_nea_metadata(f'{folder}/{scan_name}.txt')

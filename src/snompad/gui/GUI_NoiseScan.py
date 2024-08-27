@@ -10,7 +10,7 @@ from bokeh.layouts import column, row, gridplot
 
 from ..utility.signals import Signals
 from ..acquisition.scans import NoiseScan
-from ..demodulation.scan_demod import Noise
+from ..analysis.scans import Noise
 
 import logging
 

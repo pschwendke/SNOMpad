@@ -5,9 +5,9 @@ from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
 from ..utility.signals import Signals
-from .demod_utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func,\
+from .utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func,\
     corrected_fft, chop_pump_idx, chopped_data, pumped_data
-from .demod_corrections import normalize_sig_a
+from .corrections import normalize_sig_a
 
 
 def pshet_binning(data: np.ndarray, signals=list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:
@@ -187,7 +187,7 @@ def pshet_sidebands(tap_ft: np.ndarray, max_order=None):
 
 
 def pshet(data: np.ndarray, signals: list, tap_res: int = 64, ref_res: int = 64, chopped='auto', tap_correction='fft',
-          binning='binned_kernel', pshet_demod='fitting', ratiometry='auto', max_order=5) -> np.ndarray:
+          binning='binned_kernel', pshet_demod='fitting', ratiometry='auto', max_order: int = 5) -> np.ndarray:
     """ Simple combination pshet demodulation functions. Pump-probe demodulation,
     tapping phase correction, and ratiometric correction is also handled here.
 
