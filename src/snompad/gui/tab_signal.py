@@ -7,11 +7,10 @@ from bokeh.plotting import ColumnDataSource, figure
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from ..demodulation import plot_colors
-from ..utility import Signals
-from acquisition import buffer_size, acquisition_buffer, signals
-from user_messages import err_code, err_msg
-from demod import demod_to_buffer
+from ..utility import Signals, plot_colors
+from .acquisition import buffer_size, acquisition_buffer, signals
+from .user_messages import err_code, err_msg
+from .demod import demod_to_buffer
 
 max_harm = 7  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 harm_scaling = np.zeros(max_harm + 1)

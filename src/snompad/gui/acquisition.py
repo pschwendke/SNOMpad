@@ -7,8 +7,8 @@ from ..acquisition.buffer import CircularArrayBuffer
 from ..drivers import DaqController
 from ..utility import Signals
 
-from main import go
-from user_messages import err_code, err_msg
+from ..main import go
+from .user_messages import err_code, err_msg
 
 acquisition_buffer = None
 buffer_size = 200_000
@@ -22,6 +22,7 @@ signals = [
     Signals.ref_y,
     Signals.chop
 ]
+
 
 class Acquisitor:
     def __init__(self) -> None:
