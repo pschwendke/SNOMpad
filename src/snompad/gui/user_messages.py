@@ -28,7 +28,8 @@ def error_message(err_code):
     else:
         err_msg = ''
         for i, d in enumerate(digits(err_code)):
-            err_msg += messages[i][d] + '\n'
+            if d != 0:
+                err_msg += messages[i][d] + '\n'
     return err_msg
 
 

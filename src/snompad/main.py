@@ -8,13 +8,13 @@ from time import perf_counter, sleep
 from .gui import buffer_size, signals
 from .gui.tab_signal import sig_layout, update_signal_tab
 from .gui.tab_tuning import tuning_layout, update_tuning_tab
-from .gui.user_messages import message_box, update_message_box, error_message
+from .gui.user_messages import error_message
 from .drivers import DaqController
 from .acquisition.buffer import CircularArrayBuffer
 
 from bokeh.plotting import curdoc
 from bokeh.layouts import layout, row
-from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs
+from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs, Div
 
 acquisition_buffer = None
 callback_period = 150  # ms
@@ -25,8 +25,6 @@ err_code = 0
 # ACQUISITION ##########################################################################################################
 class Acquisitor:
     def __init__(self) -> None:
-        # self.go = False
-        # self.buffer = None
         self.idle_loop()  # to make the thread 'start listening'
 
     def idle_loop(self):
@@ -40,7 +38,6 @@ class Acquisitor:
         """ when 'GO' button is active
         """
         global acquisition_buffer, err_code
-        # harm_scaling = np.zeros(max_harm + 1)
         acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
         daq = DaqController(dev='Dev1', clock_channel='pfi0')
         daq.setup(buffer=acquisition_buffer)
@@ -73,7 +70,7 @@ def periodic_callback():
             update_tuning_tab(buffer=acquisition_buffer)
     dt = (perf_counter() - t_start) * 1e3  # ms
     if err_code == 0:
-        usr_msg = f'time to update: {dt} ms'
+        usr_msg = f'time to update: {int(dt)} ms'
     else:
         usr_msg = error_message(err_code=err_code)
         err_code = 0
@@ -105,6 +102,10 @@ def update_go(_):
     go = go_button.active
 
 
+def update_message_box(msg: str):
+    message_box.text = msg
+
+
 # WIDGETS ##############################################################################################################
 go_button = Toggle(label='GO', active=False, width=60)
 go_button.on_click(update_go)
@@ -115,6 +116,13 @@ stop_server_button.on_click(stop)
 callback_input = NumericInput(title='Periodic callback period (ms)', value=callback_period, mode='int', width=120)
 callback_input.on_change('value', input_callback_period)
 
+message_box = Div(text='message box')
+message_box.styles = {
+    'width': '300px',
+    'border': '1px solid#000',
+    'text-align': 'center',
+    'background-color': '#FFFFFF'
+}
 
 # LAYOUT ###############################################################################################################
 sig_tab = TabPanel(child=sig_layout, title='SNOM signals')
@@ -125,7 +133,7 @@ gui_controls = row(children=[go_button, stop_server_button, callback_input, mess
 
 GUI_layout = layout(children=[
     gui_controls,
-    tabs
+    # tabs
 ])
 curdoc().add_root(GUI_layout)
 
