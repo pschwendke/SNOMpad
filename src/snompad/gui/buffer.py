@@ -1,8 +1,6 @@
 import numpy as np
 from bokeh.plotting import ColumnDataSource
 
-from . import harm_plot_size, max_harm
-
 
 class PlottingBuffer:
     def __init__(self, n: int, names: list):
@@ -25,6 +23,3 @@ class PlottingBuffer:
 
     def std(self, key):
         return self.buffer.data[key].std()
-
-
-signal_buffer = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])

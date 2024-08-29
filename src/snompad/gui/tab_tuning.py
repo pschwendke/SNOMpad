@@ -5,7 +5,7 @@ from bokeh.layouts import layout, column, row
 
 
 # CALLLBACKS ###########################################################################################################
-def update_tuning_tab():
+def update_tuning_tab(buffer):
     pass
 
 # WIDGETS ##############################################################################################################
@@ -13,8 +13,6 @@ def update_tuning_tab():
 
 # LAYOUT ###############################################################################################################
 tuning_layout = column([])
-
-
 
 # def setup_phase_plot():
 #     init_data = {'binned': [np.random.uniform(size=(64, 64))]}

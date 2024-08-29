@@ -1,18 +1,15 @@
 # tab for the SNOMpad GUI to acquire, demod, and plot SNOM signals,
-# as well as raw data of the photo diodes
-
+# as well as photo diode raw data
 import numpy as np
-from time import perf_counter
 from bokeh.plotting import ColumnDataSource, figure
 from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, LinearColorMapper
 from bokeh.layouts import layout, column, row
 
-from . import buffer_size, harm_scaling, signals, max_harm
 from ..utility import Signals, plot_colors
-# from .acquisition import acquisition_buffer
-# from .user_messages import err_code, err_msg
+
+from . import buffer_size, signals, max_harm, harm_plot_size
 from .demod import demod_to_buffer
-from .buffer import signal_buffer
+from .buffer import PlottingBuffer
 
 
 def rgb_to_hex(rgb: list) -> str:
@@ -23,13 +20,28 @@ def rgb_to_hex(rgb: list) -> str:
     return out
 
 
-signal_noise = {  # collection of signal to noise ratios
+signal_buffer = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])
+harm_scaling = np.zeros(max_harm + 1)  # normalization factors for plotted harmonics
+signal_noise = {  # collection of signal-to-noise ratios
     h: Div(text='-', styles={'color': rgb_to_hex(plot_colors[h]), 'font-size': '200%'}) for h in range(8)
 }
 diode_sample_size = 5000  # of diode data points to be plotted vs phase. every 10th point is plotted
-# demod_time = 0
 
 
+def normalize_harmonics(coefficients):
+    global harm_scaling
+    if mod_button.labels[mod_button.acitve] != 'no mod':
+        if harm_scaling[0] == 0:
+            harm_scaling = np.ones(max_harm + 1) / np.abs(coefficients)
+        for i, over_limit in enumerate(np.abs(coefficients * harm_scaling) > 1):
+            if over_limit:
+                signal_buffer.buffer.data[str(i)] /= np.abs(coefficients[i]) * harm_scaling[i]
+                harm_scaling[i] = 1 / np.abs(coefficients[i])
+        coefficients *= harm_scaling
+    return coefficients
+
+
+# CALLBACKS ############################################################################################################
 def update_signal_to_noise():
     for h in signal_buffer.names:
         avg = signal_buffer.avg(key=h)
@@ -56,27 +68,31 @@ def update_diode_data(data):
     diode_plot_data.data = new_data
 
 
-# CALLBACKS ############################################################################################################
-def update_signal_tab():
-    # ToDo: figure out how to pass messages from here
-    global err_code, err_msg
+def update_signal_tab(buffer):
+    rtn_value = 0
     try:
-        t = perf_counter()
-        data = data
-        err_code = demod_to_buffer(
+        data = buffer.tail(n=npts_input.value)
+        rtn_value, coefficients = demod_to_buffer(
             data=data,
             modulation=mod_button.labels[mod_button.acitve],
             tap=tap_input.value,
             ref=ref_input.value,
             chop=chop_button.active,
             ratiometry=ratiometry_button.active,
-            abs=abs_button.active
+            abs_val=abs_button.active
         )
-        update_signal_to_noise()
+        if rtn_value == 0:
+            coefficients = normalize_harmonics(coefficients)
+            signal_buffer.put(data=coefficients[:max_harm + 1])
+            update_signal_to_noise()
+        if isinstance(rtn_value, str):
+            print(rtn_value)
+            rtn_value = 1
         update_diode_data(data=data)
     except Exception as e:
-        err_code = 1
-        err_msg = 'update_signal_tab: ' + str(e)
+        print(e)
+        rtn_value += 10
+    return rtn_value
 
 
 def reset_normalization(button):

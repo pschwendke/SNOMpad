@@ -1,7 +1,7 @@
 # This file is only relevant for the GUI. Threads are set up here.
 from threading import Thread
 
-from .gui.acquisition import Acquisitor
+from .main import Acquisitor
 
 
 def on_server_loaded(server_context):

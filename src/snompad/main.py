@@ -2,24 +2,60 @@
 # It can be run from the commandline as 'bokeh serve --show .'
 # Alternatively, launch_gui() can be imported from snompad.gui
 import sys
-from time import perf_counter
+from time import perf_counter, sleep
 
 # from .utility.acquisition_logger import gui_logger
+from .gui import buffer_size, signals
 from .gui.tab_signal import sig_layout, update_signal_tab
 from .gui.tab_tuning import tuning_layout, update_tuning_tab
-from .gui.user_messages import message_box, update_message_box
+from .gui.user_messages import message_box, update_message_box, error_message
+from .drivers import DaqController
+from .acquisition.buffer import CircularArrayBuffer
 
 from bokeh.plotting import curdoc
 from bokeh.layouts import layout, row
 from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs
 
-
+acquisition_buffer = None
 callback_period = 150  # ms
 go = False
-
 err_code = 0
-err_msg = ''
-usr_msg = 'SNOMpad GUI'
+
+
+# ACQUISITION ##########################################################################################################
+class Acquisitor:
+    def __init__(self) -> None:
+        # self.go = False
+        # self.buffer = None
+        self.idle_loop()  # to make the thread 'start listening'
+
+    def idle_loop(self):
+        """ when 'GO' button is not active
+        """
+        while not go:
+            sleep(.01)
+        self.acquisition_loop()
+
+    def acquisition_loop(self):
+        """ when 'GO' button is active
+        """
+        global acquisition_buffer, err_code
+        # harm_scaling = np.zeros(max_harm + 1)
+        acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
+        daq = DaqController(dev='Dev1', clock_channel='pfi0')
+        daq.setup(buffer=acquisition_buffer)
+        try:
+            daq.start()
+            while go:
+                sleep(.01)
+                daq.reader.read()
+        except Exception as e:
+            if err_code // 100 % 10 == 0:
+                err_code += 100
+                print(e)
+        finally:
+            daq.close()
+            self.idle_loop()
 
 
 # CALLLBACKS ###########################################################################################################
@@ -28,22 +64,25 @@ def stop(button):
 
 
 def periodic_callback():
-    global usr_msg
+    global err_code
     t_start = perf_counter()
     if go:
         if tabs.active == 0:  # signal tab
-            update_signal_tab()
+            err_code += update_signal_tab(buffer=acquisition_buffer)
         elif tabs.active == 1:  # tuning tab
-            update_tuning_tab()
-    if err_code != 0:
-        usr_msg = err_msg
+            update_tuning_tab(buffer=acquisition_buffer)
+    dt = (perf_counter() - t_start) * 1e3  # ms
+    if err_code == 0:
+        usr_msg = f'time to update: {dt} ms'
+    else:
+        usr_msg = error_message(err_code=err_code)
+        err_code = 0
     update_message_box(msg=usr_msg)
-    update_refresh_time(t_start)
+    update_refresh_time(dt)
 
 
-def update_refresh_time(t):
+def update_refresh_time(dt):
     global callback_period
-    dt = (perf_counter() - t) * 1e3  # ms
     if dt > callback_period:
         callback_period = dt // 10 * 10 + 10  # round up to next 10 ms
         renew_callback()
