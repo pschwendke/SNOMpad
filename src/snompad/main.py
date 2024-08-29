@@ -2,18 +2,24 @@
 # It can be run from the commandline as 'bokeh serve --show .'
 # Alternatively, launch_gui() can be imported from snompad.gui
 import sys
+from time import perf_counter
 
 # from .utility.acquisition_logger import gui_logger
-from .gui.tab_signal import sig_layout, update_signal_tab, demod_time
+from .gui.tab_signal import sig_layout, update_signal_tab
 from .gui.tab_tuning import tuning_layout, update_tuning_tab
 from .gui.user_messages import message_box, update_message_box
 
 from bokeh.plotting import curdoc
-from bokeh.layouts import layout, column, row
-from bokeh.models import Toggle, Button, RadioButtonGroup, NumericInput, Div, TabPanel, Tabs
+from bokeh.layouts import layout, row
+from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs
 
-refresh_time = 150  # ms
+
+callback_period = 150  # ms
 go = False
+
+err_code = 0
+err_msg = ''
+usr_msg = 'SNOMpad GUI'
 
 
 # CALLLBACKS ###########################################################################################################
@@ -22,42 +28,53 @@ def stop(button):
 
 
 def periodic_callback():
-    pass
-    # if go:
-    #     if tabs.active == 0:  # signal tab
-    #         update_signal_tab()
-    #     elif tabs.active == 1:  # tuning tab
-    #         update_tuning_tab()
-    # update_message_box()
-    # update_refresh_time()
+    global usr_msg
+    t_start = perf_counter()
+    if go:
+        if tabs.active == 0:  # signal tab
+            update_signal_tab()
+        elif tabs.active == 1:  # tuning tab
+            update_tuning_tab()
+    if err_code != 0:
+        usr_msg = err_msg
+    update_message_box(msg=usr_msg)
+    update_refresh_time(t_start)
 
 
-# def update_refresh_time():
-#     global refresh_time
-#     if demod_time > refresh_time:
-#         refresh_time = demod_time // 10 * 10 + 10  # round up to next 10 ms
-#         callback._period = refresh_time
-#
-#
-# def input_refresh_time(input, old, new):
-#     global refresh_time
-#     refresh_time = new
-#
-#
-# def update_go(button):
-#     global go
-#     go = go_button.active
+def update_refresh_time(t):
+    global callback_period
+    dt = (perf_counter() - t) * 1e3  # ms
+    if dt > callback_period:
+        callback_period = dt // 10 * 10 + 10  # round up to next 10 ms
+        renew_callback()
+
+
+def input_callback_period(_, old, new):
+    global callback_period
+    callback_period = new
+    renew_callback()
+
+
+def renew_callback():
+    global callback
+    curdoc().remove_periodic_callback(callback)
+    callback = curdoc().add_periodic_callback(periodic_callback, callback_period)
+
+
+def update_go(_):
+    global go
+    go = go_button.active
 
 
 # WIDGETS ##############################################################################################################
 go_button = Toggle(label='GO', active=False, width=60)
-# go_button.on_change(update_go)
+go_button.on_click(update_go)
 
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
 
-callback_input = NumericInput(title='Periodic callback interval (ms)', value=150, mode='int', width=90)
-# callback_input.on_change(input_refresh_time)
+callback_input = NumericInput(title='Periodic callback period (ms)', value=callback_period, mode='int', width=120)
+callback_input.on_change('value', input_callback_period)
 
 
 # LAYOUT ###############################################################################################################
@@ -69,11 +86,11 @@ gui_controls = row(children=[go_button, stop_server_button, callback_input, mess
 
 GUI_layout = layout(children=[
     gui_controls,
-    # tabs
+    tabs
 ])
 curdoc().add_root(GUI_layout)
 
 
 ########################################################################################################################
 curdoc().title = 'SNOMpad'
-# callback = curdoc().add_periodic_callback(periodic_callback, refresh_time)
+callback = curdoc().add_periodic_callback(periodic_callback, callback_period)

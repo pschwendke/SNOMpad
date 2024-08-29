@@ -4,11 +4,14 @@
 import numpy as np
 
 from ..utility import Signals
-from ..demodulation.demod_utils import chop_pump_idx
+from ..demodulation.utils import chop_pump_idx
 from ..demodulation import shd, pshet
 
-from tab_signal import harm_scaling, signal_buffer, max_harm
-from acquisition import signals
+from . import max_harm, signals
+from .buffer import signal_buffer
+
+
+harm_scaling = np.zeros(max_harm + 1)
 
 
 def demod_to_buffer(data, modulation: str, tap: int, ref: int, chop: bool, ratiometry: bool, abs: bool):

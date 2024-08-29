@@ -2,18 +2,17 @@
 
 from bokeh.models import Div
 
-err_code = 0
-err_msg = ''
-usr_msg = 'message box'
+# ERROR CODES ##########################################################################################################
+# ToDo: this
 
 
 # CALLLBACKS ###########################################################################################################
-def update_message_box():
-    pass
+def update_message_box(msg: str):
+    message_box.text = msg
 
 
 # WIDGETS ##############################################################################################################
-message_box = Div(text=usr_msg)
+message_box = Div(text='message box')
 message_box.styles = {
     'width': '300px',
     'border': '1px solid#000',
