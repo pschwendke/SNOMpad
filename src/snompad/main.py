@@ -25,8 +25,6 @@ err_code = 0
 # ACQUISITION ##########################################################################################################
 class Acquisitor:
     def __init__(self) -> None:
-        # self.go = False
-        # self.buffer = None
         self.idle_loop()  # to make the thread 'start listening'
 
     def idle_loop(self):
@@ -40,7 +38,6 @@ class Acquisitor:
         """ when 'GO' button is active
         """
         global acquisition_buffer, err_code
-        # harm_scaling = np.zeros(max_harm + 1)
         acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
         daq = DaqController(dev='Dev1', clock_channel='pfi0')
         daq.setup(buffer=acquisition_buffer)
@@ -58,7 +55,7 @@ class Acquisitor:
             self.idle_loop()
 
 
-# CALLLBACKS ###########################################################################################################
+# CALLBACKS ############################################################################################################
 def stop(button):
     sys.exit()  # Stop the bokeh server
 

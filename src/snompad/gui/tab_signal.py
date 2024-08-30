@@ -55,16 +55,14 @@ def update_diode_data(data):
     global diode_plot_data
     if mod_button.labels[mod_button.active] == 'no mod':
         return
-    # ToDo: restructure this. selection of data can be more efficient / better strucured
-    theta_tap = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
-    theta_ref = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
-
-    # raw data
-    new_data = {c.value: data[-diode_sample_size::20, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
+    data_sample = data[-diode_sample_size::20]
+    new_data = {c.value: data_sample[:, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
     if raw_theta_button.active == 1:  # 'raw vs theta_ref'
-        new_data.update({'theta': theta_ref[-diode_sample_size::20]})
+        new_data.update({'theta': np.arctan2(data_sample[:, signals.index(Signals.ref_y)],
+                                             data_sample[:, signals.index(Signals.ref_x)])})
     else:  # 'raw vs theta_tap'
-        new_data.update({'theta': theta_tap[-diode_sample_size::20]})
+        new_data.update({'theta': np.arctan2(data_sample[:, signals.index(Signals.tap_y)],
+                                             data_sample[:, signals.index(Signals.tap_x)])})
     diode_plot_data.data = new_data
 
 
