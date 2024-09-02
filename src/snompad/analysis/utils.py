@@ -155,3 +155,20 @@ def bin_line(scan: BaseScanDemod, res: int = 100, direction: str = 'scan', line_
     ds.attrs['npts per pixel: min'] = npts_per_idx.min()
     ds.attrs['npts per pixel: max'] = npts_per_idx.max()
     return ds
+
+
+def tip_frequency(tap_p, sample_rate=200_000):
+    """ works for tip frequencies 200 kHz < f < 400 kHz
+    The tip frequency is determined via the fft spectrum, assuming that the spectrum is folded once:
+    f_alias = f_tip - 1 * f_sample
+    """
+    sample_spacing = 1 / sample_rate  # s
+    n = len(tap_p)
+
+    tip_pos = np.cos(tap_p)
+    tip_pos_spectrum = np.abs(np.fft.rfft(tip_pos))
+    tip_pos_freq = np.fft.rfftfreq(n, sample_spacing)
+
+    tip_freq = float(tip_pos_freq[tip_pos_spectrum == tip_pos_spectrum.max()] + sample_rate)
+
+    return tip_freq
