@@ -55,7 +55,7 @@ class Acquisitor:
             self.idle_loop()
 
 
-# CALLLBACKS ###########################################################################################################
+# CALLBACKS ############################################################################################################
 def stop(button):
     sys.exit()  # Stop the bokeh server
 
@@ -67,7 +67,7 @@ def periodic_callback():
         if tabs.active == 0:  # signal tab
             err_code += update_signal_tab(buffer=acquisition_buffer)
         elif tabs.active == 1:  # tuning tab
-            update_tuning_tab(buffer=acquisition_buffer)
+            err_code += update_tuning_tab(buffer=acquisition_buffer)
     dt = (perf_counter() - t_start) * 1e3  # ms
     if err_code == 0:
         usr_msg = f'time to update: {int(dt)} ms'
