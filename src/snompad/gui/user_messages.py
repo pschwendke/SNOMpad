@@ -19,6 +19,10 @@ messages = [
     },
     {1: 'exception during updating of signal tab'},  # 10 ** 1
     {1: 'exception in acquisition loop'},  # 10 ** 2
+    {  # 10 ** 3
+        1: 'exception during the updating of tuning tab',
+        2: 'empty bins in binned data',
+    },
 ]
 
 
