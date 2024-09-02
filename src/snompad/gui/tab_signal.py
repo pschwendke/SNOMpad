@@ -25,7 +25,7 @@ harm_scaling = np.zeros(max_harm + 1)  # normalization factors for plotted harmo
 signal_noise = {  # collection of signal-to-noise ratios
     h: Div(text='-', styles={'color': rgb_to_hex(plot_colors[h]), 'font-size': '200%'}) for h in range(8)
 }
-diode_sample_size = 5000  # of diode data points to be plotted vs phase. every 10th point is plotted
+phase_plot_sample_size = 5000  # of diode data points to be plotted vs phase. every 10th point is plotted
 
 
 def normalize_harmonics(coefficients):
@@ -51,11 +51,11 @@ def update_signal_to_noise():
             signal_noise[int(h)].text = f'{sn:.1f}'
 
 
-def update_diode_data(data):
-    global diode_plot_data
+def update_phase_data(data):
+    global phase_plot_data
     if mod_button.labels[mod_button.active] == 'no mod':
         return
-    data_sample = data[-diode_sample_size::20]
+    data_sample = data[-phase_plot_sample_size::20]
     new_data = {c.value: data_sample[:, signals.index(c)] for c in signals if c.value in ['sig_a', 'sig_b', 'chop']}
     if raw_theta_button.active == 1:  # 'raw vs theta_ref'
         new_data.update({'theta': np.arctan2(data_sample[:, signals.index(Signals.ref_y)],
@@ -63,7 +63,7 @@ def update_diode_data(data):
     else:  # 'raw vs theta_tap'
         new_data.update({'theta': np.arctan2(data_sample[:, signals.index(Signals.tap_y)],
                                              data_sample[:, signals.index(Signals.tap_x)])})
-    diode_plot_data.data = new_data
+    phase_plot_data.data = new_data
 
 
 def update_signal_tab(buffer):
@@ -86,7 +86,7 @@ def update_signal_tab(buffer):
         if isinstance(rtn_value, str):
             print(rtn_value)
             rtn_value = 1
-        update_diode_data(data=data)
+        update_phase_data(data=data)
     except Exception as e:
         print(e)
         rtn_value += 10
@@ -109,18 +109,18 @@ sig_fig.legend.location = 'center_left'
 sig_fig.legend.click_policy = 'hide'
 
 
-# DIODE PLOT ###########################################################################################################
+# PHASE PLOT ###########################################################################################################
 channels = ['sig_a', 'sig_b', 'chop']
-init_data = {c: np.zeros(diode_sample_size//20) for c in channels}
-init_data.update({'theta': np.linspace(-np.pi, np.pi, diode_sample_size//20)})
-diode_plot_data = ColumnDataSource(init_data)
-diode_fig = figure(height=400, width=800, tools='pan,ywheel_zoom,box_zoom,reset,save',
+init_data = {c: np.zeros(phase_plot_sample_size // 20) for c in channels}
+init_data.update({'theta': np.linspace(-np.pi, np.pi, phase_plot_sample_size // 20)})
+phase_plot_data = ColumnDataSource(init_data)
+phase_fig = figure(height=400, width=800, tools='pan,ywheel_zoom,box_zoom,reset,save',
                    active_scroll='ywheel_zoom', active_drag='pan')
 for n, c in enumerate(channels):
-    diode_fig.scatter(x='theta', y=c, source=diode_plot_data, marker='dot', line_color=rgb_to_hex(plot_colors[n]),
+    phase_fig.scatter(x='theta', y=c, source=phase_plot_data, marker='dot', line_color=rgb_to_hex(plot_colors[n]),
                       size=10, syncable=False, legend_label=c)
-diode_fig.legend.location = 'top_right'
-diode_fig.legend.click_policy = 'hide'
+phase_fig.legend.location = 'top_right'
+phase_fig.legend.click_policy = 'hide'
 
 
 # WIDGETS ##############################################################################################################
@@ -154,5 +154,5 @@ controls_box = column([
 
 sig_layout = layout(children=[
     [sig_fig],
-    [diode_fig, controls_box]
+    [phase_fig, controls_box]
 ], sizing_mode='stretch_width')
