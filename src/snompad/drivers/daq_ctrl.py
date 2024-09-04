@@ -29,7 +29,7 @@ import nidaqmx as ni
 from nidaqmx import DaqError
 from nidaqmx.error_codes import DAQmxErrors
 from nidaqmx.stream_readers import AnalogMultiChannelReader
-from nidaqmx._task_modules.read_functions import _read_analog_f_64
+# from nidaqmx._task_modules.read_functions import _read_analog_f_64
 from nidaqmx.constants import READ_ALL_AVAILABLE, FillMode, AcquisitionType
 
 from .calibration import self_cal
@@ -78,8 +78,18 @@ class TAMR(AnalogMultiChannelReader):
     def read_many_sample(self, data,  number_of_samples_per_channel=READ_ALL_AVAILABLE, timeout=10.0):
         number_of_samples_per_channel = (self._task._calculate_num_samps_per_chan(number_of_samples_per_channel))
         self._verify_array(data, number_of_samples_per_channel, True, True)
-        return _read_analog_f_64(self._handle, data, number_of_samples_per_channel, timeout,
-                                 fill_mode=FillMode.GROUP_BY_SCAN_NUMBER)
+        """ Change log 0.8.0:
+        The internal nidaqmx._task_modules.read_functions and nidaqmx._task_modules.write_functions modules have been removed.
+        If your application uses these modules, you must update it to use public APIs such as task.read()/task.write(),
+        task.in_stream.read()/task.out_stream.write(), or nidaqmx.stream_readers/nidaqmx.stream_writers.
+        """
+        # return _read_analog_f_64(self._handle, data, number_of_samples_per_channel, timeout,
+        #                          fill_mode=FillMode.GROUP_BY_SCAN_NUMBER)
+        _, samps_per_chan_read = self._interpreter.read_analog_f64(
+            self._handle, number_of_samples_per_channel,
+            timeout, FillMode.GROUP_BY_CHANNEL.value, data)
+        
+        return samps_per_chan_read
 
 
 @attr.s(order=False)
@@ -107,7 +117,7 @@ class TrionsAnalogReader:
     def avail_samp(self):
         return self.analog_stream.avail_samp_per_chan
 
-    def read(self, n=np.infty, emulated=False):
+    def read(self, n=np.inf, emulated=False):
         """ Explict read, when acquisition is handled by the main script
         """
         n = min(n, self.avail_samp)
