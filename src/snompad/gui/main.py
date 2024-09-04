@@ -5,16 +5,34 @@ import sys
 from time import perf_counter, sleep
 
 # from .utility.acquisition_logger import gui_logger
-from .gui import buffer_size, signals
-from .gui.tab_signal import sig_layout, update_signal_tab
-from .gui.tab_tuning import tuning_layout, update_tuning_tab
-from .gui.user_messages import error_message
-from .drivers import DaqController
-from .acquisition.buffer import CircularArrayBuffer
+# from . import buffer_size, signals
+# from .tab_signal import sig_layout, update_signal_tab
+# from .tab_tuning import tuning_layout, update_tuning_tab
+from .user_messages import error_message
+from snompad.drivers import DaqController
+from snompad.acquisition.buffer import CircularArrayBuffer
+from snompad.utility import Signals
 
 from bokeh.plotting import curdoc
 from bokeh.layouts import layout, row
 from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs, Div
+
+
+buffer_size = 200_000
+max_harm = 7  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
+harm_plot_size = 40  # of values on x-axis when plotting harmonics
+
+signals = [
+    Signals.sig_a,
+    Signals.sig_b,
+    Signals.tap_x,
+    Signals.tap_y,
+    Signals.ref_x,
+    Signals.ref_y,
+    Signals.chop
+]
+
+
 
 acquisition_buffer = None
 callback_period = 150  # ms
@@ -65,9 +83,11 @@ def periodic_callback():
     t_start = perf_counter()
     if go:
         if tabs.active == 0:  # signal tab
-            err_code += update_signal_tab(buffer=acquisition_buffer)
+            pass
+            # err_code += update_signal_tab(buffer=acquisition_buffer)
         elif tabs.active == 1:  # tuning tab
-            err_code += update_tuning_tab(buffer=acquisition_buffer)
+            pass
+            # err_code += update_tuning_tab(buffer=acquisition_buffer)
     dt = (perf_counter() - t_start) * 1e3  # ms
     if err_code == 0:
         usr_msg = f'time to update: {int(dt)} ms'
@@ -123,20 +143,52 @@ message_box.styles = {
     'text-align': 'center',
     'background-color': '#FFFFFF'
 }
+# SIGNAL TAB ###########################################################################################################
+def signal_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
+
+# TUNING TAB ###########################################################################################################
+def tuning_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
+
+# NOISE TAB ############################################################################################################
+def noise_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
+
+# RETRACTION TAB #######################################################################################################
+def retraction_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
+
+# LINE SCAN TAB ########################################################################################################
+def line_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
+
+# DELAY SCAN TAB #######################################################################################################
+def delay_layout():
+    return layout(children=[], sizing_mode='stretch_width')
+
 
 # LAYOUT ###############################################################################################################
-sig_tab = TabPanel(child=sig_layout, title='SNOM signals')
-tuning_tab = TabPanel(child=tuning_layout, title='SNOM tuning')
-tabs = Tabs(tabs=[sig_tab, tuning_tab], active=0)
-
 gui_controls = row(children=[go_button, stop_server_button, callback_input, message_box])
+
+sig_tab = TabPanel(child=signal_layout(), title='SNOM signals')
+tuning_tab = TabPanel(child=tuning_layout(), title='SNOM tuning')
+noise_tab = TabPanel(child=noise_layout(), title='SNOM tuning')
+retraction_tab = TabPanel(child=retraction_layout(), title='SNOM tuning')
+line_tab = TabPanel(child=line_layout(), title='SNOM tuning')
+delay_tab = TabPanel(child=delay_layout(), title='SNOM tuning')
+tabs = Tabs(tabs=[sig_tab, tuning_tab, noise_tab, retraction_tab, line_tab, delay_tab], active=0)
 
 GUI_layout = layout(children=[
     gui_controls,
-    # tabs
+    tabs
 ])
 curdoc().add_root(GUI_layout)
-
 
 ########################################################################################################################
 curdoc().title = 'SNOMpad'

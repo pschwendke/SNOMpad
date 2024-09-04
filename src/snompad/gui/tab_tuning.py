@@ -101,7 +101,7 @@ def update_tip_frequency(tap_p):
 
 
 # WIDGETS ##############################################################################################################
-mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
+mod_button = RadioButtonGroup(name='modulation', labels=['shd', 'pshet'], active=1)
 tap_input = NumericInput(title='# tap bins', value=128, mode='int', low=16, high=256, width=90)
 ref_input = NumericInput(title='# ref bins', value=84, mode='int', low=16, high=256, width=90)
 npts_input = NumericInput(title='# of samples', value=50_000, mode='int', low=10_000, high=buffer_size, width=90)
@@ -111,6 +111,7 @@ tip_freq_stat = Div(text='Assumed tip frequency')
 tap_shift_stats = []
 ref_shift_stats = []
 print_shift_stats(0., 0., 0., 0., 0., 0.)
+
 
 # BINNING PLOTS ########################################################################################################
 init_data = {'binned': [np.random.uniform(size=(64, 64))]}
@@ -136,11 +137,12 @@ ref_shift_fig = figure(height=300, width=300, toolbar_location=None)
 ref_shift_fig.scatter(x='ref_x', y='ref_y', source=ref_shift_data,
                       line_color='blue', marker='dot', size=10, syncable=False)
 
+
 # LAYOUT ###############################################################################################################
 controls_box = row([mod_button, npts_input, tap_input, ref_input, tip_freq_stat])
 phase_shift_box = column([
-    row([tap_shift_fig, column([Div(text='tap phase shifting'), [s for s in tap_shift_stats]])]),
-    row([ref_shift_fig, column([Div(text='ref phase shifting'), [s for s in ref_shift_stats]])])
+    row([tap_shift_fig, column([Div(text='tap phase shifting')] + [s for s in tap_shift_stats])]),
+    row([ref_shift_fig, column([Div(text='ref phase shifting')] + [s for s in ref_shift_stats])])
 ])
 
 tuning_layout = layout(children=[
