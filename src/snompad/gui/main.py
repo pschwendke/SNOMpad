@@ -4,6 +4,7 @@
 import sys
 import numpy as np
 import colorcet as cc
+from threading import Thread
 from time import perf_counter, sleep
 from scipy.stats import binned_statistic, binned_statistic_2d
 
@@ -14,14 +15,14 @@ from bokeh.plotting import figure, ColumnDataSource
 
 # ToDo: configure logging
 # from .utility.acquisition_logger import gui_logger
-from .buffer import PlottingBuffer
-from .demod import demod_to_buffer
-from .user_messages import error_message
-from ..drivers import DaqController
-from ..acquisition.buffer import CircularArrayBuffer
-from ..utility import Signals, plot_colors
-from ..analysis.utils import tip_frequency
-from ..analysis.noise import phase_shifting
+from snompad.gui.buffer import PlottingBuffer
+from snompad.gui.demod import demod_to_buffer
+from snompad.gui.user_messages import error_message
+from snompad.drivers import DaqController
+from snompad.acquisition.buffer import CircularArrayBuffer
+from snompad.utility import Signals, plot_colors
+from snompad.analysis.utils import tip_frequency
+from snompad.analysis.noise import phase_shifting
 
 signals = [
     Signals.sig_a,
@@ -33,9 +34,9 @@ signals = [
     Signals.chop
 ]
 
-acquisition_buffer = None
 callback_period = 150  # ms
 buffer_size = 200_000
+acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
 go = False
 err_code = 0
 
@@ -59,7 +60,7 @@ class Acquisitor:
         """ when 'GO' button is not active
         """
         while not go:
-            sleep(.01)
+            sleep(0.01)
         self.acquisition_loop()
 
     def acquisition_loop(self):
@@ -92,7 +93,7 @@ def periodic_callback():
             err_code += update_signal_tab(buffer=acquisition_buffer)
         elif tabs.active == 1:
             err_code += update_tuning_tab(buffer=acquisition_buffer)
-        elif tabs.acitve == 2:
+        elif tabs.active == 2:
             err_code += update_noise_tab()
         elif tabs.active == 3:
             err_code += update_retraction_tab()
@@ -117,12 +118,14 @@ def update_signal_tab(buffer) -> int:
         data = buffer.tail(n=npts_input.value)
         rtn_value, coefficients = demod_to_buffer(
             data=data,
-            modulation=mod_button.labels[mod_button.acitve],
+            signals=signals,
+            modulation=mod_button.labels[mod_button.active],
             tap=tap_input.value,
             ref=ref_input.value,
             chop=chop_button.active,
             ratiometry=ratiometry_button.active,
-            abs_val=abs_button.active
+            abs_val=abs_button.active,
+            max_harm=max_harm
         )
         if rtn_value == 0:
             coefficients = normalize_harmonics(coefficients)
@@ -144,7 +147,7 @@ def update_tuning_tab(buffer) -> int:
         data = buffer.tail(n=npts_input.value)
         tap_x, tap_y = data[:, signals.index(Signals.tap_x)], data[:, signals.index(Signals.tap_y)]
         tap_p = np.arctan2(tap_y, tap_x)
-        if mod_button.labels[mod_button.acitve] == 'pshet':
+        if mod_button.labels[mod_button.active] == 'pshet':
             ref_x, ref_y = data[:, signals.index(Signals.ref_x)], data[:, signals.index(Signals.ref_y)]
             ref_p = np.arctan2(ref_y, ref_x)
         else:
@@ -157,6 +160,7 @@ def update_tuning_tab(buffer) -> int:
     except Exception as e:
         print(e)
         rtn_value += 1000
+        raise
     return rtn_value
 
 
@@ -249,7 +253,7 @@ def update_phase_data(data):
 
 def normalize_harmonics(coefficients):
     global harm_scaling
-    if mod_button.labels[mod_button.acitve] != 'no mod':
+    if mod_button.labels[mod_button.active] != 'no mod':
         if harm_scaling[0] == 0:
             harm_scaling = np.ones(max_harm + 1) / np.abs(coefficients)
         for i, over_limit in enumerate(np.abs(coefficients * harm_scaling) > 1):
@@ -269,8 +273,8 @@ def make_sig_fig():
     # ToDo: can this go in another file?
     default_visible = [3, 4, 5]
     buffer = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])
-    fig = figure(aspect_ratio=3, tools='pan,ywheel_zoom,box_zoom,reset,save',
-                 active_scroll='ywheel_zoom', active_drag='pan')
+    fig = figure(height=600, width=1000, tools='pan,ywheel_zoom,box_zoom,reset,save', active_scroll='ywheel_zoom',
+                 active_drag='pan', sizing_mode='scale_both')
     for h in range(max_harm+1):
         fig.line(x='t', y=str(h), source=buffer.buffer, line_color=rgb_to_hex(plot_colors[h]),
                  line_width=2, syncable=False, legend_label=f'{h}', visible=h in default_visible)
@@ -285,8 +289,8 @@ def make_phase_fig():
     init_data = {c: np.zeros(phase_plot_sample_size // 20) for c in channels}
     init_data.update({'theta': np.linspace(-np.pi, np.pi, phase_plot_sample_size // 20)})
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=400, width=800, tools='pan,ywheel_zoom,box_zoom,reset,save',
-                 active_scroll='ywheel_zoom', active_drag='pan')
+    fig = figure(height=400, width=400, tools='pan,ywheel_zoom,box_zoom,reset,save',
+                 active_scroll='ywheel_zoom', active_drag='pan', sizing_mode='fixed')
     for n, c in enumerate(channels):
         fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=rgb_to_hex(plot_colors[n]),
                     size=10, syncable=False, legend_label=c)
@@ -313,7 +317,7 @@ def update_binning_plot(tap_p, ref_p):
     new_data = {'binned': [binned]}
     binning_data.data = new_data
 
-    if any(np.isnan(binned)):
+    if np.isnan(binned).any():
         rtn_value += 2000
     return rtn_value
 
@@ -358,13 +362,13 @@ def update_phase_shift_stats(tap_x, tap_y, ref_x, ref_y):
 
 def update_tip_frequency(tap_p):
     f = tip_frequency(tap_p)
-    tip_freq_stat.text = f'Assumed tip frequency: {f/1000:.3f} kHz'
+    tip_freq_stat.text = f'Assumed tip frequency:\n{f/1000:.3f} kHz'
 
 
 def make_binning_fig():
     init_data = {'binned': [np.random.uniform(size=(64, 64))]}
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=600, width=600, toolbar_location=None)
+    fig = figure(height=600, width=600, toolbar_location=None, sizing_mode='fixed')
     cmap = LinearColorMapper(palette=cc.bgy, nan_color='#FF0000')
     plot = fig.image(image='binned', source=plot_data, color_mapper=cmap,
                      dh=2*np.pi, dw=2*np.pi, x=-np.pi, y=-np.pi, syncable=False)
@@ -376,7 +380,7 @@ def make_binning_fig():
 def make_tap_shift_fig():
     init_data = {'tap_x': [np.zeros(1)], 'tap_y': [np.zeros(1)]}
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=300, width=300, toolbar_location=None)
+    fig = figure(height=300, width=300, toolbar_location=None, sizing_mode='fixed')
     fig.scatter(x='tap_x', y='tap_y', source=plot_data,
                 line_color='blue', marker='dot', size=10, syncable=False)
     return fig, plot_data
@@ -385,7 +389,7 @@ def make_tap_shift_fig():
 def make_ref_shift_fig():
     init_data = {'ref_x': [np.zeros(1)], 'ref_y': [np.zeros(1)]}
     plot_data = ColumnDataSource(init_data)
-    fig = figure(height=300, width=300, toolbar_location=None)
+    fig = figure(height=300, width=300, toolbar_location=None, sizing_mode='fixed')
     fig.scatter(x='ref_x', y='ref_y', source=plot_data,
                 line_color='blue', marker='dot', size=10, syncable=False)
     return fig, plot_data
@@ -401,11 +405,11 @@ go_button = Toggle(label='GO', active=False, width=60)
 go_button.on_click(update_go)
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
-callback_input = NumericInput(title='Periodic callback period (ms)', value=callback_period, mode='int', width=120)
+callback_input = NumericInput(title='Periodic callback period (ms)', value=callback_period, mode='int', width=200)
 callback_input.on_change('value', input_callback_period)
 message_box = Div(text='message box')
 message_box.styles = {
-    'width': '300px',
+    'width': '800px',
     'border': '1px solid#000',
     'text-align': 'center',
     'background-color': '#FFFFFF'
@@ -444,7 +448,7 @@ ref_shift_fig, ref_shift_data = make_ref_shift_fig()
 print_shift_stats(0., 0., 0., 0., 0., 0.)
 
 
-# MAKE ALL THE TABS ####################################################################################################
+# MAKE ALL THE TAB LAYOUTS #############################################################################################
 def make_signal_layout():
     controls_box = column([
         row([chop_button, mod_button]),
@@ -453,53 +457,58 @@ def make_signal_layout():
         row([ratiometry_button, normalize_button]),
         noise_table,
     ])
-    return layout(children=[sig_fig, [phase_fig, controls_box]], sizing_mode='stretch_width')
+    return layout(children=[[sig_fig, [phase_fig, controls_box]]], sizing_mode='stretch_width')
 
 
 def make_tuning_layout():
-    controls_box = row([mod_button, npts_input, tap_input, ref_input, tip_freq_stat])
+    controls_box = column([mod_button, npts_input, tap_input, ref_input, tip_freq_stat])
     phase_shift_box = column([
         row([tap_shift_fig, column([Div(text='tap phase shifting')] + [s for s in tap_shift_stats])]),
         row([ref_shift_fig, column([Div(text='ref phase shifting')] + [s for s in ref_shift_stats])])
     ])
-    return layout(children=[controls_box, [binning_fig, phase_shift_box]], sizing_mode='stretch_width')
+    return layout(children=[[binning_fig, controls_box, phase_shift_box]])
 
 
 def make_noise_layout():
-    place_holder = Div(text='There is nothing yet to see here')
-    return layout(children=[place_holder], sizing_mode='stretch_width')
+    place_holder = Div(text='There is nothing here yet to see')
+    return layout(children=[place_holder])
 
 
 def make_retraction_layout():
-    place_holder = Div(text='There is nothing yet to see here')
-    return layout(children=[place_holder], sizing_mode='stretch_width')
+    place_holder = Div(text='There is nothing here yet to see')
+    return layout(children=[place_holder])
 
 
 def make_line_layout():
-    place_holder = Div(text='There is nothing yet to see here')
-    return layout(children=[place_holder], sizing_mode='stretch_width')
+    place_holder = Div(text='There is nothing here yet to see')
+    return layout(children=[place_holder])
 
 
 def make_delay_layout():
-    place_holder = Div(text='There is nothing yet to see here')
-    return layout(children=[place_holder], sizing_mode='stretch_width')
+    place_holder = Div(text='There is nothing here yet to see')
+    return layout(children=[place_holder])
 
 
 sig_tab = TabPanel(child=make_signal_layout(), title='SNOM signals')
 tuning_tab = TabPanel(child=make_tuning_layout(), title='SNOM tuning')
-noise_tab = TabPanel(child=make_noise_layout(), title='SNOM tuning')
-retraction_tab = TabPanel(child=make_retraction_layout(), title='SNOM tuning')
-line_tab = TabPanel(child=make_line_layout(), title='SNOM tuning')
-delay_tab = TabPanel(child=make_delay_layout(), title='SNOM tuning')
+noise_tab = TabPanel(child=make_noise_layout(), title='Noise')
+retraction_tab = TabPanel(child=make_retraction_layout(), title='Retraction Scan')
+line_tab = TabPanel(child=make_line_layout(), title='Line Scan')
+delay_tab = TabPanel(child=make_delay_layout(), title='Delay Scan')
 tabs = Tabs(tabs=[sig_tab, tuning_tab, noise_tab, retraction_tab, line_tab, delay_tab], active=0)
 
 
+# START ACQUISITION ####################################################################################################
+acquisition_daemon = Thread(target=Acquisitor, daemon=True)
+acquisition_daemon.start()
+
+
 # GLOBAL LAYOUT ########################################################################################################
-gui_controls = row(children=[go_button, stop_server_button, callback_input, message_box])
+gui_controls = row(children=[go_button, stop_server_button, callback_input, message_box], sizing_mode='stretch_width')
 GUI_layout = layout(children=[
     gui_controls,
     tabs
-])
+], sizing_mode='stretch_both')
 curdoc().add_root(GUI_layout)
 curdoc().title = 'SNOMpad'
 callback = curdoc().add_periodic_callback(periodic_callback, callback_period)

@@ -164,6 +164,8 @@ def tip_frequency(tap_p, sample_rate=200_000):
     """
     sample_spacing = 1 / sample_rate  # s
     n = len(tap_p)
+    if n < 10:
+        return 0
 
     tip_pos = np.cos(tap_p)
     tip_pos_spectrum = np.abs(np.fft.rfft(tip_pos))

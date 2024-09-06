@@ -1,6 +1,6 @@
 import os
-from gui import __path__
-
+from snompad.gui import __path__
+# print(__path__)
 
 def launch_gui():
     """ launches the SNOMpad GUI.
