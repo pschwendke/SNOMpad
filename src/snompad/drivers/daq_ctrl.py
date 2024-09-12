@@ -24,7 +24,7 @@ it to the reader.
 import logging
 import typing
 import numpy as np
-import attr
+import atatr
 import nidaqmx as ni
 from nidaqmx import DaqError
 from nidaqmx.error_codes import DAQmxErrors

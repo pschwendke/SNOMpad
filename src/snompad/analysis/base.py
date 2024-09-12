@@ -11,6 +11,10 @@ class BaseScanDemod(ABC):
     """ Base class to load, demodulate, plot, and export acquired data.
     """
     def __init__(self, filename: str):
+        # define these first because they __del__ will try to close them
+        self.scan_file = None
+        self.demod_file = None
+        # load scan file
         if filename[-3:] == '.h5':
             self.scan_file = ReadH5Acquisition(filename)
         elif filename[-3:] == '.nc':
@@ -25,10 +29,10 @@ class BaseScanDemod(ABC):
         self.mode = Scan[self.metadata['acquisition_mode']]
         self.signals = [Signals[s] for s in self.metadata['signals']]
         self.modulation = Demodulation[self.metadata['modulation']]
+        # attrs to store demod data
         self.demod_data = None
         self.demod_filetype = 'hdf5'
         self.demod_cache = {}
-        self.demod_file = None
 
     def __str__(self) -> str:
         ret = 'Metadata:\n'
@@ -46,7 +50,8 @@ class BaseScanDemod(ABC):
         return f'<SNOMpad measurement: {self.name}>'
 
     def __del__(self):
-        self.scan_file.close_file()
+        if self.scan_file is not None:
+            self.scan_file.close_file()
         if self.demod_file is not None:
             self.demod_file.close_file()
 
