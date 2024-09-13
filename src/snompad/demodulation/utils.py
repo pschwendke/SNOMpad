@@ -1,5 +1,6 @@
 # tools and helper functions
 import numpy as np
+from warnings import warn
 
 from .corrections import phase_offset
 from ..utility.signals import Signals
@@ -33,7 +34,7 @@ def boxcar_kernel_1d(x, x0, sigma):
     return kernel
 
 
-def kernel_interpolation_1d(signal, x_sig, x_grid, sigma=None, kernel='cyclic'):
+def kernel_average_1d(signal, x_sig, x_grid, sigma=None, kernel='cyclic'):
     """ Interpolates signal on coordinates x_sig onto passed coordinates x_grid,
     using gaussian kernel smoothing of width sigma.
     kernel: str
@@ -67,7 +68,7 @@ def gaussian_kernel_2d(x, y, x0, y0, sigma):
     return kernel
 
 
-def kernel_interpolation_2d(signal, x_sig, y_sig, x_grid, y_grid, sigma=None):
+def kernel_average_2d(signal, x_sig, y_sig, x_grid, y_grid, sigma=None):
     """ Interpolates signal on coordinates x_sig, y_sig onto passed grid x_grid, y_grid,
     using gaussian kernel smoothing of width sigma.
     IMPORTANT: x and y are treated as periodic between -pi, pi
@@ -182,3 +183,14 @@ def pumped_data(data: np.ndarray, signals=None, idx=None) -> np.ndarray:
         _, idx = chop_pump_idx(data[:, signals.index(Signals.chop)])
     data_pump = data[idx]
     return data_pump
+
+
+# OLD FUNCTION NAMES ###################################################################################################
+def kernel_interpolation_1d(*args, **kwargs):
+    warn('kernel_interpolation_1d is now called kernel_average_1d', DeprecationWarning, stacklevel=2)
+    return kernel_average_1d(*args, **kwargs)
+
+
+def kernel_interpolation_2d(*args, **kwargs):
+    warn('kernel_interpolation_2d is now called kernel_average_2d', DeprecationWarning, stacklevel=2)
+    return kernel_average_2d(*args, **kwargs)

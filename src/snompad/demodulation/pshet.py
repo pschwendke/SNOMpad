@@ -5,7 +5,7 @@ from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
 from ..utility.signals import Signals
-from .utils import kernel_interpolation_1d, kernel_interpolation_2d, pshet_obj_func,\
+from .utils import kernel_average_1d, kernel_average_2d, pshet_obj_func,\
     corrected_fft, chop_pump_idx, chopped_data, pumped_data
 from .corrections import normalize_sig_a
 
@@ -63,8 +63,8 @@ def pshet_kernel_average(data: np.ndarray, signals: list, tap_res: int = 64, ref
     ref_p = np.arctan2(data[:, signals.index(Signals.ref_y)], data[:, signals.index(Signals.ref_x)])
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
     ref_grid = np.linspace(-np.pi, np.pi, ref_res, endpoint=False) + np.pi / ref_res
-    binned = kernel_interpolation_2d(signal=data[:, signals.index(Signals.sig_a)],
-                                     x_sig=tap_p, y_sig=ref_p, x_grid=tap_grid, y_grid=ref_grid)
+    binned = kernel_average_2d(signal=data[:, signals.index(Signals.sig_a)],
+                               x_sig=tap_p, y_sig=ref_p, x_grid=tap_grid, y_grid=ref_grid)
     return binned
 
 
@@ -95,8 +95,8 @@ def pshet_binned_kernel(data: np.ndarray, signals: list, tap_res: int = 64, ref_
     binned = []
     for i in range(ref_res):
         idx = np.logical_and(ref_bounds[i] < ref_p, ref_p < ref_bounds[i + 1])
-        binned.append(kernel_interpolation_1d(signal=data[idx, signals.index(Signals.sig_a)],
-                                              x_sig=tap_p[idx], x_grid=tap_grid))
+        binned.append(kernel_average_1d(signal=data[idx, signals.index(Signals.sig_a)],
+                                        x_sig=tap_p[idx], x_grid=tap_grid))
     return np.array(binned)
 
 

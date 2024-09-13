@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import binned_statistic
 
 from ..utility.signals import Signals
-from .utils import kernel_interpolation_1d, corrected_fft, chop_pump_idx, chopped_data, pumped_data
+from .utils import kernel_average_1d, corrected_fft, chop_pump_idx, chopped_data, pumped_data
 from .corrections import normalize_sig_a
 
 
@@ -50,7 +50,7 @@ def shd_kernel_average(data: np.ndarray, signals: list, tap_res: int = 128) -> n
     """
     tap_p = np.arctan2(data[:, signals.index(Signals.tap_y)], data[:, signals.index(Signals.tap_x)])
     tap_grid = np.linspace(-np.pi, np.pi, tap_res, endpoint=False) + np.pi / tap_res
-    binned = kernel_interpolation_1d(signal=data[:, signals.index(Signals.sig_a)], x_sig=tap_p, x_grid=tap_grid)
+    binned = kernel_average_1d(signal=data[:, signals.index(Signals.sig_a)], x_sig=tap_p, x_grid=tap_grid)
     return binned
 
 
