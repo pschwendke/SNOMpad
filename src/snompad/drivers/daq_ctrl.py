@@ -111,7 +111,8 @@ class TrionsAnalogReader:
     def analog_stream(self, in_stream):
         logger.debug("Setting analog stream")
         self._analog_stream = in_stream
-        self._ni_reader = TAMR(self.analog_stream)
+        # self._ni_reader = TAMR(self.analog_stream)
+        self._ni_reader = AnalogMultiChannelReader(self.analog_stream)
 
     @property
     def avail_samp(self):
@@ -124,12 +125,13 @@ class TrionsAnalogReader:
         if n == 0:
             logger.debug('TrionsAnalogReader: 0 samples read from DAQ')
             return 0
-        tmp = np.full((n, len(self.vars)), np.nan)
+        # tmp = np.full((n, len(self.vars)), np.nan)
+        tmp = np.full((len(self.vars), n), np.nan)
         self._ni_reader.read_many_sample(tmp, number_of_samples_per_channel=n)
         if emulated:
             tmp = self.emulated_data(n)
         try:
-            r = self.buffer.put(tmp)
+            r = self.buffer.put(tmp.T)
         except ValueError:
             raise
         return r
