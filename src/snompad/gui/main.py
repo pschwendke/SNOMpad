@@ -34,7 +34,7 @@ signals = [
     Signals.chop
 ]
 
-callback_period = 150  # ms
+callback_period = 150  # ms  (time after which a periodic callback is started)
 buffer_size = 200_000
 acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
 go = False
@@ -52,36 +52,33 @@ def rgb_to_hex(rgb: list) -> str:
 
 
 # ACQUISITION ##########################################################################################################
-class Acquisitor:
-    def __init__(self) -> None:
-        self.idle_loop()  # to make the thread 'start listening'
+def acquisition_idle_loop():
+    """ when 'GO' button is not active
+    """
+    while not go:
+        sleep(0.01)
+    acquisition_go_loop()
 
-    def idle_loop(self):
-        """ when 'GO' button is not active
-        """
-        while not go:
-            sleep(0.01)
-        self.acquisition_loop()
 
-    def acquisition_loop(self):
-        """ when 'GO' button is active
-        """
-        global acquisition_buffer, err_code
-        acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
-        daq = DaqController(dev='Dev1', clock_channel='pfi0')
-        daq.setup(buffer=acquisition_buffer)
-        try:
-            daq.start()
-            while go:
-                sleep(.01)
-                daq.reader.read()
-        except Exception as e:
-            if err_code // 100 % 10 == 0:
-                err_code += 100
-                print(e)
-        finally:
-            daq.close()
-            self.idle_loop()
+def acquisition_go_loop():
+    """ when 'GO' button is active
+    """
+    global acquisition_buffer, err_code
+    acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
+    daq = DaqController(dev='Dev1', clock_channel='pfi0', emulate=False)
+    daq.setup(buffer=acquisition_buffer)
+    try:
+        daq.start()
+        while go:
+            sleep(.01)
+            daq.reader.read()
+    except Exception as e:
+        if err_code // 100 % 10 == 0:
+            err_code += 100
+            print(e)
+    finally:
+        daq.close()
+        acquisition_idle_loop()
 
 
 # PERIODIC CALLBACKS ###################################################################################################
@@ -116,6 +113,8 @@ def update_signal_tab(buffer) -> int:
     rtn_value = 0
     try:
         data = buffer.tail(n=npts_input.value)
+        if len(data) < npts_input.value:
+            return 30
         rtn_value, coefficients = demod_to_buffer(
             data=data,
             signals=signals,
@@ -137,7 +136,7 @@ def update_signal_tab(buffer) -> int:
         update_phase_data(data=data)
     except Exception as e:
         print(e)
-        rtn_value += 10
+        rtn_value = 10
     return rtn_value
 
 
@@ -145,7 +144,10 @@ def update_tuning_tab(buffer) -> int:
     rtn_value = 0
     try:
         data = buffer.tail(n=npts_input.value)
-        tap_x, tap_y = data[:, signals.index(Signals.tap_x)], data[:, signals.index(Signals.tap_y)]
+        if len(data) < npts_input.value:
+            return 3000
+        tap_x = data[:, signals.index(Signals.tap_x)]
+        tap_y = data[:, signals.index(Signals.tap_y)]
         tap_p = np.arctan2(tap_y, tap_x)
         if mod_button.labels[mod_button.active] == 'pshet':
             ref_x, ref_y = data[:, signals.index(Signals.ref_x)], data[:, signals.index(Signals.ref_y)]
@@ -153,13 +155,13 @@ def update_tuning_tab(buffer) -> int:
         else:
             ref_x, ref_y, ref_p = None, None, None
 
-        rtn_value += update_binning_plot(tap_p, ref_p)
+        rtn_value = update_binning_plot(tap_p=tap_p, ref_p=ref_p)
         update_tip_frequency(tap_p)
         update_phase_shift_plots(tap_x, tap_y, ref_x, ref_y)
         update_phase_shift_stats(tap_x, tap_y, ref_x, ref_y)
     except Exception as e:
         print(e)
-        rtn_value += 1000
+        rtn_value = 1000
         raise
     return rtn_value
 
@@ -208,9 +210,10 @@ def input_callback_period(_, old, new):
 
 
 def renew_callback():
-    global callback
+    global callback, callback_period
     curdoc().remove_periodic_callback(callback)
     callback = curdoc().add_periodic_callback(periodic_callback, callback_period)
+    callback_input.value = callback_period
 
 
 def update_message_box(msg: str):
@@ -313,12 +316,11 @@ def update_binning_plot(tap_p, ref_p):
         returns = binned_statistic(x=tap_p, values=None, statistic='count',
                                    bins=tap_input.value, range=[-np.pi, np.pi])
         binned = returns.statistic[np.newaxis, :]
-
     new_data = {'binned': [binned]}
     binning_data.data = new_data
 
     if np.isnan(binned).any():
-        rtn_value += 2000
+        rtn_value = 2000
     return rtn_value
 
 
@@ -333,21 +335,6 @@ def update_phase_shift_plots(tap_x, tap_y, ref_x, ref_y):
         ref_shift_data.data = new_ref_data
 
 
-def print_shift_stats(tap_amp_diff, tap_phase_diff, tap_err,
-                      ref_amp_diff, ref_phase_diff, ref_err):
-    global tap_shift_stats, ref_shift_stats
-    tap_shift_stats = [
-        Div(text=f'amp_x - amp_y: {tap_amp_diff:.2e} V'),
-        Div(text=f'phi_x - phi_y: {tap_phase_diff:.2f} °'),
-        Div(text=f'amplitude err: {tap_err:.2e} %')
-    ]
-    ref_shift_stats = [
-        Div(text=f'amp_x - amp_y: {ref_amp_diff:.2e} V'),
-        Div(text=f'phi_x - phi_y: {ref_phase_diff:.2f} °'),
-        Div(text=f'amplitude err: {ref_err:.2e} %')
-    ]
-
-
 def update_phase_shift_stats(tap_x, tap_y, ref_x, ref_y):
     _, tap_phase_diff, tap_amp_diff, tap_amp, tap_std, tap_offset = phase_shifting(tap_x, tap_y)
     tap_err = tap_std / tap_amp
@@ -356,8 +343,12 @@ def update_phase_shift_stats(tap_x, tap_y, ref_x, ref_y):
         ref_err = ref_std / ref_amp
     else:
         ref_amp_diff, ref_phase_diff, ref_err = 0., 0., 0.
-    print_shift_stats(tap_amp_diff, tap_phase_diff, tap_err,
-                      ref_amp_diff, ref_phase_diff, ref_err)
+    tap_amp_diff_txt.text = f'amp_x - amp_y: {tap_amp_diff:.2e} V'
+    tap_phase_diff_txt.text = f'phi_x - phi_y: {tap_phase_diff:.2f} °'
+    tap_err_txt.text = f'amplitude err: {tap_err:.2e} %'
+    ref_amp_diff_txt.text = f'amp_x - amp_y: {ref_amp_diff:.2e} V'
+    ref_phase_diff_txt.text = f'phi_x - phi_y: {ref_phase_diff:.2f} °'
+    ref_err_txt.text = f'amplitude err: {ref_err:.2e} %'
 
 
 def update_tip_frequency(tap_p):
@@ -405,7 +396,7 @@ go_button = Toggle(label='GO', active=False, width=60)
 go_button.on_click(update_go)
 stop_server_button = Button(label='stop server')
 stop_server_button.on_click(stop)
-callback_input = NumericInput(title='Periodic callback period (ms)', value=callback_period, mode='int', width=200)
+callback_input = NumericInput(title='callback period (ms)', value=callback_period, mode='int', width=200)
 callback_input.on_change('value', input_callback_period)
 message_box = Div(text='message box')
 message_box.styles = {
@@ -433,6 +424,14 @@ noise_table = column(
     row([signal_noise[h] for h in range(4, 8)])
 )
 
+# TUNING TAB
+tap_amp_diff_txt = Div(text=f'amp_x - amp_y: {0:.2e} V')
+tap_phase_diff_txt = Div(text=f'phi_x - phi_y: {0:.2f} °')
+tap_err_txt = Div(text=f'amplitude err: {0:.2e} %')
+ref_amp_diff_txt = Div(text=f'amp_x - amp_y: {0:.2e} V')
+ref_phase_diff_txt = Div(text=f'phi_x - phi_y: {0:.2f} °')
+ref_err_txt = Div(text=f'amplitude err: {0:.2e} %')
+
 
 # MAKE ALL THE PLOTS ###################################################################################################
 # signal tab
@@ -440,12 +439,9 @@ sig_fig, signal_buffer = make_sig_fig()
 phase_fig, phase_plot_data = make_phase_fig()
 
 # tuning tab
-tap_shift_stats = []
-ref_shift_stats = []
 binning_fig, binning_data = make_binning_fig()
 tap_shift_fig, tap_shift_data = make_tap_shift_fig()
 ref_shift_fig, ref_shift_data = make_ref_shift_fig()
-print_shift_stats(0., 0., 0., 0., 0., 0.)
 
 
 # MAKE ALL THE TAB LAYOUTS #############################################################################################
@@ -463,8 +459,14 @@ def make_signal_layout():
 def make_tuning_layout():
     controls_box = column([mod_button, npts_input, tap_input, ref_input, tip_freq_stat])
     phase_shift_box = column([
-        row([tap_shift_fig, column([Div(text='tap phase shifting')] + [s for s in tap_shift_stats])]),
-        row([ref_shift_fig, column([Div(text='ref phase shifting')] + [s for s in ref_shift_stats])])
+        row([tap_shift_fig, column([Div(text='tap phase shifting'),
+                                    tap_amp_diff_txt,
+                                    tap_phase_diff_txt,
+                                    tap_err_txt])]),
+        row([ref_shift_fig, column([Div(text='ref phase shifting'),
+                                    ref_amp_diff_txt,
+                                    ref_phase_diff_txt,
+                                    ref_err_txt])])
     ])
     return layout(children=[[binning_fig, controls_box, phase_shift_box]])
 
@@ -499,7 +501,7 @@ tabs = Tabs(tabs=[sig_tab, tuning_tab, noise_tab, retraction_tab, line_tab, dela
 
 
 # START ACQUISITION ####################################################################################################
-acquisition_daemon = Thread(target=Acquisitor, daemon=True)
+acquisition_daemon = Thread(target=acquisition_idle_loop, daemon=True)
 acquisition_daemon.start()
 
 

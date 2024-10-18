@@ -29,11 +29,12 @@ def demod_to_buffer(data, signals, modulation: str, tap: int, ref: int, chop: bo
                 coeff[0] = chopped
                 coeff[1] = pumped
                 coeff[2] = pump_probe
-                rtn = '(0) probe only -- (1) pump only -- (2) pump-probe difference'
+                # rtn = '(0) probe only -- (1) pump only -- (2) pump-probe difference'
             else:
                 coeff[0] = data[:, signals.index(Signals.sig_a)].mean()
                 coeff[1] = data[:, signals.index(Signals.sig_b)].mean()
-                rtn = '(0) sig_a -- (1) sig_b'
+                # rtn = '(0) sig_a -- (1) sig_b'
+                #  ToDo: make these messages
         if abs_val:
             coeff = np.abs(coeff[: max_harm+1])
         else:
