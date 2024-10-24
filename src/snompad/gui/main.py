@@ -1,57 +1,56 @@
 # This is the SNOMpad GUI. It is a bokeh server.
 # It can be run from the commandline as 'bokeh serve --show .'
+# or as 'python launch_gui.py'
 # Alternatively, launch_gui() can be imported from snompad.gui
 import sys
+import os
 import numpy as np
-import colorcet as cc
+import logging
 from threading import Thread
 from time import perf_counter, sleep
 from scipy.stats import binned_statistic, binned_statistic_2d
+from datetime import datetime
 
 from bokeh.plotting import curdoc
-from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs, Div, RadioButtonGroup, LinearColorMapper
-from bokeh.layouts import layout, column, row
-from bokeh.plotting import figure, ColumnDataSource
+from bokeh.models import Toggle, Button, NumericInput, TabPanel, Tabs, Div, RadioButtonGroup, Select, TextInput
+from bokeh.layouts import layout, column, row, gridplot
 
 # ToDo: configure logging
 # from .utility.acquisition_logger import gui_logger
-from snompad.gui.buffer import PlottingBuffer
 from snompad.gui.demod import demod_to_buffer
 from snompad.gui.user_messages import error_message
+from snompad.gui.utils import *
+from snompad.gui.setup_plots import *
+
 from snompad.drivers import DaqController
 from snompad.acquisition.buffer import CircularArrayBuffer
 from snompad.utility import Signals, plot_colors
-from snompad.analysis.utils import tip_frequency
+from snompad.analysis.utils import fft_tip_frequency
 from snompad.analysis.noise import phase_shifting
+from snompad.acquisition.scans import SteppedRetraction, ContinuousRetraction
 
-signals = [
-    Signals.sig_a,
-    Signals.sig_b,
-    Signals.tap_x,
-    Signals.tap_y,
-    Signals.ref_x,
-    Signals.ref_y,
-    Signals.chop
-]
+logger = logging.getLogger()
+logger.setLevel('INFO')
 
+# global variables
 callback_period = 150  # ms  (time after which a periodic callback is started)
 buffer_size = 200_000
+max_harm = 8  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
+tip_frequency = 0.
+signals = [Signals.sig_a, Signals.sig_b, Signals.tap_x, Signals.tap_y, Signals.ref_x, Signals.ref_y, Signals.chop]
 acquisition_buffer = CircularArrayBuffer(vars=signals, size=buffer_size)
 go = False
 err_code = 0
 
-
-def rgb_to_hex(rgb: list) -> str:
-    """ Just a conversion of color identifiers to use plot_colors with bokeh
-    """
-    r = round(rgb[0] * 255)
-    g = round(rgb[1] * 255)
-    b = round(rgb[2] * 255)
-    out = f'#{r:02x}{g:02x}{b:02x}'
-    return out
+# variables for scanning
+date = datetime.now()
+data_dir = f'Z:/data/_DATA/SNOM/{date.strftime("%Y")}/{date.strftime("%y%m%d")}'
+scan_daemon = None
+current_name = '-no scan-'  # eg '240709-191412_continuous_retraction'
+scanning = False  # False: idling, True: busy, 0: exception occured, 1: done waiting for next step
 
 
-# ACQUISITION ##########################################################################################################
+# DAEMON TARGETS #######################################################################################################
 def acquisition_idle_loop():
     """ when 'GO' button is not active
     """
@@ -79,6 +78,21 @@ def acquisition_go_loop():
     finally:
         daq.close()
         acquisition_idle_loop()
+
+
+def scanning_thread(scan, params):
+    """ this executes in a daemon thread so that periodic callbacks don't pile up.
+    """
+    global scanning, current_name
+    try:
+        scanning = True
+        task = scan(**params)
+        task.start()
+        current_name = task.name
+        scanning = 1
+    except Exception:
+        scanning = 0
+        raise
 
 
 # PERIODIC CALLBACKS ###################################################################################################
@@ -166,12 +180,31 @@ def update_tuning_tab(buffer) -> int:
     return rtn_value
 
 
-def update_noise_tab() -> int:
-    rtn_value = 0
-    return rtn_value
-
-
 def update_retraction_tab() -> int:
+    global scanning, current_name, scan_daemon
+    if scanning == False:
+        return 0
+    elif scanning == True:  # either busy scanning or doing demod
+        return 20_000
+    elif scanning == 0:  # exception occured
+        if scan_daemon is not None:
+            scan_daemon.join()
+            scan_daemon = None
+        return 10_000
+    elif scanning == 1:  # done but need demod
+        try:
+            scan_daemon = None
+            logger.info(f'scan complete: {current_name}')
+            plot_retraction(current_name)
+            scanning = True
+            return 30_000
+        except Exception as e:
+            logger.error(str(e))
+            scanning = 0
+            return 10_000
+
+
+def update_noise_tab() -> int:
     rtn_value = 0
     return rtn_value
 
@@ -188,6 +221,8 @@ def update_delay_tab() -> int:
 
 # GLOBAL WIDGET CALLBACKS ##############################################################################################
 def stop(button):
+    update_message_box(msg='Server stopped')
+    sleep(0.5)
     sys.exit()  # Stop the bokeh server
 
 
@@ -222,7 +257,6 @@ def update_message_box(msg: str):
 
 # SIGNAL TAB FUNCTIONS AND CALLBACKS ###################################################################################
 harm_plot_size = 40  # of values on x-axis when plotting harmonics
-max_harm = 7  # highest harmonics that is plotted, should be lower than 8 (because of display of signal/noise)
 harm_scaling = np.zeros(max_harm + 1)  # normalization factors for plotted harmonics
 signal_noise = {  # collection of signal-to-noise ratios
     h: Div(text='-', styles={'color': rgb_to_hex(plot_colors[h]), 'font-size': '200%'}) for h in range(8)
@@ -270,36 +304,6 @@ def normalize_harmonics(coefficients):
 def reset_normalization(button):
     global harm_scaling
     harm_scaling = np.zeros(max_harm + 1)
-
-
-def make_sig_fig():
-    # ToDo: can this go in another file?
-    default_visible = [3, 4, 5]
-    buffer = PlottingBuffer(n=harm_plot_size, names=[str(h) for h in range(max_harm + 1)])
-    fig = figure(height=600, width=1000, tools='pan,ywheel_zoom,box_zoom,reset,save', active_scroll='ywheel_zoom',
-                 active_drag='pan', sizing_mode='scale_both')
-    for h in range(max_harm+1):
-        fig.line(x='t', y=str(h), source=buffer.buffer, line_color=rgb_to_hex(plot_colors[h]),
-                 line_width=2, syncable=False, legend_label=f'{h}', visible=h in default_visible)
-    fig.legend.location = 'center_left'
-    fig.legend.click_policy = 'hide'
-    return fig, buffer
-
-
-def make_phase_fig():
-    # ToDo: can this go in another file?
-    channels = ['sig_a', 'sig_b', 'chop']
-    init_data = {c: np.zeros(phase_plot_sample_size // 20) for c in channels}
-    init_data.update({'theta': np.linspace(-np.pi, np.pi, phase_plot_sample_size // 20)})
-    plot_data = ColumnDataSource(init_data)
-    fig = figure(height=400, width=400, tools='pan,ywheel_zoom,box_zoom,reset,save',
-                 active_scroll='ywheel_zoom', active_drag='pan', sizing_mode='fixed')
-    for n, c in enumerate(channels):
-        fig.scatter(x='theta', y=c, source=plot_data, marker='dot', line_color=rgb_to_hex(plot_colors[n]),
-                    size=10, syncable=False, legend_label=c)
-    fig.legend.location = 'top_right'
-    fig.legend.click_policy = 'hide'
-    return fig, plot_data
 
 
 # TUNING TAB FUNCTIONS AND CALLBACKS ###################################################################################
@@ -352,44 +356,91 @@ def update_phase_shift_stats(tap_x, tap_y, ref_x, ref_y):
 
 
 def update_tip_frequency(tap_p):
-    f = tip_frequency(tap_p)
-    tip_freq_stat.text = f'Assumed tip frequency:\n{f/1000:.3f} kHz'
+    global tip_frequency
+    tip_frequency = fft_tip_frequency(tap_p)
+    tip_freq_stat.text = f'Assumed tip frequency:\n{tip_frequency/1000:.3f} kHz'
 
 
-def make_binning_fig():
-    init_data = {'binned': [np.random.uniform(size=(64, 64))]}
-    plot_data = ColumnDataSource(init_data)
-    fig = figure(height=600, width=600, toolbar_location=None, sizing_mode='fixed')
-    cmap = LinearColorMapper(palette=cc.bgy, nan_color='#FF0000')
-    plot = fig.image(image='binned', source=plot_data, color_mapper=cmap,
-                     dh=2*np.pi, dw=2*np.pi, x=-np.pi, y=-np.pi, syncable=False)
-    cbar = plot.construct_color_bar(padding=1)
-    fig.add_layout(cbar, 'right')
-    return fig, plot_data
+# RETRACTION TAB FUNCTIONS AND CALLBACKS ###############################################################################
+def start_retraction():
+    global scan_daemon
+    update_message_box(msg='Retraction scan started')
+
+    change_to_directory(data_dir)
+    scan_class = [SteppedRetraction, ContinuousRetraction][scan_type_button.active]
+    modulation = mod_button.labels[mod_button.active]
+
+    metadata = {
+        'sample': sample_input.value,
+        'user': user_input.value,
+        'tip': tip_input.value,
+        'tapping_amp_nm': amp_input.value,
+        'tapping_frequency_Hz': freq_input.value,
+        'light_source': laser_input.value,
+        'probe_color_nm': probe_nm.value,
+        'probe_power_mW': probe_mW.value,
+        'probe_FWHM_nm': probe_FWHM.value,
+        'pump_color_nm': pump_nm.value,
+        'pump_power_mW': pump_mW.value,
+        'pump_FWHM_nm': pump_FWHM.value
+    }
+
+    params = {
+        'modulation': modulation,
+        'z_size': z_size_input.value,
+        'z_res': z_res_input.value,
+        'npts': npts_input.value,
+        'x_target': x_target_input.value,
+        'y_target': y_target_input.value,
+        'setpoint': setpoint_input.value,
+        'metadata': metadata,
+        'ratiometry': ratiometry_button.active
+    }
+
+    if scan_type_button.active == 1:  # continuous
+        params.update({'afm_sampling_ms': sampling_ms_input.value})
+    if pump_probe_button.active:
+        params.update({'t': t_input.value, 't0_mm': t0_input.value, 'pump_probe': True,
+                       't_unit': t_unit_button.labels[t_unit_button.active]})
+
+    scan_daemon = Thread(target=scanning_thread, kwargs={'scan': scan_class, 'params': params}, daemon=True)
+    scan_daemon.start()
 
 
-def make_tap_shift_fig():
-    init_data = {'tap_x': [np.zeros(1)], 'tap_y': [np.zeros(1)]}
-    plot_data = ColumnDataSource(init_data)
-    fig = figure(height=300, width=300, toolbar_location=None, sizing_mode='fixed')
-    fig.scatter(x='tap_x', y='tap_y', source=plot_data,
-                line_color='blue', marker='dot', size=10, syncable=False)
-    return fig, plot_data
-
-
-def make_ref_shift_fig():
-    init_data = {'ref_x': [np.zeros(1)], 'ref_y': [np.zeros(1)]}
-    plot_data = ColumnDataSource(init_data)
-    fig = figure(height=300, width=300, toolbar_location=None, sizing_mode='fixed')
-    fig.scatter(x='ref_x', y='ref_y', source=plot_data,
-                line_color='blue', marker='dot', size=10, syncable=False)
-    return fig, plot_data
-
+def plot_retraction(scan):
+    pass
 
 # NOISE TAB FUNCTIONS AND CALLBACKS ####################################################################################
-# RETRACTION TAB FUNCTIONS AND CALLBACKS ###############################################################################
 # LINE SCAN TAB FUNCTIONS AND CALLBACKS ################################################################################
 # DELAY SCAN TAB FUNCTIONS AND CALLBACKS ###############################################################################
+# GENERAL SCAN FUNCTIONS AND CALLBACKS #################################################################################
+def delete_last():
+    scanfile = f'{data_dir}/{current_name}.h5'
+    logfile = f'{data_dir}/{current_name}.log'
+    try:
+        logger.info(f'removing file: {scanfile}')
+        os.remove(scanfile)
+        os.remove(logfile)
+        update_message_box(msg='last scan file deleted')
+    except FileNotFoundError:
+        err_msg = f'file not found: {scanfile}'
+        logger.error(err_msg)
+        update_message_box(msg=err_msg)
+
+
+def elab_entry():
+    update_message_box(msg='not implemented yet')
+
+
+def get_elab_metadata():
+    update_message_box(msg='not implemented yet')
+
+
+def stop_scan():
+    if scan_daemon is not None:
+        keyboard_interrupt_thread(thread=scan_daemon)
+
+
 # WIDGETS ##############################################################################################################
 # TOP PANEL
 go_button = Toggle(label='GO', active=False, width=60)
@@ -424,6 +475,51 @@ noise_table = column(
     row([signal_noise[h] for h in range(4, 8)])
 )
 
+# SCAN PARAMETERS
+parameter_title = Div(text='SCAN PARAMETERS')
+parameter_title.styles = {'width': '300px', 'text-align': 'center', 'background-color': '#AAAAAA'}
+scan_type_button = RadioButtonGroup(labels=['stepped', 'continuous'], active=1)
+mod_button = RadioButtonGroup(labels=['shd', 'pshet'], active=1)
+pump_probe_button = Toggle(label='pump-probe', active=False, width=100)
+ratiometry_button = Toggle(label='ratiometry', active=False, width=100)
+
+z_size_input = NumericInput(title='z size (µm)', value=0.2, mode='float', low=0, high=1, width=80)
+z_res_input = NumericInput(title='z resolution', value=200, mode='int', low=1, high=10000, width=80)
+npts_input = NumericInput(title='npts', mode='int', value=5_000, low=0, high=200_000, width=80)
+x_target_input = NumericInput(title='x position (µm)', value=None, mode='float', low=0, high=100, width=100)
+y_target_input = NumericInput(title='y position (µm)', value=None, mode='float', low=0, high=100, width=100)
+setpoint_input = NumericInput(title='AFM setpoint', value=0.8, mode='float', low=0, high=1, width=80)
+t_input = NumericInput(title='delay time', value=None, mode='float', width=100)
+t_unit_button = RadioButtonGroup(labels=['mm', 'fs', 'ps'], active=0)
+t0_input = NumericInput(title='t0 (mm)', mode='float', value=None, low=0, high=250, width=100)
+sampling_ms_input = NumericInput(title='AFM sampling (ms)', value=80, mode='float', low=.1, high=1000, width=100)
+
+# ACQUISITION METADATA
+metadata_title = Div(text='METADATA')
+metadata_title.styles = {'width': '300px', 'text-align': 'center', 'background-color': '#AAAAAA'}
+sample_input = TextInput(title='sample name', value='', width=150)
+user_input = TextInput(title='user name', value='', width=150)
+tip_input = TextInput(title='AFM tip', value='', width=110)
+amp_input = TextInput(title='tapping amp (nm)', value='', width=110)
+freq_input = NumericInput(title='tapping freq (Hz)', value=tip_frequency, low=0, high=500_000, mode='float', width=110)
+laser_input = Select(title='probe light source', options=['HeNe', '3H', '2H'], value='HeNe', width=110)
+probe_nm = NumericInput(title='probe color (nm)', value=None, low=0, high=1500, mode='float', width=110)
+probe_mW = NumericInput(title='probe power (mW)', value=None, low=0, high=10, mode='float', width=110)
+probe_FWHM = NumericInput(title='probe FWHM (nm)', value=None, low=0, high=100, mode='float', width=110)
+pump_nm = NumericInput(title='pump color (nm)', value=None, low=0, high=1500, mode='float', width=110)
+pump_mW = NumericInput(title='pump power (mW)', value=None, low=0, high=10, mode='float', width=110)
+pump_FWHM = NumericInput(title='pump FWHM (nm)', value=None, low=0, high=100, mode='float', width=110)
+
+# SCAN WIDGETS
+delete_last_button = Button(label='delete last scan')
+delete_last_button.on_click(delete_last)
+elab_button = Button(label='make elab entry')
+elab_button.on_click(elab_entry)
+metadata_button = Button(label='get metadata from elabFTW')
+metadata_button.on_click(get_elab_metadata)
+abort_button = Button(label='cancel current scan')
+abort_button.on_click(stop_scan)
+
 # TUNING TAB
 tap_amp_diff_txt = Div(text=f'amp_x - amp_y: {0:.2e} V')
 tap_phase_diff_txt = Div(text=f'phi_x - phi_y: {0:.2f} °')
@@ -432,16 +528,25 @@ ref_amp_diff_txt = Div(text=f'amp_x - amp_y: {0:.2e} V')
 ref_phase_diff_txt = Div(text=f'phi_x - phi_y: {0:.2f} °')
 ref_err_txt = Div(text=f'amplitude err: {0:.2e} %')
 
+# RETRACTION TAB
+start_retraction_button = Button(label='START')
+start_retraction_button.on_click(start_retraction)
+
 
 # MAKE ALL THE PLOTS ###################################################################################################
-# signal tab
+# SIGNAL TAB
 sig_fig, signal_buffer = make_sig_fig()
 phase_fig, phase_plot_data = make_phase_fig()
 
-# tuning tab
+# TUNING TAB
 binning_fig, binning_data = make_binning_fig()
 tap_shift_fig, tap_shift_data = make_tap_shift_fig()
 ref_shift_fig, ref_shift_data = make_ref_shift_fig()
+
+# RETRACTION TAB
+retraction_amp_plot, retraction_amp_plot_data = setup_retr_amp_fig()
+retraction_phase_plot, retraction_phase_plot_data = setup_retr_phase_fig()
+retraction_sig_plot, retraction_sig_plot_data = setup_retr_optical_fig()
 
 
 # MAKE ALL THE TAB LAYOUTS #############################################################################################
@@ -471,12 +576,31 @@ def make_tuning_layout():
     return layout(children=[[binning_fig, controls_box, phase_shift_box]])
 
 
-def make_noise_layout():
-    place_holder = Div(text='There is nothing here yet to see')
-    return layout(children=[place_holder])
-
-
 def make_retraction_layout():
+    controls_box = column([
+    row([start_retraction_button, delete_last_button, elab_button, metadata_button]),
+
+    row([parameter_title]),
+    row([scan_type_button, mod_button]),
+    row([pump_probe_button, ratiometry_button]),
+    row([z_size_input, z_res_input, npts_input, setpoint_input]),
+    row([x_target_input, y_target_input, sampling_ms_input]),
+
+    row([t_input, t_unit_button, t0_input]),
+
+    row([metadata_title]),
+    row([sample_input, user_input]),
+    row([tip_input, amp_input, freq_input]),
+    row([laser_input]),
+    row([probe_nm, probe_mW, probe_FWHM]),
+    row([pump_nm, pump_mW, pump_FWHM]),
+    ])
+    plot_box = gridplot([[retraction_amp_plot], [retraction_phase_plot], [retraction_sig_plot]],
+                        sizing_mode='stretch_width', merge_tools=False)
+    return layout(children=[plot_box, controls_box])
+
+
+def make_noise_layout():
     place_holder = Div(text='There is nothing here yet to see')
     return layout(children=[place_holder])
 
@@ -500,7 +624,7 @@ delay_tab = TabPanel(child=make_delay_layout(), title='Delay Scan')
 tabs = Tabs(tabs=[sig_tab, tuning_tab, noise_tab, retraction_tab, line_tab, delay_tab], active=0)
 
 
-# START ACQUISITION ####################################################################################################
+# DEAMON THREADS #######################################################################################################
 acquisition_daemon = Thread(target=acquisition_idle_loop, daemon=True)
 acquisition_daemon.start()
 

@@ -29,6 +29,11 @@ messages = [
         2: 'empty bins in binned data',
         3: 'waiting for buffer to fill',
     },
+    {  # 10 ** 4
+        1: 'error during scanning',
+        2: '-- busy --',
+        3: '-- done --'
+    }
 ]
 
 

@@ -157,7 +157,7 @@ def bin_line(scan: BaseScanDemod, res: int = 100, direction: str = 'scan', line_
     return ds
 
 
-def tip_frequency(tap_p, sample_rate=200_000):
+def fft_tip_frequency(tap_p, sample_rate=200_000):
     """ works for tip frequencies 200 kHz < f < 400 kHz
     The tip frequency is determined via the fft spectrum, assuming that the spectrum is folded once:
     f_alias = f_tip - 1 * f_sample
