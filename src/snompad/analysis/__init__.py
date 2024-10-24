@@ -1,7 +1,7 @@
 # Mostly classes to analyse scans data, e.g. line scans, retraction curves etc
-from .base import BaseScanDemod, BaseDemodReader
-from .scans import Retraction, Image, Line, Noise, Delay
-from .demod import RetractionDemod, LineDemod, DelayDemod
+from snompad.analysis.base import BaseScanDemod, BaseDemodReader
+from snompad.analysis.scans import Retraction, Image, Line, Noise, Delay
+from snompad.analysis.demod import RetractionDemod, LineDemod, DelayDemod
 
 
 def load(filename: str) -> BaseScanDemod or BaseDemodReader:

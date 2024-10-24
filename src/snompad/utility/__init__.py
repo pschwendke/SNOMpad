@@ -1,5 +1,5 @@
-from .signals import Signals, Demodulation, Scan
-from .acquisition_logger import notebook_logger
+from snompad.utility.signals import Signals, Demodulation, Scan
+from snompad.utility.acquisition_logger import notebook_logger
 
 import colorcet as cc
 from matplotlib.colors import LinearSegmentedColormap

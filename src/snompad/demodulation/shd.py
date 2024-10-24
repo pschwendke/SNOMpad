@@ -2,9 +2,9 @@
 import numpy as np
 from scipy.stats import binned_statistic
 
-from ..utility.signals import Signals
-from .utils import kernel_average_1d, corrected_fft, chop_pump_idx, chopped_data, pumped_data
-from .corrections import normalize_sig_a
+from snompad.utility.signals import Signals
+from snompad.demodulation.utils import kernel_average_1d, corrected_fft, chop_pump_idx, chopped_data, pumped_data
+from snompad.demodulation.corrections import normalize_sig_a
 
 
 def shd_binning(data: np.ndarray, signals: list, tap_res: int = 64) -> np.ndarray:

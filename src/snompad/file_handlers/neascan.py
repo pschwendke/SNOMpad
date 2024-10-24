@@ -1,9 +1,8 @@
 import numpy as np
 import xarray as xr
-import logging
 from datetime import datetime
 from glob import glob
-from .gwyddion import combine_gsf
+from snompad.file_handlers.gwyddion import combine_gsf
 
 
 def load_nea_metadata(filename) -> dict:

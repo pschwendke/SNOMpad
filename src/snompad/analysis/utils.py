@@ -2,7 +2,7 @@
 import numpy as np
 import xarray as xr
 
-from .base import BaseScanDemod
+from snompad.analysis.base import BaseScanDemod
 from snompad.utility.signals import Scan
 
 

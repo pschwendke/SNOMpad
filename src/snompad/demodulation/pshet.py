@@ -4,10 +4,10 @@ from scipy.special import jv
 from scipy.stats import binned_statistic_2d
 from lmfit import Parameters, minimize
 
-from ..utility.signals import Signals
-from .utils import kernel_average_1d, kernel_average_2d, pshet_obj_func,\
+from snompad.utility.signals import Signals
+from snompad.demodulation.utils import kernel_average_1d, kernel_average_2d, pshet_obj_func,\
     corrected_fft, chop_pump_idx, chopped_data, pumped_data
-from .corrections import normalize_sig_a
+from snompad.demodulation.corrections import normalize_sig_a
 
 
 def pshet_binning(data: np.ndarray, signals=list, tap_res: int = 64, ref_res: int = 64) -> np.ndarray:

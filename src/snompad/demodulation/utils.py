@@ -2,8 +2,8 @@
 import numpy as np
 from warnings import warn
 
-from .corrections import phase_offset
-from ..utility.signals import Signals
+from snompad.demodulation.corrections import phase_offset
+from snompad.utility.signals import Signals
 
 
 # KERNEL INTERPOLATION #################################################################################################

@@ -1,7 +1,7 @@
 # SNOM near-field models
 from scipy.interpolate import interp1d
 import numpy as np
-from .units import nm
+from snompad.utility.units import nm
 
 
 def eps_air(e):

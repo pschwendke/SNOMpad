@@ -1,2 +1,2 @@
-from .shd import shd
-from .pshet import pshet
+from snompad.demodulation.shd import shd
+from snompad.demodulation.pshet import pshet

@@ -1,7 +1,7 @@
 # corrections and filtering for demodulation
 import numpy as np
 
-from ..utility.signals import Signals
+from snompad.utility.signals import Signals
 
 
 def phase_offset(binned: np.ndarray, axis=-1) -> float:

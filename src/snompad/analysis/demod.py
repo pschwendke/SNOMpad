@@ -1,6 +1,6 @@
 # Classes to load demod files. Very similar to scan demodulation classes, just without reshaping and demod methods.
 # This just avoids loading the original scan file.
-from .base import BaseDemodReader
+from snompad.analysis.base import BaseDemodReader
 
 
 class RetractionDemod(BaseDemodReader):

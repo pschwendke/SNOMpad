@@ -4,7 +4,7 @@ import xarray as xr
 import logging
 from glob import glob
 
-from .base import AcquisitionReader
+from snompad.file_handlers.base import AcquisitionReader
 
 logger = logging.getLogger(__name__)
 

@@ -12,12 +12,12 @@ from tqdm import tqdm
 from itertools import product
 from datetime import datetime, timedelta
 
-from ..utility.signals import Signals, Scan
-from ..acquisition.buffer import ExtendingArrayBuffer
-from ..acquisition.buffer.base import Overfill
-from ..drivers import DaqController
-from ..file_handlers.neascan import to_numpy
-from ..acquisition.base import ContinuousScan, BaseScan
+from snompad.utility.signals import Signals, Scan
+from snompad.acquisition.buffer import ExtendingArrayBuffer
+from snompad.acquisition.buffer.base import Overfill
+from snompad.drivers import DaqController
+from snompad.file_handlers.neascan import to_numpy
+from snompad.acquisition.base import ContinuousScan, BaseScan
 
 logger = logging.getLogger(__name__)
 

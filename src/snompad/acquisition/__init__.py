@@ -1,3 +1,3 @@
-from .scans import ContinuousRetraction as Retraction
-from .scans import ContinuousLineScan as Line
-from .scans import DelayScan as Delay
+from snompad.acquisition.scans import ContinuousRetraction as Retraction
+from snompad.acquisition.scans import ContinuousLineScan as Line
+from snompad.acquisition.scans import DelayScan as Delay

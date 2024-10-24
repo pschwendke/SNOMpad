@@ -2,7 +2,7 @@ import logging
 import serial
 from time import sleep, monotonic
 
-from ..utility import c_air
+from snompad.utility import c_air
 
 logger = logging.getLogger(__name__)
 

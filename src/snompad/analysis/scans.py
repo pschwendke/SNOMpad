@@ -12,13 +12,13 @@ import xarray as xr
 import colorcet as cc
 from tqdm import tqdm
 
-from .base import BaseScanDemod
-from .utils import sort_lines, bin_line
-from .image_corrections import subtract_linear
-from ..demodulation import shd, pshet
-from ..demodulation.utils import chop_pump_idx
-from ..utility import Scan, Demodulation, Signals, c_air
-from ..file_handlers.gwyddion import export_gwy
+from snompad.analysis.base import BaseScanDemod
+from snompad.analysis.utils import sort_lines, bin_line
+from snompad.analysis.image_corrections import subtract_linear
+from snompad.demodulation import shd, pshet
+from snompad.demodulation.utils import chop_pump_idx
+from snompad.utility import Scan, Demodulation, Signals, c_air
+from snompad.file_handlers.gwyddion import export_gwy
 
 
 class Retraction(BaseScanDemod):
