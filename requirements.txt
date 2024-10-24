@@ -17,10 +17,3 @@ tqdm
 attrs
 bidict
 toml
-h5py
-xarray
-pyserial
-gwyfile
-lmfit
-bokeh
-colorcet

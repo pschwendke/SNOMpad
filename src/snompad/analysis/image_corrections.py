@@ -17,7 +17,7 @@ def linear_offset(data, x=None, x_min=None, x_max=None) -> np.ndarray:
         x_linreg = np.linspace(0, 1, len(data))
         x = x_linreg
     coeff_matrix = np.vstack([x_linreg, np.ones(len(x_linreg))]).T
-    m, b = np.linalg.lstsq(coeff_matrix, data, rcond=None)[0]
+    m, b = np.linalg.lstsq(coeff_matrix, data.values, rcond=None)[0]
     offset = m * x + b
 
     return offset
